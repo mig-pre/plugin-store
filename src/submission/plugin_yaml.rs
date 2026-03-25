@@ -119,11 +119,24 @@ pub struct ExtraDecl {
 }
 
 /// Build configuration — tells our CI how to compile the plugin's source code.
+///
+/// Source code lives in the developer's own GitHub repo, referenced by
+/// `source_repo` + `source_commit`. Our CI clones at the exact commit SHA,
+/// compiles, and publishes the artifact. We never store source code in our repo.
+///
+/// This is the Homebrew model: Formula points to source URL + SHA256,
+/// CI builds bottles, homebrew-core stays small.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BuildConfig {
     /// Programming language: rust, go, typescript, node, python
     pub lang: String,
-    /// Path to source code directory (relative to submission root)
+    /// GitHub repo containing source code (e.g. "developer/my-mcp-server")
+    pub source_repo: String,
+    /// Git commit SHA (full 40-char hex) — pinned for integrity.
+    /// This IS the content fingerprint. Same SHA = same code, guaranteed.
+    pub source_commit: String,
+    /// Path within the repo to the source root (default: ".")
+    #[serde(default = "default_source_dir")]
     pub source_dir: String,
     /// Language-specific entry file (Cargo.toml, go.mod, package.json, pyproject.toml)
     #[serde(default)]
@@ -140,6 +153,10 @@ pub struct BuildConfig {
     /// Target platforms to build for (optional, defaults to all supported)
     #[serde(default)]
     pub targets: Vec<String>,
+}
+
+fn default_source_dir() -> String {
+    ".".to_string()
 }
 
 impl PluginYaml {

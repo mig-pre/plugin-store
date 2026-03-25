@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use super::plugin_yaml::{
     PluginYaml, VALID_CATEGORIES, VALID_LICENSES, VALID_MCP_TYPES, VALID_RISK_LEVELS,
-    VALID_BUILD_LANGS, LANG_ENTRY_FILES, FORBIDDEN_BINARY_EXTENSIONS,
+    VALID_BUILD_LANGS, FORBIDDEN_BINARY_EXTENSIONS,
 };
 
 /// A single lint finding.
@@ -869,7 +869,11 @@ fn check_dir_name_match(plugin_name: &str, dir: &Path, diags: &mut Vec<LintDiag>
 }
 
 /// Validate the `build` section if present.
-fn check_build_config(plugin: &PluginYaml, dir: &Path, diags: &mut Vec<LintDiag>) {
+///
+/// Source code lives in the developer's external GitHub repo, referenced by
+/// `source_repo` + `source_commit`. We don't store source code in our repo.
+/// The commit SHA is the content fingerprint — same SHA = same code.
+fn check_build_config(plugin: &PluginYaml, _dir: &Path, diags: &mut Vec<LintDiag>) {
     let build = match &plugin.build {
         Some(b) => b,
         None => return,
@@ -901,42 +905,31 @@ fn check_build_config(plugin: &PluginYaml, dir: &Path, diags: &mut Vec<LintDiag>
         });
     }
 
-    // Validate source_dir exists
-    let source_path = dir.join(&build.source_dir);
-    if !source_path.exists() || !source_path.is_dir() {
+    // Validate source_repo format (owner/repo)
+    let repo_re = regex::Regex::new(r"^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$").unwrap();
+    if !repo_re.is_match(&build.source_repo) {
         diags.push(LintDiag {
             level: DiagLevel::Error,
             code: "E122",
             message: format!(
-                "build.source_dir '{}' does not exist or is not a directory",
-                build.source_dir
+                "build.source_repo '{}' is not valid — expected format: owner/repo",
+                build.source_repo
             ),
         });
     }
 
-    // Validate entry file exists (use default if not specified)
-    let entry_file = build
-        .entry
-        .as_deref()
-        .or_else(|| {
-            LANG_ENTRY_FILES
-                .iter()
-                .find(|(lang, _)| *lang == build.lang.as_str())
-                .map(|(_, entry)| *entry)
+    // Validate source_commit is a full 40-char hex SHA
+    let sha_re = regex::Regex::new(r"^[0-9a-f]{40}$").unwrap();
+    if !sha_re.is_match(&build.source_commit) {
+        diags.push(LintDiag {
+            level: DiagLevel::Error,
+            code: "E123",
+            message: format!(
+                "build.source_commit '{}' must be a full 40-character hex SHA — \
+                 short SHAs and branch names are not accepted for integrity verification",
+                build.source_commit
+            ),
         });
-
-    if let Some(entry) = entry_file {
-        let entry_path = source_path.join(entry);
-        if !entry_path.exists() {
-            diags.push(LintDiag {
-                level: DiagLevel::Error,
-                code: "E123",
-                message: format!(
-                    "build entry file '{}' not found in '{}'",
-                    entry, build.source_dir
-                ),
-            });
-        }
     }
 
     // binary_name is required for compiled languages
@@ -975,27 +968,6 @@ fn check_build_config(plugin: &PluginYaml, dir: &Path, diags: &mut Vec<LintDiag>
                  defaults to @plugin-store. Set explicitly if you have a preferred scope."
                     .to_string(),
         });
-    }
-
-    // Source size limit (10MB)
-    if source_path.exists() {
-        if let Ok(files) = walk_dir(&source_path) {
-            let total: u64 = files
-                .iter()
-                .filter_map(|f| f.metadata().ok().map(|m| m.len()))
-                .sum();
-            if total > 10 * 1024 * 1024 {
-                diags.push(LintDiag {
-                    level: DiagLevel::Error,
-                    code: "E126",
-                    message: format!(
-                        "source code in '{}' is {} MB (limit: 10 MB)",
-                        build.source_dir,
-                        total / (1024 * 1024)
-                    ),
-                });
-            }
-        }
     }
 }
 
