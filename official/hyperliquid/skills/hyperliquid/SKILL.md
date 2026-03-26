@@ -13,7 +13,7 @@ metadata:
   author: Plugin Store
   category: "DeFi"
   chain: "Arbitrum,Ethereum"
-  version: "0.1.18"
+  version: "0.2.0"
   homepage: "https://github.com/okx/plugin-store"
 ---
 

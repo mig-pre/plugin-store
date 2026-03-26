@@ -6,7 +6,7 @@ metadata:
   author: OKX
   category: "MEME Trading"
   chain: Solana
-  version: "0.1.18"
+  version: "0.2.0"
   homepage: "https://github.com/okx/plugin-store"
 ---
 
