@@ -82,6 +82,18 @@ pub const COOLDOWN_AFTER_ERRORS: u64 = 3600;
 pub const MAX_TRADES: usize = 100;
 pub const MAX_KNOWN_TOKENS: usize = 500;
 
+// Price impact (Feature 1)
+pub const MAX_PRICE_IMPACT: f64 = 5.0; // %
+
+// Platform filter for small-cap tokens (Feature 2)
+pub const PLATFORM_MCAP_THRESH: f64 = 2_000_000.0; // $2M
+pub const SAFE_PLATFORMS: &[&str] = &["pump", "bonk"];
+
+// Trend-based time stop (Feature 3)
+pub const TIME_STOP_MIN_HOLD_MIN: u64 = 30; // don't trigger before 30min
+pub const TIME_STOP_CANDLE_BAR: &str = "15m";
+pub const TIME_STOP_REVERSAL_VOL: f64 = 0.8; // k1_vol >= k2_vol * 0.8
+
 // ── Data Types ──────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -313,7 +325,72 @@ pub fn check_honeypot(quote: &Value) -> Option<String> {
     if tax_rate > 5.0 {
         return Some(format!("tax rate {tax_rate:.1}% > 5%"));
     }
+    // Feature 1: price impact check
+    let price_impact = safe_float(&quote["priceImpactPercentage"], 0.0);
+    if price_impact > MAX_PRICE_IMPACT {
+        return Some(format!("price impact {price_impact:.1}% > {MAX_PRICE_IMPACT}%"));
+    }
     None
+}
+
+// ── Platform Filter ──────────────────────────────────────────────────
+
+/// Feature 2: for tokens with MC < PLATFORM_MCAP_THRESH, only allow safe launchpad platforms.
+/// Returns a rejection reason if the token should be skipped, None if it passes.
+pub fn check_platform(price_info: &Value, mc: f64) -> Option<String> {
+    if mc <= 0.0 || mc >= PLATFORM_MCAP_THRESH {
+        return None;
+    }
+    // Try common field names returned by OKX token APIs
+    let launchpad = price_info["launchpad"]
+        .as_str()
+        .or_else(|| price_info["platform"].as_str())
+        .or_else(|| price_info["tokenPlatform"].as_str())
+        .unwrap_or("")
+        .to_lowercase();
+    // If platform info is unavailable, don't block (conservative: avoid false rejects)
+    if launchpad.is_empty() {
+        return None;
+    }
+    let is_safe = SAFE_PLATFORMS.iter().any(|p| launchpad.contains(p));
+    if !is_safe {
+        Some(format!(
+            "MC ${mc:.0} < ${PLATFORM_MCAP_THRESH:.0} but platform '{launchpad}' not in safelist"
+        ))
+    } else {
+        None
+    }
+}
+
+// ── Trend-Based Time Stop ────────────────────────────────────────────
+
+/// Feature 3: check if 15m K-line confirms a trend reversal.
+/// Condition: latest candle is bearish (close < open) AND its volume >= prev candle vol * threshold.
+/// Candle format: [ts, open, high, low, close, vol, ...]
+pub fn check_trend_stop(candles_15m: &Value) -> bool {
+    let arr = match candles_15m.as_array() {
+        Some(a) if a.len() >= 2 => a,
+        _ => return false,
+    };
+    let k1 = arr.last().unwrap();
+    let k2 = &arr[arr.len() - 2];
+    let (k1_items, k2_items) = match (k1.as_array(), k2.as_array()) {
+        (Some(a), Some(b)) if a.len() >= 6 && b.len() >= 6 => (a, b),
+        _ => return false,
+    };
+    let k1_open = safe_float(&k1_items[1], 0.0);
+    let k1_close = safe_float(&k1_items[4], 0.0);
+    let k1_vol = safe_float(&k1_items[5], 0.0);
+    let k2_vol = safe_float(&k2_items[5], 0.0);
+    k1_close < k1_open && k1_vol >= k2_vol * TIME_STOP_REVERSAL_VOL
+}
+
+/// Compute elapsed minutes for a position (used to gate the trend stop check).
+pub fn position_elapsed_min(pos: &Position, now_ts: i64) -> u64 {
+    let buy_ts = chrono::DateTime::parse_from_rfc3339(&pos.buy_time)
+        .map(|t| t.timestamp())
+        .unwrap_or(0);
+    ((now_ts - buy_ts).max(0) as u64) / 60
 }
 
 // ── 7-Layer Exit System ─────────────────────────────────────────────
@@ -490,6 +567,16 @@ pub fn config_summary() -> serde_json::Value {
             "session_loss_stop_sol": SESSION_STOP_SOL,
         },
         "tick_interval": format!("{}s", TICK_INTERVAL_SECS),
+        "platform_filter": {
+            "platform_mcap_thresh": format!("${:.0}", PLATFORM_MCAP_THRESH),
+            "safe_platforms": SAFE_PLATFORMS,
+        },
+        "price_impact": format!("max {MAX_PRICE_IMPACT}%"),
+        "trend_stop": {
+            "min_hold_min": TIME_STOP_MIN_HOLD_MIN,
+            "candle_bar": TIME_STOP_CANDLE_BAR,
+            "reversal_vol_ratio": TIME_STOP_REVERSAL_VOL,
+        },
     })
 }
 
@@ -514,6 +601,78 @@ mod tests {
         });
         let (passed, reasons) = run_signal_prefilter(&signal);
         assert!(passed, "{:?}", reasons);
+    }
+
+    #[test]
+    fn test_check_platform_large_cap_skip() {
+        // MC > $2M → no filter regardless of platform
+        let info = json!({"launchpad": "raydium"});
+        assert!(check_platform(&info, 3_000_000.0).is_none());
+    }
+
+    #[test]
+    fn test_check_platform_small_cap_safe() {
+        let info = json!({"launchpad": "pump.fun"});
+        assert!(check_platform(&info, 500_000.0).is_none());
+    }
+
+    #[test]
+    fn test_check_platform_small_cap_unsafe() {
+        let info = json!({"launchpad": "raydium"});
+        let result = check_platform(&info, 500_000.0);
+        assert!(result.is_some());
+        assert!(result.unwrap().contains("not in safelist"));
+    }
+
+    #[test]
+    fn test_check_platform_no_field() {
+        // No platform info → don't block
+        let info = json!({"marketCap": 500_000.0});
+        assert!(check_platform(&info, 500_000.0).is_none());
+    }
+
+    #[test]
+    fn test_check_trend_stop_bearish_with_volume() {
+        // k1: bearish + volume confirms → should trigger
+        let candles = json!([
+            ["ts", "1.0", "1.1", "0.9", "1.05", "1000"],  // k2
+            ["ts", "1.05", "1.1", "0.95", "0.98", "900"], // k1: close < open, vol >= 1000*0.8=800
+        ]);
+        assert!(check_trend_stop(&candles));
+    }
+
+    #[test]
+    fn test_check_trend_stop_bullish() {
+        // k1: bullish (close > open) → no trigger
+        let candles = json!([
+            ["ts", "1.0", "1.1", "0.9", "1.05", "1000"],
+            ["ts", "1.0", "1.2", "0.99", "1.15", "900"], // close > open
+        ]);
+        assert!(!check_trend_stop(&candles));
+    }
+
+    #[test]
+    fn test_check_trend_stop_low_volume() {
+        // k1: bearish but volume too low → no trigger
+        let candles = json!([
+            ["ts", "1.0", "1.1", "0.9", "1.05", "1000"],
+            ["ts", "1.05", "1.1", "0.95", "0.98", "700"], // vol 700 < 1000*0.8=800
+        ]);
+        assert!(!check_trend_stop(&candles));
+    }
+
+    #[test]
+    fn test_check_price_impact() {
+        let quote = json!({"priceImpactPercentage": 6.5});
+        let result = check_honeypot(&quote);
+        assert!(result.is_some());
+        assert!(result.unwrap().contains("price impact"));
+    }
+
+    #[test]
+    fn test_check_price_impact_ok() {
+        let quote = json!({"priceImpactPercentage": 3.0});
+        assert!(check_honeypot(&quote).is_none());
     }
 
     #[test]

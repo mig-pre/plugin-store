@@ -3,11 +3,13 @@ name: hyperliquid
 description: >-
   Use when the user asks about Hyperliquid, perpetual futures, 'open a long position',
   'short BTC', 'check my perp positions', 'funding rate', 'Hyperliquid orderbook',
-  'spot trade on Hyperliquid', 'set leverage', '做多', '做空', '永续合约', '资金费率',
-  '杠杆交易', or mentions Hyperliquid DEX, perpetual trading, funding rates, or
-  leverage trading. Covers perpetual and spot markets, prices, orderbook, funding
-  rates, and trading (buy/sell/cancel). Do NOT use for Polymarket prediction markets.
-  Do NOT use for Aave lending.
+  'spot trade on Hyperliquid', 'set leverage', 'deposit to Hyperliquid', 'open Hyperliquid account',
+  'withdraw from Hyperliquid', 'take out money from Hyperliquid',
+  '做多', '做空', '永续合约', '资金费率', '杠杆交易', '充值到Hyperliquid', '开户', '从Hyperliquid提现', '提出资金',
+  or mentions Hyperliquid DEX, perpetual trading, funding rates, leverage trading, or withdrawing from Hyperliquid.
+  Covers perpetual and spot markets, prices, orderbook, funding rates, trading (buy/sell/cancel),
+  USDC deposit from Arbitrum to open/fund account, and USDC withdrawal back to Arbitrum.
+  Do NOT use for Polymarket prediction markets. Do NOT use for Aave lending.
 license: Apache-2.0
 metadata:
   author: Plugin Store
@@ -19,27 +21,28 @@ metadata:
 
 # Hyperliquid Perpetual & Spot Trading CLI
 
-11 commands for perpetual futures and spot trading on Hyperliquid: market data, orderbook, funding rates, and order management.
+13 commands for perpetual futures and spot trading on Hyperliquid: market data, orderbook, funding rates, order management, USDC deposit from Arbitrum, and USDC withdrawal back to Arbitrum.
 
 ## Pre-flight Checks
 
-Run immediately when this skill is triggered — before any response or command.
+Run immediately when this skill is triggered — before any response or command. Always follow these steps in order.
 
-1. **Check binary**: `which dapp-hyperliquid` — if not found, install via `plugin-store install hyperliquid`
-2. **Check EVM_PRIVATE_KEY** for trading commands: verify it is set in the environment or `.env` file — if not, remind the user to set it before calling buy/sell/cancel/positions/balances/orders
+1. **Check onchainos**: `which onchainos` — if not found, tell user to install: https://web3.okx.com/zh-hans/onchainos/dev-docs/home/install-your-agentic-wallet; if found, run `onchainos --version` and verify version is **>= 2.0.0** — if older, tell user to upgrade
+2. **Check binary**: `which dapp-hyperliquid` — if not found, install via `plugin-store install hyperliquid`
+3. **Install onchainos-skills** (silent, non-blocking):
+   ```bash
+   npx skills add okx/onchainos-skills --yes 2>/dev/null || true
+   ```
+   This installs sub-skills used by Skill Routing (`okx-dex-token`, `okx-dex-swap`, etc.). Do not block on failure.
+4. **Check wallet login**: `onchainos wallet status` — must show `loggedIn: true`; if not, run `onchainos wallet login`
 
 ## Authentication
 
 **Data commands (markets, spot-markets, price, orderbook, funding):** No authentication needed.
 
-**Trading commands (buy, sell, cancel, positions, balances, orders):** Require an EVM wallet private key:
+**Trading commands (buy, sell, cancel, positions, balances, orders, deposit, withdraw):** Require onchainos wallet login.
 
-```bash
-# Add to .env file in your project directory
-EVM_PRIVATE_KEY=0x...
-```
-
-The private key is used to sign Hyperliquid L1 actions via EIP-712 typed data signatures.
+All EIP-712 signing is handled automatically using a local Hyperliquid trading key auto-generated at `~/.config/dapp-hyperliquid/key.hex`. The user only needs to be logged in to their onchainos wallet — no manual private key management required.
 
 ## Quickstart
 
@@ -84,8 +87,18 @@ dapp-hyperliquid balances
 | 9 | `dapp-hyperliquid positions` | Yes | View perpetual positions |
 | 10 | `dapp-hyperliquid balances` | Yes | View USDC margin and spot balances |
 | 11 | `dapp-hyperliquid orders [--symbol <s>]` | Yes | List open orders |
+| 12 | `dapp-hyperliquid deposit --amount <usdc>` | Yes | Deposit USDC from Arbitrum to open/fund account |
+| 13 | `dapp-hyperliquid withdraw --amount <usdc> [--destination <addr>]` | Yes | Withdraw USDC from Hyperliquid back to Arbitrum |
 
 ## Operation Flow
+
+### Intent: First-Time Onboarding
+
+```
+1. dapp-hyperliquid deposit --amount 20   → deposit $20 USDC from Arbitrum (opens account)
+2. dapp-hyperliquid balances              → confirm account is funded
+3. dapp-hyperliquid markets               → browse available markets
+```
 
 ### Intent: Research and Trade
 
@@ -115,6 +128,15 @@ dapp-hyperliquid balances
 3. dapp-hyperliquid buy --symbol PURR --size 100 --price 0.50
 ```
 
+### Intent: Withdraw Funds
+
+```
+1. dapp-hyperliquid balances             → confirm withdrawable USDC amount
+2. dapp-hyperliquid withdraw --amount 20 → withdraw $20 USDC back to your Arbitrum wallet
+                                           (default destination = your onchainos AA wallet)
+3. Wait ~10–30 minutes for USDC to appear on Arbitrum
+```
+
 ## Key Concepts
 
 - **Perpetual Futures**: Contracts with no expiry — funding payments keep price aligned with index
@@ -133,7 +155,7 @@ dapp-hyperliquid balances
 ## Response Guidelines
 
 - Before any buy/sell, show symbol, size, price, leverage, and ask for confirmation
-- Always check `EVM_PRIVATE_KEY` is set before trading commands
+- If user has no Hyperliquid account (first time), guide them to `deposit` first
 - After any action, suggest 2–3 natural follow-ups
 - Support both English and Chinese — respond in the user's language
 

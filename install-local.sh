@@ -50,8 +50,16 @@ get_target() {
 
 # ── GitHub API ───────────────────────────────────────────────
 get_latest_version() {
+  # Try GitHub API first
   response=$(curl -sSL --max-time 10 "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null) || true
   ver=$(echo "$response" | grep -o '"tag_name": *"v[^"]*"' | head -1 | sed 's/.*"v\([^"]*\)".*/\1/')
+
+  # Fallback: extract version from redirect URL (no API key needed, bypasses rate limits)
+  if [ -z "$ver" ]; then
+    redirect=$(curl -sSLI --max-time 10 "https://github.com/${REPO}/releases/latest" 2>/dev/null | grep -i '^location:' | tail -1)
+    ver=$(echo "$redirect" | sed 's|.*/tag/v||;s/[[:space:]]*$//')
+  fi
+
   if [ -z "$ver" ]; then
     echo "Error: could not fetch latest version from GitHub." >&2
     exit 1

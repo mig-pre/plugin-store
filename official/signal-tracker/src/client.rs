@@ -70,6 +70,11 @@ impl SignalClient {
         onchainos::market_kline(token_addr, "solana", "1m", "5")
     }
 
+    /// Fetch 15-minute candles for trend-based time stop.
+    pub async fn fetch_candles_15m(&self, token_addr: &str) -> Result<Value> {
+        onchainos::market_kline(token_addr, "solana", "15m", "3")
+    }
+
     /// Fetch dev info from Trenches API.
     pub async fn fetch_dev_info(&self, token_addr: &str) -> Result<Value> {
         let data = onchainos::memepump_dev_info(token_addr, "solana")?;

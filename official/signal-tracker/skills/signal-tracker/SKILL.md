@@ -1,6 +1,6 @@
 ---
 name: signal-tracker
-description: "Use when the user asks about smart money signal trading, 聪明钱策略, KOL following, whale tracking, signal bot, 信号策略, 跟单策略, 同车地址, cost-aware TP/SL, session risk controls, or wants to run/configure/monitor the signal tracker bot. Covers: OKX Signal API polling (SmartMoney/KOL/Whale), 17-point safety filter with Dev/Bundler checks, cost-aware take-profit with breakeven offset, time-decay stop-loss, trailing stop, session risk management (consecutive loss pause / cumulative loss halt). Do NOT use for meme token scanning — use memepump-scanner. Do NOT use for grid trading — use strategy-grid-trade. Do NOT use for manual signal lookup — use okx-dex-signal."
+description: "Use when the user asks about smart money signal trading, 聪明钱策略, KOL following, whale tracking, signal bot, 信号策略, 跟单策略, 同车地址, cost-aware TP/SL, session risk controls, or wants to run/configure/monitor the signal tracker bot. Covers: OKX Signal API polling (SmartMoney/KOL/Whale), 20-point safety filter with Dev/Bundler checks, price impact protection, platform filter for small-cap tokens, cost-aware take-profit with breakeven offset, time-decay stop-loss, trailing stop, trend-based time stop, session risk management (consecutive loss pause / cumulative loss halt). Do NOT use for meme token scanning — use memepump-scanner. Do NOT use for grid trading — use strategy-grid-trade. Do NOT use for manual signal lookup — use okx-dex-signal."
 license: Apache-2.0
 metadata:
   author: Plugin Store
@@ -12,7 +12,7 @@ metadata:
 
 # SOL Signal Tracker v1.0.0
 
-Automated smart-money signal following strategy on Solana. Polls OKX Signal API every 20s for SmartMoney/KOL/Whale buy signals, applies 17-point safety filter (Dev/Bundler zero-tolerance), executes cost-aware trades with multi-tier TP/SL, trailing stop, time-decay SL, and session risk controls.
+Automated smart-money signal following strategy on Solana. Polls OKX Signal API every 20s for SmartMoney/KOL/Whale buy signals, applies 20-point safety filter (Dev/Bundler zero-tolerance, price impact check, platform filter), executes cost-aware trades with multi-tier TP/SL, trailing stop, trend-based time stop, time-decay SL, and session risk controls.
 
 ## Pre-flight Checks
 
@@ -43,11 +43,13 @@ Run immediately when this skill is triggered — before any response or command.
 ## Architecture
 
 ```
-OKX Signal API → Pre-filter (4) → Deep Verify (13) → Buy → 7-Layer Exit → Sell
+OKX Signal API → Pre-filter (4) → Deep Verify (16) → Buy → 8-Layer Exit → Sell
 (SmartMoney/      (MC, Liq,        (Safety + Dev +      (Tier-sized:   (RUG_LIQ, Dust,
  KOL/Whale,        Wallets,          Bundler + k1pump     0.010–0.020    TIME_DECAY_SL,
- every 20s)        SoldRatio)        + Honeypot)          SOL)           HARD_SL, TP1/2/3,
-                                                                         TRAILING, TIME_STOP)
+ every 20s)        SoldRatio)        + Honeypot +         SOL)           HARD_SL, TP1/2/3,
+                                     PriceImpact +                       TRAILING,
+                                     Platform)                           TREND_STOP,
+                                                                         TIME_STOP)
 ```
 
 ## Quickstart
@@ -143,6 +145,10 @@ strategy-signal-tracker stop
 | `max_positions` | 6 | Max simultaneous positions |
 | `sl_multiplier` | 0.90 | Hard stop-loss (−10%) |
 | `time_stop_hours` | 4.0 | Hard time stop |
+| `max_price_impact` | 5.0% | Reject swap if price impact exceeds this |
+| `platform_mcap_thresh` | $2M | For MC below this, only allow pump/bonk launchpad tokens |
+| `time_stop_min_hold_min` | 30 min | Minimum hold before trend-based time stop activates |
+| `time_stop_reversal_vol` | 0.80 | Volume ratio threshold to confirm bearish reversal |
 
 > Full parameter reference, safety filter details, exit system, and CLI fields: see `references/strategy-reference.md`
 
@@ -153,6 +159,9 @@ strategy-signal-tracker stop
 | Dev rug history (any) | BLOCK — zero tolerance |
 | 1m pump > 15% at entry | BLOCK — avoid chasing tops |
 | Honeypot detected | BLOCK |
+| Price impact > 5% on buy | BLOCK — thin liquidity / manipulation |
+| MC < $2M + not pump/bonk launchpad | BLOCK — platform filter |
+| 15m K-line bearish reversal after 30min hold | Exit early (TREND_STOP) |
 | Liquidity < $5K | Emergency exit (RUG_LIQ) |
 | 3 consecutive losses | Pause 10 min |
 | 0.05 SOL cumulative loss | Pause 30 min |

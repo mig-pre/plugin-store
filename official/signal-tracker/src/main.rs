@@ -4,8 +4,9 @@ use signal_tracker::client::SignalClient;
 use signal_tracker::config::SignalTrackerConfig;
 use signal_tracker::engine::{
     self, calc_breakeven, calc_position_tier, check_exits, check_honeypot, check_k1_pump,
-    check_session_risk, config_summary, run_dev_bundler_checks, run_safety_checks,
-    run_signal_prefilter, safe_float, wallet_type_label, Position, Trade,
+    check_platform, check_session_risk, check_trend_stop, config_summary, position_elapsed_min,
+    run_dev_bundler_checks, run_safety_checks, run_signal_prefilter, safe_float,
+    wallet_type_label, Position, Trade,
 };
 use signal_tracker::state::SignalTrackerState;
 
@@ -282,7 +283,24 @@ async fn cmd_tick(config: &SignalTrackerConfig, dry_run: bool) -> Result<()> {
             continue;
         }
 
-        let exit_signal = check_exits(&mut pos, price, liq, mc, now_ts);
+        let mut exit_signal = check_exits(&mut pos, price, liq, mc, now_ts);
+
+        // Feature 3: trend-based time stop (only if no other exit triggered yet)
+        if exit_signal.is_none() {
+            let elapsed_min = position_elapsed_min(&pos, now_ts);
+            if elapsed_min >= engine::TIME_STOP_MIN_HOLD_MIN {
+                let candles_15m = client
+                    .fetch_candles_15m(token_addr)
+                    .await
+                    .unwrap_or(serde_json::json!([]));
+                if check_trend_stop(&candles_15m) {
+                    exit_signal = Some(engine::ExitSignal {
+                        reason: format!("TREND_STOP ({elapsed_min}min, 15m reversal confirmed)"),
+                        sell_pct: 1.0,
+                    });
+                }
+            }
+        }
 
         if let Some(signal) = exit_signal {
             let amount_raw = get_position_amount_raw(&state, token_addr);
@@ -447,16 +465,18 @@ async fn cmd_tick(config: &SignalTrackerConfig, dry_run: bool) -> Result<()> {
     };
 
     for signal in &signals {
-        let token_addr = match signal["token"]["tokenContractAddress"]
+        let token_addr = match signal["token"]["tokenAddress"]
             .as_str()
+            .or_else(|| signal["token"]["tokenContractAddress"].as_str())
             .or_else(|| signal["tokenContractAddress"].as_str())
         {
             Some(a) => a.to_string(),
             None => continue,
         };
 
-        let symbol = signal["token"]["tokenSymbol"]
+        let symbol = signal["token"]["symbol"]
             .as_str()
+            .or_else(|| signal["token"]["tokenSymbol"].as_str())
             .or_else(|| signal["tokenSymbol"].as_str())
             .unwrap_or("?")
             .to_string();
@@ -506,6 +526,15 @@ async fn cmd_tick(config: &SignalTrackerConfig, dry_run: bool) -> Result<()> {
         if !passed {
             actions.push(serde_json::json!({
                 "type": "skip", "symbol": symbol, "reason": reasons.join("; ")
+            }));
+            continue;
+        }
+
+        // Layer 2.5: Platform filter for small-cap tokens (Feature 2)
+        let mc_for_platform = safe_float(&price_info["marketCap"], 0.0);
+        if let Some(reason) = check_platform(&price_info, mc_for_platform) {
+            actions.push(serde_json::json!({
+                "type": "skip", "symbol": symbol, "reason": reason
             }));
             continue;
         }

@@ -76,6 +76,16 @@ pub struct SignalTrackerConfig {
     // Circuit breaker
     pub max_consecutive_errors: u32,
     pub cooldown_after_errors: u64,
+
+    // Feature 1: price impact
+    pub max_price_impact: f64,
+
+    // Feature 2: platform filter
+    pub platform_mcap_thresh: f64,
+
+    // Feature 3: trend-based time stop
+    pub time_stop_min_hold_min: u64,
+    pub time_stop_reversal_vol: f64,
 }
 
 impl Default for SignalTrackerConfig {
@@ -125,6 +135,10 @@ impl Default for SignalTrackerConfig {
             tick_interval_secs: engine::TICK_INTERVAL_SECS,
             max_consecutive_errors: engine::MAX_CONSECUTIVE_ERRORS,
             cooldown_after_errors: engine::COOLDOWN_AFTER_ERRORS,
+            max_price_impact: engine::MAX_PRICE_IMPACT,
+            platform_mcap_thresh: engine::PLATFORM_MCAP_THRESH,
+            time_stop_min_hold_min: engine::TIME_STOP_MIN_HOLD_MIN,
+            time_stop_reversal_vol: engine::TIME_STOP_REVERSAL_VOL,
         }
     }
 }

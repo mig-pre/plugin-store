@@ -1,10 +1,10 @@
 # Signal Tracker — Strategy & CLI Reference
 
-Complete reference for the 17-point safety filter, position management, cost model, 7-layer exit system, all CLI commands, and configurable parameters.
+Complete reference for the 20-point safety filter, position management, cost model, 8-layer exit system, all CLI commands, and configurable parameters.
 
 ---
 
-## 17-Point Safety Filter
+## 20-Point Safety Filter
 
 ### Layer 1: Server-Side Pre-filter (4 checks, API parameters)
 
@@ -15,7 +15,7 @@ Complete reference for the 17-point safety filter, position management, cost mod
 | 3 | Co-buying wallets | ≥ 3 | signal pre-filter `triggerWalletCount` |
 | 4 | Smart money holding | soldRatioPercent < 80% | signal pre-filter |
 
-### Layer 2: Client-Side Deep Verification (13 checks, 6-8 API calls)
+### Layer 2: Client-Side Deep Verification (16 checks, 7-9 API calls)
 
 | # | Filter | Default | Source |
 |---|--------|---------|--------|
@@ -32,6 +32,9 @@ Complete reference for the 17-point safety filter, position management, cost mod
 | 15 | Dev Holding % | ≤ 15% | memepump/tokenDevInfo |
 | 16 | Bundler ATH % | ≤ 25% | memepump/tokenBundleInfo |
 | 17 | Honeypot Check | isHoneyPot=false, taxRate ≤ 5% | swap quote |
+| 18 | Price Impact | ≤ 5% | swap quote `priceImpactPercentage` |
+| 19 | Platform Filter | MC < $2M → must be pump/bonk launchpad | price_info `launchpad` |
+| 20 | Bundle Count | ≤ 5 | memepump/tokenBundleInfo |
 
 ---
 
@@ -68,7 +71,7 @@ low  (0.010):  0.001/0.010×100 + 1.0×2 = 10.0% + 2.0% = 12.0%
 
 ---
 
-## 7-Layer Exit System (Priority Order)
+## 8-Layer Exit System (Priority Order)
 
 | Layer | Exit Type | Trigger | Sell % |
 |-------|-----------|---------|--------|
@@ -78,7 +81,8 @@ low  (0.010):  0.001/0.010×100 + 1.0×2 = 10.0% + 2.0% = 12.0%
 | 3 | HARD_SL | pnl ≤ −10% (SL_MULTIPLIER = 0.90) | 100% |
 | 4 | TP1/TP2/TP3 | cost-aware net targets (see table below) | Partial |
 | 5 | TRAILING_STOP | TP1 hit + peak pnl drops 10% | 100% |
-| 6 | TIME_STOP | hold ≥ 4 hours | 100% |
+| 6 | TREND_STOP | hold ≥ 30min + 15m K-line bearish reversal confirmed by volume | 100% |
+| 7 | TIME_STOP | hold ≥ 4 hours | 100% |
 
 ### Take-Profit (Cost-Aware Net Targets)
 
@@ -205,6 +209,20 @@ Config file: `~/.plugin-store/signal_tracker_config.json`
 | `max_consecutive_errors` | 5 | Errors before circuit breaker trips |
 | `cooldown_after_errors` | 3600 | Cooldown after circuit breaker (1h) |
 
+### Price Impact & Platform Filter
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `max_price_impact` | 5.0 | Max swap price impact % (from quote); reject if exceeded |
+| `platform_mcap_thresh` | 2000000 | For MC below this (USD), only allow pump/bonk launchpad tokens |
+
+### Trend-Based Time Stop
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `time_stop_min_hold_min` | 30 | Min hold time (minutes) before trend stop can activate |
+| `time_stop_reversal_vol` | 0.80 | Volume ratio: last bar must be ≥ this fraction of avg to confirm reversal |
+
 ---
 
 ## CLI Command Details
@@ -294,6 +312,9 @@ strategy-signal-tracker tick [--dry-run]
 | "onchainos wallet not available" | Not logged in | `onchainos wallet login` |
 | No buys — all signals skipped | Filters too strict or signal dry spell | Check skip reasons, lower `min_wallet_count` |
 | k1 pump rejection | Token pumping at entry | Normal — protects from buying tops |
+| "price impact X% > 5%" skip | Thin liquidity or manipulation on buy | Normal — increase `max_price_impact` to relax, or accept the filter |
+| "platform filter" skip for small MC token | Token MC < $2M and not on pump/bonk launchpad | Raise `platform_mcap_thresh` or set to 0 to disable |
+| TREND_STOP exit after 30min | 15m bearish reversal confirmed | Normal — early exit to limit drawdown; reduce `time_stop_reversal_vol` to make stricter |
 | Circuit breaker trips | 5+ consecutive errors | Check onchainos connectivity, wait 1h or `reset --force` |
 | "Bot stopped" on tick | Session loss limit hit | `reset --force` |
 | High breakeven | Small position size | Expected — low tier has 12% breakeven |

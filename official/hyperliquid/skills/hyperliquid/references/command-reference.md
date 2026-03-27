@@ -1,6 +1,6 @@
 # Hyperliquid CLI — Command Reference
 
-Complete reference for all 11 commands, return fields, authentication, key concepts, and edge cases.
+Complete reference for all 13 commands, return fields, authentication, key concepts, and edge cases.
 
 ---
 
@@ -9,17 +9,29 @@ Complete reference for all 11 commands, return fields, authentication, key conce
 | Command Group | Auth Required | Method |
 |---------------|---------------|--------|
 | markets, spot-markets, price, orderbook, funding | No | Public API |
-| buy, sell, cancel, positions, balances, orders | Yes | `EVM_PRIVATE_KEY` env var |
+| buy, sell, cancel, positions, balances, orders, deposit, withdraw | Yes | onchainos wallet login + local key |
+
+Trading commands use a local Hyperliquid trading key auto-generated at `~/.config/dapp-hyperliquid/key.hex`. The user only needs to be logged in to their onchainos wallet:
 
 ```bash
-# Set in .env file (project directory or home)
-EVM_PRIVATE_KEY=0x<your-private-key>
+# Login once
+onchainos wallet login
+# All signing is handled automatically from here
 ```
 
-The private key signs Hyperliquid L1 actions via **EIP-712 phantom-agent scheme**:
+**Signing flow for exchange actions** (handled internally):
 1. Msgpack-encode the action + nonce + vault flag → keccak256 → `connectionId`
-2. Build `Agent { source="a"(mainnet)/"b"(testnet), connectionId }` struct hash
-3. EIP-712 digest → sign → `{ r, s, v }`
+2. Build EIP-712 typed data: `Agent { source="a"(mainnet)/"b"(testnet), connectionId }`
+3. Sign digest with local k256 key at `~/.config/dapp-hyperliquid/key.hex` → `{ r, s, v }`
+
+**Signing flow for deposit** (handled internally):
+1. onchainos sends USDC from AA wallet to the local Hyperliquid trading key address
+2. Local key signs EIP-2612 USDC permit (domain: "USD Coin", chainId=42161)
+3. onchainos calls Hyperliquid Bridge2 with `batchedDepositWithPermit` (user = local key address)
+
+**Signing flow for withdraw** (handled internally):
+1. Local key signs EIP-712 `HyperliquidTransaction:Withdraw` (domain: "HyperliquidSignTransaction", chainId=421614)
+2. Signed payload posted directly to Hyperliquid `/exchange`
 
 ---
 
@@ -161,7 +173,7 @@ dapp-hyperliquid buy --symbol <symbol> --size <size> --price <price> [--leverage
 | `--price` | Yes | — | Limit price in USD |
 | `--leverage` | No | Current account setting | Leverage multiplier (1–50, varies by asset) |
 
-Requires `EVM_PRIVATE_KEY`.
+Requires onchainos wallet login.
 
 **Return fields:**
 
@@ -178,6 +190,7 @@ Requires `EVM_PRIVATE_KEY`.
 - Price and size are normalized (trailing zeros stripped) before signing — required by Hyperliquid
 - If `--leverage` is set, a separate `updateLeverage` action is submitted first (cross margin)
 - Order type: GTC limit (`{"limit": {"tif": "Gtc"}}`)
+- If account does not exist, the CLI will prompt: `dapp-hyperliquid deposit --amount <USDC>`
 
 ---
 
@@ -195,7 +208,7 @@ dapp-hyperliquid sell --symbol <symbol> --size <size> --price <price>
 | `--size` | Yes | Order size in base asset units |
 | `--price` | Yes | Limit price in USD |
 
-Requires `EVM_PRIVATE_KEY`.
+Requires onchainos wallet login.
 
 **Return fields:**
 
@@ -222,7 +235,7 @@ dapp-hyperliquid cancel --symbol <symbol> --order-id <order-id>
 | `--symbol` | Yes | Asset symbol the order was placed on |
 | `--order-id` | Yes | Order ID (from `orders` command or buy/sell response) |
 
-Requires `EVM_PRIVATE_KEY`.
+Requires onchainos wallet login.
 
 **Return fields:**
 
@@ -243,7 +256,7 @@ View all open perpetual positions for the wallet.
 dapp-hyperliquid positions
 ```
 
-No parameters. Requires `EVM_PRIVATE_KEY` (to derive wallet address).
+No parameters. Requires onchainos wallet login (address resolved automatically).
 
 **Return fields:**
 
@@ -265,7 +278,7 @@ View USDC perpetual margin balance and spot token balances.
 dapp-hyperliquid balances
 ```
 
-No parameters. Requires `EVM_PRIVATE_KEY`.
+No parameters. Requires onchainos wallet login.
 
 **Return fields:**
 
@@ -288,7 +301,7 @@ dapp-hyperliquid orders [--symbol <symbol>]
 |-------|----------|-------------|
 | `--symbol` | No | Filter to a specific asset symbol |
 
-Requires `EVM_PRIVATE_KEY`.
+Requires onchainos wallet login.
 
 **Return fields:**
 
@@ -344,19 +357,99 @@ dapp-hyperliquid price PURR                       # check spot price
 dapp-hyperliquid buy --symbol PURR --size 100 --price 0.09
 ```
 
+### Withdraw Funds
+
+```bash
+dapp-hyperliquid balances                         # check withdrawable USDC
+dapp-hyperliquid withdraw --amount 20             # withdraw $20 to your onchainos AA wallet
+# Wait ~10–30 min for USDC to appear on Arbitrum
+```
+
+---
+
+## 12. dapp-hyperliquid deposit
+
+Deposit USDC from Arbitrum One to open or fund your Hyperliquid account. Uses EIP-2612 gasless permit — no separate approve transaction needed. Signs a permit off-chain, then calls `batchedDepositWithPermit` on the Hyperliquid bridge in a single transaction.
+
+```bash
+dapp-hyperliquid deposit --amount <amount>
+```
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `--amount` | Yes | USDC amount (e.g. `10` for $10.00, `50.5` for $50.50) |
+
+Requires onchainos wallet login. Uses USDC on Arbitrum One and the Hyperliquid bridge contract.
+
+**Return fields:**
+
+| Field | Description |
+|-------|-------------|
+| `action` | "deposit" |
+| `amount_usdc` | Amount deposited |
+| `deposit_tx` | Arbitrum UserOp hash for the bridge deposit |
+| `note` | Account activation time (~1 minute) |
+
+**Minimum deposit:** $5 USDC. Amounts below $5 are permanently lost.
+
+**Timing:** ~1 minute after the Arbitrum transaction confirms before the balance appears on Hyperliquid.
+
+**Contract addresses (Arbitrum One):**
+- USDC: `0xaf88d065e77c8cC2239327C5EDb3A432268e5831`
+- Hyperliquid Bridge2: `0x2df1c51e09aecf9cacb7bc98cb1742757f163df7`
+
+---
+
+## 13. dapp-hyperliquid withdraw
+
+Withdraw USDC from your Hyperliquid account back to Arbitrum One. Signed locally using the Hyperliquid trading key — no bridge approval transaction required.
+
+```bash
+dapp-hyperliquid withdraw --amount <amount> [--destination <address>]
+```
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `--amount` | Yes | USDC amount to withdraw (e.g. `5` for $5.00, `10.5` for $10.50) |
+| `--destination` | No | Arbitrum destination address (default: your onchainos AA wallet address) |
+
+Requires onchainos wallet login. Uses the local Hyperliquid trading key for signing.
+
+**Return fields:**
+
+| Field | Description |
+|-------|-------------|
+| `action` | "withdraw" |
+| `amount` | Amount withdrawn |
+| `destination` | Destination Arbitrum address |
+| `result` | Raw Hyperliquid exchange response |
+
+**Timing:** ~10–30 minutes for USDC to appear on Arbitrum after Hyperliquid processes the withdrawal.
+
+**Minimum withdrawal:** $2 USDC (Hyperliquid enforces this).
+
+**Notes:**
+- The destination defaults to your onchainos AA wallet — pass `--destination` to override
+- Withdrawal is processed by Hyperliquid L1; bridging to Arbitrum happens asynchronously
+- Use `balances` first to check your `withdrawable` amount
+
 ---
 
 ## Edge Cases & Errors
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `EVM_PRIVATE_KEY not set` | Missing env var | Add to `.env` file |
+| `onchainos wallet not available` | Not logged in | `onchainos wallet login` |
+| `Hyperliquid account not found` | No account on HL yet | Run `deposit --amount <USDC>` first |
 | `symbol 'X' not found` | Invalid symbol | Run `markets` or `spot-markets` first |
 | `Rate limited` | Too many requests | Retry with backoff |
 | Order rejected | Wrong `szDecimals` | Check precision via `markets` |
-| Order rejected | Insufficient margin | Check `balances` first |
+| Order rejected | Insufficient margin | Check `balances` first, or `deposit` more USDC |
 | Leverage > maxLeverage | Exceeds asset limit | Check `maxLeverage` from `markets` |
 | Self-trade prevention | Would cross your own order | Cancel existing order first |
+| `contract-call failed` on deposit | Insufficient USDC on Arbitrum | Bridge USDC to Arbitrum first |
+| Withdraw amount too low | Below $2 minimum | Withdraw at least $2 USDC |
+| Withdraw not arriving | Hyperliquid processing delay | Wait up to 30 min; check Hyperliquid UI |
 
 ---
 
@@ -364,5 +457,4 @@ dapp-hyperliquid buy --symbol PURR --size 100 --price 0.09
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `EVM_PRIVATE_KEY` | Trading commands | EVM wallet private key (with or without `0x` prefix) |
 | `HYPERLIQUID_URL` | No | Override API base URL (default: `https://api.hyperliquid.xyz`). Set to testnet URL for testing. |
