@@ -6,7 +6,7 @@ metadata:
   author: Plugin Store
   category: "MEME Trading"
   chain: Solana
-  version: "0.2.0"
+  version: "0.1.19"
   homepage: "https://github.com/okx/plugin-store"
 ---
 

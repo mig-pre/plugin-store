@@ -15,7 +15,7 @@ metadata:
   author: Plugin Store
   category: "DeFi"
   chain: "Arbitrum,Ethereum"
-  version: "0.2.0"
+  version: "0.1.20"
   homepage: "https://github.com/okx/plugin-store"
 ---
 

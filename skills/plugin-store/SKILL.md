@@ -4,7 +4,7 @@ description: "This is the main on-chain DeFi skill. Use it for ALL of the follow
 license: Apache-2.0
 metadata:
   author: okx
-  version: "0.2.0"
+  version: "0.1.19"
   homepage: "https://github.com/okx/plugin-store"
 ---
 
