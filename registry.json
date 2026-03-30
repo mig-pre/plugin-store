@@ -110,7 +110,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/eth-gas-monitor",
-          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
         }
       },
       "link": "https://github.com/okx/plugin-store-community",
@@ -134,7 +134,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/eth-gas-tracker",
-          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
         }
       },
       "link": "https://github.com/okx/plugin-store-community",
@@ -158,7 +158,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/go-echo-cli",
-          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -192,7 +192,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/go-hash-tool",
-          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -227,7 +227,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/node-echo-cli",
-          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
         },
         "npm": {
           "source_repo": "yz06276/node-echo-cli",
@@ -260,7 +260,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/node-fs-tool",
-          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
         },
         "npm": {
           "source_repo": "yz06276/node-echo-cli",
@@ -294,7 +294,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/python-echo-cli",
-          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
         },
         "python": {
           "source_repo": "yz06276/python-echo-cli",
@@ -328,7 +328,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/python-nlp-tool",
-          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
         },
         "python": {
           "source_repo": "yz06276/python-echo-cli",
@@ -363,7 +363,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/rust-echo-cli",
-          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -397,7 +397,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/rust-text-tool",
-          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -413,6 +413,93 @@
         "source_commit": "9b6b89720df8971bdae1ff44de7a8923ea60bde0",
         "binary_name": "rust-echo-cli"
       }
+    },
+    {
+      "name": "signal-tracker-go",
+      "version": "1.0.0",
+      "description": "Track smart money wallet activity and aggregated buy signals — Go implementation",
+      "author": {
+        "name": "Mingtao"
+      },
+      "category": "analytics",
+      "tags": [
+        "smart-money",
+        "signals",
+        "wallet-tracker",
+        "go"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store-community",
+          "dir": "skills/signal-tracker-go",
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
+        },
+        "binary": {
+          "repo": "okx/plugin-store",
+          "asset_pattern": "signal-tracker-go-{target}",
+          "checksums_asset": "checksums.txt",
+          "release_tag": "community/signal-tracker-go@1.0.0"
+        }
+      },
+      "link": "https://github.com/okx/plugin-store-community",
+      "alias": "Signal Tracker (Go)",
+      "build": {
+        "lang": "go",
+        "source_repo": "ganlinux/signal-tracker-go",
+        "source_commit": "736f0adf9e039355bd92cea91b8675f9b82e62c9",
+        "binary_name": "signal-tracker-go"
+      }
+    },
+    {
+      "name": "signal-tracker-node",
+      "version": "1.0.0",
+      "description": "Track smart money wallet activity and aggregated buy signals — Node.js implementation",
+      "author": {
+        "name": "Mingtao"
+      },
+      "category": "analytics",
+      "tags": [
+        "smart-money",
+        "signals",
+        "wallet-tracker",
+        "node"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store-community",
+          "dir": "skills/signal-tracker-node",
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
+        }
+      },
+      "link": "https://github.com/okx/plugin-store-community",
+      "alias": "Signal Tracker (Node.js)"
+    },
+    {
+      "name": "signal-tracker-python",
+      "version": "1.0.0",
+      "description": "Track smart money wallet activity and aggregated buy signals — Python implementation",
+      "author": {
+        "name": "Mingtao"
+      },
+      "category": "analytics",
+      "tags": [
+        "smart-money",
+        "signals",
+        "wallet-tracker",
+        "python"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store-community",
+          "dir": "skills/signal-tracker-python",
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
+        }
+      },
+      "link": "https://github.com/okx/plugin-store-community",
+      "alias": "Signal Tracker (Python)"
     },
     {
       "name": "signal-tracker-rust",
@@ -433,7 +520,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/signal-tracker-rust",
-          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -450,6 +537,31 @@
         "source_commit": "d596337704610cd9e6557966bea19eb7f01f0caf",
         "binary_name": "signal-tracker-rust"
       }
+    },
+    {
+      "name": "signal-tracker-typescript",
+      "version": "1.0.0",
+      "description": "Track smart money wallet activity and aggregated buy signals — TypeScript implementation",
+      "author": {
+        "name": "Mingtao"
+      },
+      "category": "analytics",
+      "tags": [
+        "smart-money",
+        "signals",
+        "wallet-tracker",
+        "typescript"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store-community",
+          "dir": "skills/signal-tracker-typescript",
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
+        }
+      },
+      "link": "https://github.com/okx/plugin-store-community",
+      "alias": "Signal Tracker (TypeScript)"
     },
     {
       "name": "signal-tracker",
@@ -470,7 +582,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/signal-tracker",
-          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -508,7 +620,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/sol-token-guard",
-          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
         }
       },
       "link": "https://github.com/okx/plugin-store-community",
@@ -532,7 +644,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/ts-echo-cli",
-          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
         },
         "npm": {
           "source_repo": "yz06276/ts-echo-cli",
@@ -565,7 +677,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/ts-json-tool",
-          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
+          "commit": "603e8dc968f222a579803799140ff8d76a63d282"
         },
         "npm": {
           "source_repo": "yz06276/ts-echo-cli",
