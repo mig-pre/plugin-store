@@ -110,7 +110,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/eth-gas-monitor",
-          "commit": "8a3408515cc403dfec4f754dd8233fdb293367ed"
+          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
         }
       },
       "link": "https://github.com/okx/plugin-store-community",
@@ -134,7 +134,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/eth-gas-tracker",
-          "commit": "8a3408515cc403dfec4f754dd8233fdb293367ed"
+          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
         }
       },
       "link": "https://github.com/okx/plugin-store-community",
@@ -158,7 +158,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/go-echo-cli",
-          "commit": "8a3408515cc403dfec4f754dd8233fdb293367ed"
+          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -192,7 +192,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/go-hash-tool",
-          "commit": "8a3408515cc403dfec4f754dd8233fdb293367ed"
+          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -227,7 +227,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/node-echo-cli",
-          "commit": "8a3408515cc403dfec4f754dd8233fdb293367ed"
+          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
         },
         "npm": {
           "source_repo": "yz06276/node-echo-cli",
@@ -260,7 +260,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/node-fs-tool",
-          "commit": "8a3408515cc403dfec4f754dd8233fdb293367ed"
+          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
         },
         "npm": {
           "source_repo": "yz06276/node-echo-cli",
@@ -294,7 +294,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/python-echo-cli",
-          "commit": "8a3408515cc403dfec4f754dd8233fdb293367ed"
+          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
         },
         "python": {
           "source_repo": "yz06276/python-echo-cli",
@@ -328,7 +328,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/python-nlp-tool",
-          "commit": "8a3408515cc403dfec4f754dd8233fdb293367ed"
+          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
         },
         "python": {
           "source_repo": "yz06276/python-echo-cli",
@@ -363,7 +363,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/rust-echo-cli",
-          "commit": "8a3408515cc403dfec4f754dd8233fdb293367ed"
+          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -397,7 +397,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/rust-text-tool",
-          "commit": "8a3408515cc403dfec4f754dd8233fdb293367ed"
+          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -412,6 +412,43 @@
         "source_repo": "yz06276/rust-echo-cli",
         "source_commit": "9b6b89720df8971bdae1ff44de7a8923ea60bde0",
         "binary_name": "rust-echo-cli"
+      }
+    },
+    {
+      "name": "signal-tracker-rust",
+      "version": "1.0.0",
+      "description": "Track smart money wallet activity and aggregated buy signals — Rust implementation",
+      "author": {
+        "name": "Mingtao"
+      },
+      "category": "analytics",
+      "tags": [
+        "smart-money",
+        "signals",
+        "wallet-tracker",
+        "rust"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store-community",
+          "dir": "skills/signal-tracker-rust",
+          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
+        },
+        "binary": {
+          "repo": "okx/plugin-store",
+          "asset_pattern": "signal-tracker-rust-{target}",
+          "checksums_asset": "checksums.txt",
+          "release_tag": "community/signal-tracker-rust@1.0.0"
+        }
+      },
+      "link": "https://github.com/okx/plugin-store-community",
+      "alias": "Signal Tracker (Rust)",
+      "build": {
+        "lang": "rust",
+        "source_repo": "ganlinux/signal-tracker",
+        "source_commit": "d596337704610cd9e6557966bea19eb7f01f0caf",
+        "binary_name": "signal-tracker-rust"
       }
     },
     {
@@ -433,7 +470,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/signal-tracker",
-          "commit": "8a3408515cc403dfec4f754dd8233fdb293367ed"
+          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -471,7 +508,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/sol-token-guard",
-          "commit": "8a3408515cc403dfec4f754dd8233fdb293367ed"
+          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
         }
       },
       "link": "https://github.com/okx/plugin-store-community",
@@ -495,7 +532,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/ts-echo-cli",
-          "commit": "8a3408515cc403dfec4f754dd8233fdb293367ed"
+          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
         },
         "npm": {
           "source_repo": "yz06276/ts-echo-cli",
@@ -528,7 +565,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/ts-json-tool",
-          "commit": "8a3408515cc403dfec4f754dd8233fdb293367ed"
+          "commit": "d010238f4d98dc8ec48e5ccf681de940f73aa210"
         },
         "npm": {
           "source_repo": "yz06276/ts-echo-cli",
