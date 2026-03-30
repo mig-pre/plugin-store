@@ -26,6 +26,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  issues: write
 
 jobs:
   skill-review:
@@ -64,7 +65,7 @@ jobs:
 
           # Version consistency: Cargo.toml vs SKILL.md vs plugin.json
           CARGO_VER=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
-          SKILL_VER=$(grep 'version:' "$SKILL" | head -2 | tail -1 | sed 's/.*"\(.*\)".*/\1/')
+          SKILL_VER=$(sed -n '/^---$/,/^---$/p' "$SKILL" | grep '  version:' | head -1 | sed 's/.*"\(.*\)".*/\1/')
           PLUGIN_VER=$(jq -r '.version' "$PJSON" 2>/dev/null || echo "MISSING")
 
           echo "Cargo.toml version:  $CARGO_VER"
@@ -109,7 +110,7 @@ jobs:
           done
 
           # Check URLs in SKILL.md are not obviously broken
-          URLS=$(grep -oE 'https://[^ )>"]+' "$SKILL" | sort -u)
+          URLS=$(grep -oE 'https://[^ )>",.]+' "$SKILL" | sort -u)
           for url in $URLS; do
             HTTP=$(curl -sL -o /dev/null -w "%{http_code}" --max-time 5 "$url" 2>/dev/null || echo "000")
             if [ "$HTTP" = "000" ] || [ "$HTTP" = "404" ]; then
@@ -275,6 +276,52 @@ jobs:
             } else {
               await github.rest.issues.createComment({ ...params, issue_number: context.issue.number });
             }
+
+      # ── Step 4: Auto-create issue on push-to-main if critical issues found ──
+      - name: "Create issue on critical findings (push to main only)"
+        if: github.event_name == 'push' && steps.static.outputs.errors_found == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let staticErrors = '';
+            try { staticErrors = fs.readFileSync('/tmp/static_errors.txt', 'utf8'); } catch(e) {}
+            let aiReview = '';
+            try { aiReview = fs.readFileSync('/tmp/skill_review.md', 'utf8'); } catch(e) {}
+
+            const hasCritical = staticErrors.includes('❌') ||
+              aiReview.toLowerCase().includes('critical') ||
+              aiReview.includes('❌');
+
+            if (!hasCritical) {
+              console.log('No critical issues — skipping issue creation');
+              return;
+            }
+
+            const body = [
+              '## ⚠️ Skill Review found issues after push to main',
+              '',
+              `Commit: ${context.sha}`,
+              `Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '',
+              '### Static Checks',
+              '```',
+              staticErrors,
+              '```',
+              '',
+              '### AI Review',
+              aiReview || 'Skipped',
+              '',
+              'Please review and fix promptly.'
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `⚠️ Skill Review: issues found in ${context.sha.substring(0, 7)}`,
+              body,
+              labels: ['skill-review', 'bug']
+            });
 
       - name: "Summary"
         if: always()
