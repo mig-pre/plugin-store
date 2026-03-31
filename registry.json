@@ -91,6 +91,33 @@
         "risk_level": "medium"
       },
       "link": "https://github.com/Polymarket/agent-skills"
+    },
+    {
+      "name": "smart-money-copy-trade",
+      "version": "1.0.0",
+      "description": "Monitor smart money/whale/KOL buy signals and execute copy trades with built-in security checks and risk controls",
+      "author": {
+        "name": "oker"
+      },
+      "category": "trading-strategy",
+      "tags": [
+        "smart-money",
+        "copy-trading",
+        "whale-tracking",
+        "solana",
+        "ethereum",
+        "base"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store-community",
+          "dir": "skills/smart-money-copy-trade",
+          "commit": "752fec419f1925e9c36e130e62fc176afcb7e941"
+        }
+      },
+      "link": "https://github.com/okx/plugin-store-community",
+      "alias": "Smart Money Copy Trade"
     }
   ]
 }
