@@ -214,6 +214,10 @@ fn check_name(name: &str, diags: &mut Vec<LintDiag>) {
 }
 
 fn check_reserved_prefix(name: &str, diags: &mut Vec<LintDiag>) {
+    // Skip reserved prefix check for official plugins (set PLUGIN_STORE_OFFICIAL=1)
+    if std::env::var("PLUGIN_STORE_OFFICIAL").unwrap_or_default() == "1" {
+        return;
+    }
     const RESERVED: &[&str] = &["okx-", "official-", "plugin-store-"];
     for prefix in RESERVED {
         if name.starts_with(prefix) {
