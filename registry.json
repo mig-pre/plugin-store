@@ -93,6 +93,32 @@
       "link": "https://github.com/Polymarket/agent-skills"
     },
     {
+      "name": "okx-buildx-hackathon-agent-track",
+      "version": "1.0.0",
+      "description": "AI Hackathon participation guide — registration, wallet setup, project building, submission to Moltbook, voting, and scoring. Apr 1-15, 2026. $14,000 USDT in prizes.",
+      "author": {
+        "name": "OKX"
+      },
+      "category": "utility",
+      "tags": [
+        "hackathon",
+        "xlayer",
+        "onchainos",
+        "uniswap",
+        "moltbook"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store-community",
+          "dir": "skills/okx-buildx-hackathon-agent-track",
+          "commit": "7f77d55e630cac9c32021fbaca541e8a62b59768"
+        }
+      },
+      "link": "https://github.com/okx/plugin-store-community",
+      "alias": "OKX Build X Hackathon"
+    },
+    {
       "name": "smart-money-copy-trade",
       "version": "1.0.0",
       "description": "Monitor smart money/whale/KOL buy signals and execute copy trades with built-in security checks and risk controls",
@@ -113,7 +139,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/smart-money-copy-trade",
-          "commit": "752fec419f1925e9c36e130e62fc176afcb7e941"
+          "commit": "7f77d55e630cac9c32021fbaca541e8a62b59768"
         }
       },
       "link": "https://github.com/okx/plugin-store-community",
