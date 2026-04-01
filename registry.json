@@ -139,11 +139,10 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/meme-trench-scanner",
-          "commit": "5fb1f5c14b4af4cecf6658c0de0638bc3a679e49"
+          "commit": "71525d3150632fb208ce0955379c05d36801c46e"
         }
       },
-      "link": "https://github.com/okx/plugin-store-community",
-      "alias": "Meme Trench Scanner - Meme 扫链"
+      "link": "https://github.com/okx/plugin-store-community"
     },
     {
       "name": "okx-buildx-hackathon-agent-track",
@@ -165,7 +164,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/okx-buildx-hackathon-agent-track",
-          "commit": "21d54e8c685ac3be7f147771de8ea8c387475131"
+          "commit": "71525d3150632fb208ce0955379c05d36801c46e"
         }
       },
       "link": "https://github.com/okx/plugin-store-community",
@@ -189,11 +188,97 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/smart-money-signal-copy-trade",
-          "commit": "5fb1f5c14b4af4cecf6658c0de0638bc3a679e49"
+          "commit": "71525d3150632fb208ce0955379c05d36801c46e"
+        }
+      },
+      "link": "https://github.com/okx/plugin-store-community"
+    },
+    {
+      "name": "test-claude-py",
+      "version": "1.0.0",
+      "description": "Test Claude marketplace plugin with Python scripts",
+      "author": {
+        "name": "yz06276"
+      },
+      "category": "utility",
+      "tags": [],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store-community",
+          "dir": "skills/test-claude-py",
+          "commit": "71525d3150632fb208ce0955379c05d36801c46e"
+        }
+      },
+      "link": "https://github.com/okx/plugin-store-community"
+    },
+    {
+      "name": "test-echo-go",
+      "version": "1.0.0",
+      "description": "Test echo CLI built in Go",
+      "author": {
+        "name": "yz06276"
+      },
+      "category": "utility",
+      "tags": [
+        "test",
+        "go"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store-community",
+          "dir": "skills/test-echo-go",
+          "commit": "71525d3150632fb208ce0955379c05d36801c46e"
+        },
+        "binary": {
+          "repo": "okx/plugin-store-community",
+          "asset_pattern": "test-echo-go-{target}",
+          "checksums_asset": "checksums.txt",
+          "release_tag": "community/test-echo-go@1.0.0"
         }
       },
       "link": "https://github.com/okx/plugin-store-community",
-      "alias": "Smart Money Signal Copy Trade - 聪明钱信号跟单"
+      "build": {
+        "lang": "go",
+        "source_repo": "yz06276/test-echo-go",
+        "source_commit": "ab92b64cee25ae8d37fe066c95a53ea16e004e97",
+        "binary_name": "test-echo-go"
+      }
+    },
+    {
+      "name": "test-echo-rust",
+      "version": "1.0.0",
+      "description": "Test echo CLI built in Rust",
+      "author": {
+        "name": "yz06276"
+      },
+      "category": "utility",
+      "tags": [
+        "test",
+        "rust"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store-community",
+          "dir": "skills/test-echo-rust",
+          "commit": "71525d3150632fb208ce0955379c05d36801c46e"
+        },
+        "binary": {
+          "repo": "okx/plugin-store-community",
+          "asset_pattern": "test-echo-rust-{target}",
+          "checksums_asset": "checksums.txt",
+          "release_tag": "community/test-echo-rust@1.0.0"
+        }
+      },
+      "link": "https://github.com/okx/plugin-store-community",
+      "build": {
+        "lang": "rust",
+        "source_repo": "yz06276/test-echo-rust",
+        "source_commit": "960e677100cdc00a5d26c5761b2a6483f5760780",
+        "binary_name": "test-echo-rust"
+      }
     },
     {
       "name": "top-rank-tokens-sniper",
@@ -213,11 +298,10 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/top-rank-tokens-sniper",
-          "commit": "5fb1f5c14b4af4cecf6658c0de0638bc3a679e49"
+          "commit": "71525d3150632fb208ce0955379c05d36801c46e"
         }
       },
-      "link": "https://github.com/okx/plugin-store-community",
-      "alias": "Top Rank Tokens Sniper - 榜单狙击手"
+      "link": "https://github.com/okx/plugin-store-community"
     }
   ]
 }
