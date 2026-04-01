@@ -208,13 +208,13 @@ pub async fn execute() -> Result<()> {
 }
 
 fn execute_plain(plugins: &[Plugin], counts: &StatsMap) -> Result<()> {
-    println!("{:<22} {:<28} {:<10} {:<10} {}", "Name", "ID", "Version", "Downloads", "Description");
-    println!("{}", "-".repeat(110));
+    println!("{:<40} {:<32} {:<10} {:<10} {}", "Name", "ID (install)", "Version", "Downloads", "Description");
+    println!("{}", "-".repeat(130));
     for p in plugins {
         let downloads = counts.get(&p.name).copied().unwrap_or(0);
         let dl = if downloads == 0 { "-".to_string() } else { format_downloads(downloads) };
         let display = p.alias.as_deref().unwrap_or(&p.name);
-        println!("{:<22} {:<28} {:<10} {:<10} {}", display, p.name, p.version, dl, p.description);
+        println!("{:<40} {:<32} {:<10} {:<10} {}", display, p.name, p.version, dl, p.description);
     }
     println!("\n{} plugins available. Use `plugin-store install <ID>` to install.", plugins.len());
     Ok(())
@@ -358,7 +358,7 @@ fn render_table(f: &mut Frame, app: &mut App, counts: &StatsMap, area: Rect) {
         rows,
         [
             Constraint::Length(3),
-            Constraint::Length(28),
+            Constraint::Min(40),
             Constraint::Length(9),
             Constraint::Length(11),
             Constraint::Length(12),
