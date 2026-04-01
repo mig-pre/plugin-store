@@ -159,7 +159,7 @@
         "uniswap",
         "moltbook"
       ],
-      "type": "community-developer",
+      "type": "official",
       "components": {
         "skill": {
           "repo": "okx/plugin-store-community",
