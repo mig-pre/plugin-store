@@ -139,7 +139,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/meme-trench-scanner",
-          "commit": "a94c870ca961f4530855766c67b580d09bdfb1f5"
+          "commit": "613cf59ab92ba30abbfd562ecedaf15def1ec9bb"
         }
       },
       "link": "https://github.com/okx/plugin-store-community"
@@ -164,7 +164,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/okx-buildx-hackathon-agent-track",
-          "commit": "a94c870ca961f4530855766c67b580d09bdfb1f5"
+          "commit": "613cf59ab92ba30abbfd562ecedaf15def1ec9bb"
         }
       },
       "link": "https://github.com/okx/plugin-store-community",
@@ -188,7 +188,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/smart-money-signal-copy-trade",
-          "commit": "a94c870ca961f4530855766c67b580d09bdfb1f5"
+          "commit": "613cf59ab92ba30abbfd562ecedaf15def1ec9bb"
         }
       },
       "link": "https://github.com/okx/plugin-store-community"
@@ -211,7 +211,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/top-rank-tokens-sniper",
-          "commit": "a94c870ca961f4530855766c67b580d09bdfb1f5"
+          "commit": "613cf59ab92ba30abbfd562ecedaf15def1ec9bb"
         }
       },
       "link": "https://github.com/okx/plugin-store-community"
