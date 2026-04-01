@@ -190,11 +190,6 @@
           "repo": "okx/plugin-store-community",
           "dir": "skills/scan-live",
           "commit": "d4d0098e225002beb90930e8fe9b513fad710e90"
-        },
-        "python": {
-          "source_repo": "yz06276/scan-live",
-          "source_commit": "8ca096253a7512478091582f98987185fee428ab",
-          "install_command": "pip install git+https://github.com/yz06276/scan-live@8ca096253a7512478091582f98987185fee428ab"
         }
       },
       "link": "https://github.com/okx/plugin-store-community",
