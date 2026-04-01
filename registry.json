@@ -139,7 +139,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/meme-trench-scanner",
-          "commit": "125b816fadd76631e64938837af24c6ca55b4397"
+          "commit": "2cf506ab00d06ee41a01e86cad6550e26e52f115"
         }
       },
       "link": "https://github.com/okx/plugin-store-community"
@@ -164,7 +164,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/okx-buildx-hackathon-agent-track",
-          "commit": "125b816fadd76631e64938837af24c6ca55b4397"
+          "commit": "2cf506ab00d06ee41a01e86cad6550e26e52f115"
         }
       },
       "link": "https://github.com/okx/plugin-store-community",
@@ -188,7 +188,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/smart-money-signal-copy-trade",
-          "commit": "125b816fadd76631e64938837af24c6ca55b4397"
+          "commit": "2cf506ab00d06ee41a01e86cad6550e26e52f115"
         }
       },
       "link": "https://github.com/okx/plugin-store-community"
@@ -207,7 +207,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/test-claude-py",
-          "commit": "125b816fadd76631e64938837af24c6ca55b4397"
+          "commit": "2cf506ab00d06ee41a01e86cad6550e26e52f115"
         }
       },
       "link": "https://github.com/okx/plugin-store-community"
@@ -229,7 +229,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/test-echo-go",
-          "commit": "125b816fadd76631e64938837af24c6ca55b4397"
+          "commit": "2cf506ab00d06ee41a01e86cad6550e26e52f115"
         },
         "binary": {
           "repo": "okx/plugin-store-community",
@@ -263,7 +263,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/test-echo-node",
-          "commit": "125b816fadd76631e64938837af24c6ca55b4397"
+          "commit": "2cf506ab00d06ee41a01e86cad6550e26e52f115"
         },
         "npm": {
           "source_repo": "yz06276/test-echo-node",
@@ -296,7 +296,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/test-echo-python",
-          "commit": "125b816fadd76631e64938837af24c6ca55b4397"
+          "commit": "2cf506ab00d06ee41a01e86cad6550e26e52f115"
         },
         "python": {
           "source_repo": "yz06276/test-echo-python",
@@ -329,7 +329,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/test-echo-rust",
-          "commit": "125b816fadd76631e64938837af24c6ca55b4397"
+          "commit": "2cf506ab00d06ee41a01e86cad6550e26e52f115"
         },
         "binary": {
           "repo": "okx/plugin-store-community",
@@ -363,7 +363,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/test-echo-ts",
-          "commit": "125b816fadd76631e64938837af24c6ca55b4397"
+          "commit": "2cf506ab00d06ee41a01e86cad6550e26e52f115"
         },
         "npm": {
           "source_repo": "yz06276/test-echo-ts",
@@ -396,7 +396,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/test-skill-only",
-          "commit": "125b816fadd76631e64938837af24c6ca55b4397"
+          "commit": "2cf506ab00d06ee41a01e86cad6550e26e52f115"
         }
       },
       "link": "https://github.com/okx/plugin-store-community"
@@ -419,7 +419,7 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/top-rank-tokens-sniper",
-          "commit": "125b816fadd76631e64938837af24c6ca55b4397"
+          "commit": "2cf506ab00d06ee41a01e86cad6550e26e52f115"
         }
       },
       "link": "https://github.com/okx/plugin-store-community"
