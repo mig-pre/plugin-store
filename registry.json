@@ -120,29 +120,6 @@
       "link": "https://github.com/Polymarket/agent-skills"
     },
     {
-      "name": "meme-trench-scanner",
-      "version": "1.0.0",
-      "description": "Meme Trench Scanner v1.0 — Solana Meme automated trading bot with 11 Launchpad coverage, 7-layer exit system, TraderSoul AI observation",
-      "author": {
-        "name": "yz06276"
-      },
-      "category": "trading-strategy",
-      "tags": [
-        "solana",
-        "onchainos",
-        "trading-bot"
-      ],
-      "type": "community-developer",
-      "components": {
-        "skill": {
-          "repo": "okx/plugin-store-community",
-          "dir": "skills/meme-trench-scanner",
-          "commit": "afba4f3dc90adf883c284feec31799acf8986ed7"
-        }
-      },
-      "link": "https://github.com/okx/plugin-store-community"
-    },
-    {
       "name": "okx-buildx-hackathon-agent-track",
       "version": "1.0.0",
       "description": "AI Hackathon participation guide — registration, wallet setup, project building, submission to Moltbook, voting, and scoring. Apr 1-15, 2026. $14,000 USDT in prizes.",
@@ -162,52 +139,6 @@
         "skill": {
           "repo": "okx/plugin-store-community",
           "dir": "skills/okx-buildx-hackathon-agent-track",
-          "commit": "afba4f3dc90adf883c284feec31799acf8986ed7"
-        }
-      },
-      "link": "https://github.com/okx/plugin-store-community"
-    },
-    {
-      "name": "smart-money-signal-copy-trade",
-      "version": "1.0.0",
-      "description": "Smart Money Signal Copy Trade v1.0 — Smart money signal tracker with cost-aware TP, 15-check safety, 7-layer exit system",
-      "author": {
-        "name": "yz06276"
-      },
-      "category": "trading-strategy",
-      "tags": [
-        "solana",
-        "onchainos",
-        "trading-bot"
-      ],
-      "type": "community-developer",
-      "components": {
-        "skill": {
-          "repo": "okx/plugin-store-community",
-          "dir": "skills/smart-money-signal-copy-trade",
-          "commit": "afba4f3dc90adf883c284feec31799acf8986ed7"
-        }
-      },
-      "link": "https://github.com/okx/plugin-store-community"
-    },
-    {
-      "name": "top-rank-tokens-sniper",
-      "version": "1.0.0",
-      "description": "Top Rank Tokens Sniper v1.0 — OKX ranking leaderboard sniper with momentum scoring, 3-level safety, 6-layer exit system",
-      "author": {
-        "name": "yz06276"
-      },
-      "category": "trading-strategy",
-      "tags": [
-        "solana",
-        "onchainos",
-        "trading-bot"
-      ],
-      "type": "community-developer",
-      "components": {
-        "skill": {
-          "repo": "okx/plugin-store-community",
-          "dir": "skills/top-rank-tokens-sniper",
           "commit": "afba4f3dc90adf883c284feec31799acf8986ed7"
         }
       },
@@ -427,6 +358,84 @@
         }
       },
       "link": "https://github.com/okx/plugin-store-community"
+    },
+    {
+      "name": "meme-trench-scanner",
+      "version": "1.0.0",
+      "description": "Meme Trench Scanner v1.0 — Solana Meme automated trading bot with 11 Launchpad coverage, 7-layer exit system, TraderSoul AI observation",
+      "author": {
+        "name": "yz06276"
+      },
+      "category": "trading-strategy",
+      "tags": [
+        "solana",
+        "onchainos",
+        "trading-bot"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store-community",
+          "dir": "skills/meme-trench-scanner",
+          "commit": "7f35a722000b4f2461a3d72bc7217f82651ab8ac"
+        }
+      },
+      "link": "https://github.com/okx/plugin-store-community",
+      "homepage": "https://github.com/okx/plugin-store-community/tree/main/submissions/meme-trench-scanner",
+      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/submissions/meme-trench-scanner/README.md",
+      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/skills/meme-trench-scanner/SKILL.md"
+    },
+    {
+      "name": "smart-money-signal-copy-trade",
+      "version": "1.0.0",
+      "description": "Smart Money Signal Copy Trade v1.0 — Smart money signal tracker with cost-aware TP, 15-check safety, 7-layer exit system",
+      "author": {
+        "name": "yz06276"
+      },
+      "category": "trading-strategy",
+      "tags": [
+        "solana",
+        "onchainos",
+        "trading-bot"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store-community",
+          "dir": "skills/smart-money-signal-copy-trade",
+          "commit": "7f35a722000b4f2461a3d72bc7217f82651ab8ac"
+        }
+      },
+      "link": "https://github.com/okx/plugin-store-community",
+      "homepage": "https://github.com/okx/plugin-store-community/tree/main/submissions/smart-money-signal-copy-trade",
+      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/submissions/smart-money-signal-copy-trade/README.md",
+      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/skills/smart-money-signal-copy-trade/SKILL.md"
+    },
+    {
+      "name": "top-rank-tokens-sniper",
+      "version": "1.0.0",
+      "description": "Top Rank Tokens Sniper v1.0 — OKX ranking leaderboard sniper with momentum scoring, 3-level safety, 6-layer exit system",
+      "author": {
+        "name": "yz06276"
+      },
+      "category": "trading-strategy",
+      "tags": [
+        "solana",
+        "onchainos",
+        "trading-bot"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store-community",
+          "dir": "skills/top-rank-tokens-sniper",
+          "commit": "7f35a722000b4f2461a3d72bc7217f82651ab8ac"
+        }
+      },
+      "link": "https://github.com/okx/plugin-store-community",
+      "homepage": "https://github.com/okx/plugin-store-community/tree/main/submissions/top-rank-tokens-sniper",
+      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/submissions/top-rank-tokens-sniper/README.md",
+      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/skills/top-rank-tokens-sniper/SKILL.md"
     }
   ]
 }
