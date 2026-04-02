@@ -16,6 +16,12 @@ pub struct Plugin {
     pub author: Author,
     #[serde(default)]
     pub link: Option<String>,
+    #[serde(default)]
+    pub homepage: Option<String>,
+    #[serde(default)]
+    pub readme_url: Option<String>,
+    #[serde(default)]
+    pub skill_url: Option<String>,
     pub category: String,
     pub tags: Vec<String>,
     #[serde(rename = "type")]
