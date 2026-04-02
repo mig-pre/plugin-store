@@ -29,7 +29,10 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "homepage": "https://github.com/okx/plugin-store",
+      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/README.md",
+      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/plugin-store/SKILL.md"
     },
     {
       "name": "uniswap-ai",
@@ -77,7 +80,10 @@
         ],
         "risk_level": "medium"
       },
-      "link": "https://github.com/Uniswap/uniswap-ai"
+      "link": "https://github.com/Uniswap/uniswap-ai",
+      "homepage": "https://github.com/okx/plugin-store-community/tree/main/submissions/uniswap-ai",
+      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/submissions/uniswap-ai/README.md",
+      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/skills/uniswap-ai/SKILL.md"
     },
     {
       "name": "polymarket-agent-skills",
@@ -117,7 +123,10 @@
         ],
         "risk_level": "medium"
       },
-      "link": "https://github.com/Polymarket/agent-skills"
+      "link": "https://github.com/Polymarket/agent-skills",
+      "homepage": "https://github.com/okx/plugin-store-community/tree/main/submissions/polymarket-agent-skills",
+      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/submissions/polymarket-agent-skills/README.md",
+      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/skills/polymarket-agent-skills/SKILL.md"
     },
     {
       "name": "okx-buildx-hackathon-agent-track",
@@ -142,7 +151,10 @@
           "commit": "afba4f3dc90adf883c284feec31799acf8986ed7"
         }
       },
-      "link": "https://github.com/okx/plugin-store-community"
+      "link": "https://github.com/okx/plugin-store-community",
+      "homepage": "https://github.com/okx/plugin-store-community/tree/main/submissions/okx-buildx-hackathon-agent-track",
+      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/submissions/okx-buildx-hackathon-agent-track/README.md",
+      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/skills/okx-buildx-hackathon-agent-track/SKILL.md"
     },
     {
       "name": "uniswap-cca-configurator",
@@ -168,7 +180,10 @@
           "commit": "afba4f3dc90adf883c284feec31799acf8986ed7"
         }
       },
-      "link": "https://github.com/okx/plugin-store-community"
+      "link": "https://github.com/okx/plugin-store-community",
+      "homepage": "https://github.com/okx/plugin-store-community/tree/main/submissions/uniswap-cca-configurator",
+      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/submissions/uniswap-cca-configurator/README.md",
+      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/skills/uniswap-cca-configurator/SKILL.md"
     },
     {
       "name": "uniswap-cca-deployer",
@@ -195,7 +210,10 @@
           "commit": "afba4f3dc90adf883c284feec31799acf8986ed7"
         }
       },
-      "link": "https://github.com/okx/plugin-store-community"
+      "link": "https://github.com/okx/plugin-store-community",
+      "homepage": "https://github.com/okx/plugin-store-community/tree/main/submissions/uniswap-cca-deployer",
+      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/submissions/uniswap-cca-deployer/README.md",
+      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/skills/uniswap-cca-deployer/SKILL.md"
     },
     {
       "name": "uniswap-liquidity-planner",
@@ -222,7 +240,10 @@
           "commit": "afba4f3dc90adf883c284feec31799acf8986ed7"
         }
       },
-      "link": "https://github.com/okx/plugin-store-community"
+      "link": "https://github.com/okx/plugin-store-community",
+      "homepage": "https://github.com/okx/plugin-store-community/tree/main/submissions/uniswap-liquidity-planner",
+      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/submissions/uniswap-liquidity-planner/README.md",
+      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/skills/uniswap-liquidity-planner/SKILL.md"
     },
     {
       "name": "uniswap-pay-with-any-token",
@@ -249,7 +270,10 @@
           "commit": "afba4f3dc90adf883c284feec31799acf8986ed7"
         }
       },
-      "link": "https://github.com/okx/plugin-store-community"
+      "link": "https://github.com/okx/plugin-store-community",
+      "homepage": "https://github.com/okx/plugin-store-community/tree/main/submissions/uniswap-pay-with-any-token",
+      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/submissions/uniswap-pay-with-any-token/README.md",
+      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/skills/uniswap-pay-with-any-token/SKILL.md"
     },
     {
       "name": "uniswap-swap-integration",
@@ -276,7 +300,10 @@
           "commit": "afba4f3dc90adf883c284feec31799acf8986ed7"
         }
       },
-      "link": "https://github.com/okx/plugin-store-community"
+      "link": "https://github.com/okx/plugin-store-community",
+      "homepage": "https://github.com/okx/plugin-store-community/tree/main/submissions/uniswap-swap-integration",
+      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/submissions/uniswap-swap-integration/README.md",
+      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/skills/uniswap-swap-integration/SKILL.md"
     },
     {
       "name": "uniswap-swap-planner",
@@ -303,7 +330,10 @@
           "commit": "afba4f3dc90adf883c284feec31799acf8986ed7"
         }
       },
-      "link": "https://github.com/okx/plugin-store-community"
+      "link": "https://github.com/okx/plugin-store-community",
+      "homepage": "https://github.com/okx/plugin-store-community/tree/main/submissions/uniswap-swap-planner",
+      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/submissions/uniswap-swap-planner/README.md",
+      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/skills/uniswap-swap-planner/SKILL.md"
     },
     {
       "name": "uniswap-v4-security-foundations",
@@ -330,7 +360,10 @@
           "commit": "afba4f3dc90adf883c284feec31799acf8986ed7"
         }
       },
-      "link": "https://github.com/okx/plugin-store-community"
+      "link": "https://github.com/okx/plugin-store-community",
+      "homepage": "https://github.com/okx/plugin-store-community/tree/main/submissions/uniswap-v4-security-foundations",
+      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/submissions/uniswap-v4-security-foundations/README.md",
+      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/skills/uniswap-v4-security-foundations/SKILL.md"
     },
     {
       "name": "uniswap-viem-integration",
@@ -357,7 +390,10 @@
           "commit": "afba4f3dc90adf883c284feec31799acf8986ed7"
         }
       },
-      "link": "https://github.com/okx/plugin-store-community"
+      "link": "https://github.com/okx/plugin-store-community",
+      "homepage": "https://github.com/okx/plugin-store-community/tree/main/submissions/uniswap-viem-integration",
+      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/submissions/uniswap-viem-integration/README.md",
+      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store-community/main/skills/uniswap-viem-integration/SKILL.md"
     },
     {
       "name": "meme-trench-scanner",
