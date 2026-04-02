@@ -118,9 +118,13 @@ pub struct BinaryDecl {
 pub struct BuildConfig {
     /// Programming language: rust, go, typescript, node, python
     pub lang: String,
-    /// GitHub repo containing source code (e.g. "developer/my-tool")
+    /// GitHub repo containing source code (e.g. "developer/my-tool").
+    /// Optional: when absent, source code is in the submission directory (local build).
+    #[serde(default)]
     pub source_repo: String,
     /// Git commit SHA (full 40-char hex) — pinned for integrity.
+    /// Required when source_repo is set, ignored for local builds.
+    #[serde(default)]
     pub source_commit: String,
     /// Path within the repo to the source root (default: ".")
     #[serde(default = "default_source_dir")]

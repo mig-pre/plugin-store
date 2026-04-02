@@ -1030,31 +1030,34 @@ fn check_build_config(plugin: &PluginYaml, _dir: &Path, diags: &mut Vec<LintDiag
         });
     }
 
-    // Validate source_repo format (owner/repo)
-    let repo_re = regex::Regex::new(r"^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$").unwrap();
-    if !repo_re.is_match(&build.source_repo) {
-        diags.push(LintDiag {
-            level: DiagLevel::Error,
-            code: "E122",
-            message: format!(
-                "build.source_repo '{}' is not valid — expected format: owner/repo",
-                build.source_repo
-            ),
-        });
-    }
+    // Validate source_repo format (owner/repo) — only if provided
+    // source_repo is optional: when absent, source code is in the submission directory (local build)
+    if !build.source_repo.is_empty() {
+        let repo_re = regex::Regex::new(r"^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$").unwrap();
+        if !repo_re.is_match(&build.source_repo) {
+            diags.push(LintDiag {
+                level: DiagLevel::Error,
+                code: "E122",
+                message: format!(
+                    "build.source_repo '{}' is not valid — expected format: owner/repo",
+                    build.source_repo
+                ),
+            });
+        }
 
-    // Validate source_commit is a full 40-char hex SHA
-    let sha_re = regex::Regex::new(r"^[0-9a-f]{40}$").unwrap();
-    if !sha_re.is_match(&build.source_commit) {
-        diags.push(LintDiag {
-            level: DiagLevel::Error,
-            code: "E123",
-            message: format!(
-                "build.source_commit '{}' must be a full 40-character hex SHA — \
-                 short SHAs and branch names are not accepted for integrity verification",
-                build.source_commit
-            ),
-        });
+        // Validate source_commit is a full 40-char hex SHA — only required for external repos
+        let sha_re = regex::Regex::new(r"^[0-9a-f]{40}$").unwrap();
+        if !sha_re.is_match(&build.source_commit) {
+            diags.push(LintDiag {
+                level: DiagLevel::Error,
+                code: "E123",
+                message: format!(
+                    "build.source_commit '{}' must be a full 40-character hex SHA — \
+                     short SHAs and branch names are not accepted for integrity verification",
+                    build.source_commit
+                ),
+            });
+        }
     }
 
     // binary_name is required for all compiled languages
