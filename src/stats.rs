@@ -31,8 +31,30 @@ struct OkxReportPayload {
     div_id: String,
 }
 
-// HMAC secret for device ID signing
-const HMAC_SECRET: &[u8] = b"plugin-store-okx-2026";
+/// Recover the HMAC secret at runtime via XOR deobfuscation.
+/// The key is stored as XOR-encoded bytes — not visible as a plain string
+/// in the binary, hex dump, or `strings` output.
+fn hmac_secret() -> Vec<u8> {
+    // XOR mask (arbitrary, compiled into binary)
+    const MASK: &[u8] = &[
+        0xA3, 0x7F, 0x1B, 0xE2, 0x54, 0xC8, 0x90, 0x3D,
+        0x6E, 0xF1, 0x82, 0x47, 0xD5, 0x09, 0xBB, 0x6C,
+        0x2A, 0x95, 0xE7, 0x13, 0x78, 0x4D, 0xA6, 0xF0,
+        0x31, 0xCC, 0x5E, 0x8A, 0x19, 0xD3, 0x67, 0xB4,
+        0x0F, 0xE5, 0x42, 0x9D, 0x7A, 0x26, 0xC1, 0x58,
+        0x3B, 0xAF, 0x64,
+    ];
+    // Encoded = secret XOR mask (pre-computed)
+    const ENCODED: &[u8] = &[
+        0x9B, 0x30, 0x7C, 0xD7, 0x35, 0x99, 0xC0, 0x6A,
+        0x31, 0xB8, 0xD0, 0x23, 0xAF, 0x42, 0xD0, 0x5C,
+        0x66, 0xDB, 0xB0, 0x77, 0x35, 0x34, 0x94, 0xC3,
+        0x66, 0xAE, 0x3C, 0xE7, 0x63, 0xE4, 0x02, 0xD7,
+        0x5C, 0x89, 0x0E, 0xD4, 0x2A, 0x17, 0x89, 0x02,
+        0x4E, 0xC7, 0x03,
+    ];
+    MASK.iter().zip(ENCODED.iter()).map(|(m, e)| m ^ e).collect()
+}
 
 /// Generate a stable device ID from machine fingerprint + HMAC signature.
 /// Format: 32-char device hash + 8-char HMAC sig = 40 chars total.
@@ -53,8 +75,9 @@ fn generate_device_token() -> String {
     let device_id = &device_hash[..32];
 
     // HMAC signature: SHA-256(secret + device_id), first 8 hex chars
+    let secret = hmac_secret();
     let mut hmac_hasher = Sha256::new();
-    hmac_hasher.update(HMAC_SECRET);
+    hmac_hasher.update(&secret);
     hmac_hasher.update(device_id.as_bytes());
     let sig = hex::encode(hmac_hasher.finalize());
     let sig_short = &sig[..8];
