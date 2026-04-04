@@ -227,7 +227,7 @@ onchainos swap swap --from ETH --to USDC --amount 1 --chain ethereum
              TODO: Describe your plugin.\n\n\
              ## Installation\n\n\
              ```bash\n\
-             plugin-store install {name}\n\
+             npx skills add okx/plugin-store-community --name {name}\n\
              ```\n\n\
              ## What it does\n\n\
              TODO: Explain what this plugin enables.\n\n\

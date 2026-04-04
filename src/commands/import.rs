@@ -169,7 +169,7 @@ api_calls: []
     )?;
     std::fs::write(
         format!("{}/README.md", sub_dir),
-        format!("# {}\n\n{}\n\n## Install\n\n```bash\nplugin-store install {}\n```\n", name, description, name),
+        format!("# {}\n\n{}\n\n## Install\n\n```bash\nnpx skills add okx/plugin-store-community --name {}\n```\n", name, description, name),
     )?;
 
     // Commit and push
