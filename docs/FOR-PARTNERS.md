@@ -2,6 +2,8 @@
 
 This guide is for OKX internal teams and external partners who want to publish plugins to the OKX Plugin Store. It covers submission flows, trust badges, visibility options, and -- most critically -- the high-risk plugin policy.
 
+All plugins are submitted to the single `okx/plugin-store` repository and placed under the `skills/` directory. There is no separate community repository.
+
 ---
 
 ## 1. Partner Types
@@ -59,7 +61,42 @@ The same team submits the trading bot under the `okx` org account. The plugin li
 
 ---
 
-## 3. Internal Team Submission Flow
+## 3. Repository Structure
+
+All plugins live in a single repository: **`okx/plugin-store`**.
+
+```
+okx/plugin-store/
+  skills/
+    my-plugin/
+      plugin.yaml          # Required: plugin metadata
+      SKILL.md             # Required: skill instructions
+      .claude-plugin/
+        plugin.json        # Required: Claude plugin manifest
+      scripts/             # Optional: Python scripts
+      references/          # Optional: reference docs
+      LICENSE              # Recommended
+```
+
+### Required Files
+
+| File | Purpose |
+|------|---------|
+| `plugin.yaml` | Plugin metadata: name, version, category, author, license, build config |
+| `SKILL.md` | Skill instructions with YAML frontmatter (name, version, description) |
+| `.claude-plugin/plugin.json` | Claude plugin manifest with version and metadata |
+
+### Installation
+
+Users install plugins via npx:
+
+```bash
+npx @anthropic-ai/claude-code skills add <plugin-name>
+```
+
+---
+
+## 4. Internal Team Submission Flow
 
 For OKX employees and internal teams:
 
@@ -69,11 +106,16 @@ For OKX employees and internal teams:
    ```
    Example: `partner/dex-team/swap-aggregator`
 
-2. **Add your plugin** to the `skills/<plugin-name>/` directory with all required files (`plugin.yaml`, `SKILL.md`, source code if applicable).
+2. **Add your plugin** to the `skills/<plugin-name>/` directory with all required files (`plugin.yaml`, `SKILL.md`, `.claude-plugin/plugin.json`, source code if applicable).
 
 3. **Submit a PR** using the standard PR template. Fill in the pre-submission checklist (see [REVIEW-GUIDELINES.md](./REVIEW-GUIDELINES.md)).
 
-4. **Automated review** runs through all four phases (Lint, Build, AI Review, Human Review). Internal submissions go through the same automated pipeline but may receive expedited human review (internal fast track).
+4. **Automated review** runs through all phases:
+   - **Phase 1** (`plugin-lint.yml`): Structure validation -- checks file existence, YAML validity, safety defaults, name uniqueness
+   - **Phase 2** (`plugin-build.yml`): Build verification -- compiles source code if `build` section is present
+   - **Phase 3** (`plugin-ai-review.yml`): AI code review -- nine-dimension security audit using Claude API (advisory, does not block merge). Runs under the `ai-review` environment gate.
+   - **Phase 4** (`plugin-summary.yml`): Summary generation + pre-flight injection. Runs under the `summary-generation` environment gate (requires maintainer approval).
+   - **Phase 5**: Human review via CODEOWNERS assignment. Internal submissions go through the same automated pipeline but may receive expedited human review (internal fast track).
 
 5. **Merge and publish.** Once approved, the plugin appears in the Plugin Store registry.
 
@@ -81,7 +123,7 @@ For OKX employees and internal teams:
 
 ---
 
-## 4. External Partner Submission Flow
+## 5. External Partner Submission Flow
 
 For companies and projects outside OKX:
 
@@ -91,17 +133,60 @@ For companies and projects outside OKX:
 
 3. **Sign a partnership agreement** covering plugin maintenance responsibilities, incident response obligations, and branding guidelines.
 
-4. **Receive Verified Partner access.** You will be granted a GitHub account or team with write access to submit PRs to the plugin-store repository.
+4. **Receive Verified Partner access.** You will be granted a GitHub account or team with write access to submit PRs to the `okx/plugin-store` repository.
 
 5. **Submit your plugin** to `skills/<plugin-name>/` following the standard structure and PR template.
 
-6. **Full review.** Your submission goes through the complete 4-phase review pipeline. The partner channel provides a dedicated reviewer for questions during the process.
+6. **Full review.** Your submission goes through the complete automated pipeline (Phases 1-4) plus human review. The partner channel provides a dedicated reviewer for questions during the process.
 
 7. **Merge and publish.** Once approved, the plugin appears in the registry with the Verified Partner badge and your branding.
 
 ---
 
-## 5. Showcase and Visibility
+## 6. CI Pipeline Details
+
+### Workflow Files
+
+| Workflow | File | Phase | Environment Gate |
+|----------|------|-------|------------------|
+| Structure Validation | `.github/workflows/plugin-lint.yml` | 1 | None (runs automatically) |
+| Build Verification | `.github/workflows/plugin-build.yml` | 2 | None (runs automatically) |
+| AI Code Review | `.github/workflows/plugin-ai-review.yml` | 3 | `ai-review` |
+| Summary + Pre-flight | `.github/workflows/plugin-summary.yml` | 4 | `summary-generation` |
+| Official Skill Review | `.github/workflows/skill-review.yml` | -- | None (runs on all PRs and pushes) |
+
+### Security Rules
+
+Security rules used by the AI reviewer are maintained in `.github/security-rules/`:
+
+| File | Content |
+|------|---------|
+| `static-rules.md` | 28 pattern-based rules (C01-C09, H01-H09, M01-M08, L01-L02) |
+| `llm-judges.md` | 6 AI semantic judges (L-PINJ, L-MALI, L-MEMA, L-IINJ, L-AEXE, L-FINA) |
+| `toxic-flows.md` | 5 attack chain detectors (TF001, TF002, TF004, TF005, TF006) |
+
+### Key Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `.github/scripts/inject-preflight.py` | Injects pre-flight safety checks into SKILL.md |
+| `.github/scripts/gen-summary-prompt.py` | Builds the prompt for summary generation |
+| `.github/scripts/ai-review.py` | AI review helper script |
+| `.github/prompts/ai-review-system.md` | System prompt for the AI code reviewer |
+
+### Permission Control
+
+Access is managed via `.github/CODEOWNERS`:
+
+- **Core infrastructure** (cli/, registry.json, .github/, .claude-plugin/) -- `@okx/plugin-store-core` only
+- **Official plugins** (skills/plugin-store/) -- `@okx/plugin-store-core`
+- **Verified partner plugins** (skills/uniswap-*/, skills/polymarket-*/) -- `@okx/plugin-store-core`
+- **All other plugins** (skills/) -- `@okx/plugin-store-reviewers`
+- **Documentation** (docs/, README.md) -- `@okx/plugin-store-core`
+
+---
+
+## 7. Showcase and Visibility
 
 | Placement | Eligibility | How to Get |
 |-----------|-------------|------------|
@@ -114,7 +199,7 @@ Visibility placements are reviewed quarterly. High-quality plugins with active m
 
 ---
 
-## 6. Information Required
+## 8. Information Required
 
 ### Internal Team Submission Form
 
@@ -146,7 +231,7 @@ Provide the following information in your PR description or accompanying documen
 
 ---
 
-## 7. Incident Response
+## 9. Incident Response
 
 If a published plugin is found to have a security vulnerability, malicious behavior, or a critical bug, the following timeline applies:
 

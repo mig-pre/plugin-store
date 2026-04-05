@@ -34,6 +34,30 @@ Without plugins, your AI assistant can answer questions and help with general ta
 With plugins, it can do things like swap tokens on a decentralized exchange, track
 what experienced traders are doing, or help you plan a liquidity position.
 
+### How plugins are structured
+
+Each plugin in the store contains three key files:
+
+- **plugin.yaml** -- metadata about the plugin (name, version, author, description)
+- **SKILL.md** -- instructions that teach the AI assistant how to use the plugin
+- **.claude-plugin/plugin.json** -- configuration for the plugin system
+
+You do not need to worry about these files. They are mentioned here so you understand
+what is happening behind the scenes when you install a plugin.
+
+### Pre-flight auto-injection
+
+When you install a plugin through Plugin Store, the system automatically sets up
+everything you need behind the scenes:
+
+- **onchainos CLI** -- the on-chain operating system command-line tool
+- **onchainos Skills** -- core AI skills for blockchain interaction
+- **plugin-store Skill** -- the plugin management skill itself
+- **Install report** -- a summary of what was installed and configured
+
+You do not need to install any of these manually. They are injected automatically
+during the first plugin installation in each session.
+
 ### See it in action
 
 Here is what it looks like to install and use a plugin. You just type in plain
@@ -104,6 +128,16 @@ All three levels go through the same 4-stage review. The badge tells you *who*
 made it, not whether it is safe. That said, Official and Verified Partner plugins
 come from teams with established reputations.
 
+### Three risk levels tell you what a plugin can do
+
+Every plugin is assigned a risk level so you know what to expect:
+
+| Risk Level | What it means |
+|------------|---------------|
+| **Starter** | Read-only. Plans, browses, and shows information. Never touches your wallet. |
+| **Standard** | Can prepare transactions, but always asks for your confirmation first. |
+| **Advanced** | Automated trading. Can execute trades on your behalf. Understand the risks before using. |
+
 ### Simple installation
 
 Installing a plugin takes one command. No downloading files, no editing
@@ -115,7 +149,18 @@ configuration files, no restarting anything. Just one line, and you are ready to
 
 Getting started takes about 60 seconds. Here are the four steps:
 
-### Step 1: Open your AI assistant
+### Step 1: Install Plugin Store
+
+First, install the Plugin Store skill itself. This gives your AI assistant the
+ability to browse and manage all available plugins.
+
+Open your AI assistant's terminal or chat and run:
+
+```
+npx skills add okx/plugin-store --skill plugin-store
+```
+
+### Step 2: Open your AI assistant
 
 Open one of these supported AI assistants:
 
@@ -125,7 +170,7 @@ Open one of these supported AI assistants:
 
 If you already have one of these open, you are ready for the next step.
 
-### Step 2: Install a plugin
+### Step 3: Install a plugin
 
 Type this command in your AI assistant's terminal or chat:
 
@@ -134,16 +179,15 @@ npx skills add okx/plugin-store --skill uniswap-swap-planner
 ```
 
 Replace `uniswap-swap-planner` with the name of any plugin you want. (See the
-[Plugin Directory](#4-plugin-directory) below for the full list.)
+[Plugin Directory](#4-plugin-directory) below for the full list of all 16 plugins.)
 
-Want to install the Plugin Store manager itself, which helps you browse and manage
-everything? Run:
+All plugin installations use the same pattern:
 
 ```
-npx skills add okx/plugin-store --skill plugin-store
+npx skills add okx/plugin-store --skill <plugin-name>
 ```
 
-### Step 3: Start talking
+### Step 4: Start talking
 
 Just describe what you want to do, in your own words:
 
@@ -154,7 +198,7 @@ You:    Help me plan a swap of 100 USDC to ETH on Arbitrum.
 You do not need to use any special commands or syntax. Talk to your AI assistant
 the same way you would talk to a helpful friend.
 
-### Step 4: The AI uses the plugin automatically
+### Step 5: The AI uses the plugin automatically
 
 Your AI assistant recognizes what you need, activates the right plugin, and
 walks you through it. If a transaction is involved, you always get a chance to
@@ -176,25 +220,29 @@ AI:     I have prepared a swap plan for you:
 
 ## 4. Plugin Directory
 
+The Plugin Store currently contains **16 plugins**. Here is how to find the right
+one for your needs.
+
 ### Find by what you want to do
 
-| I want to... | Plugin | Risk Level |
-|--------------|--------|------------|
-| Browse and install other plugins | Plugin Store | Starter |
-| Participate in an AI hackathon | OKX BuildX Hackathon Guide | Starter |
-| Plan a token swap on Uniswap | Uniswap Swap Planner | Starter |
-| Plan a liquidity position | Uniswap Liquidity Planner | Starter |
-| Learn about Uniswap v4 hook security | Uniswap V4 Security Foundations | Starter |
-| Build apps with blockchain libraries | Uniswap Viem Integration | Starter |
-| Swap tokens with AI-powered tools | Uniswap AI | Standard |
-| Integrate swaps into a project | Uniswap Swap Integration | Standard |
-| Pay for things using any token | Uniswap Pay With Any Token | Standard |
-| Configure token auction contracts | Uniswap CCA Configurator | Standard |
-| Deploy auction smart contracts | Uniswap CCA Deployer | Standard |
-| Trade on prediction markets | Polymarket Agent Skills | Standard |
-| Auto-trade newly launched meme tokens | Meme Trench Scanner | Advanced |
-| Snipe tokens from OKX leaderboard | Top Rank Tokens Sniper | Advanced |
-| Copy trades from smart money wallets | Smart Money Signal Copy Trade | Advanced |
+| I want to... | Plugin | Install command | Risk Level |
+|--------------|--------|-----------------|------------|
+| Browse and install other plugins | Plugin Store | `npx skills add okx/plugin-store --skill plugin-store` | Starter |
+| Participate in an AI hackathon | OKX BuildX Hackathon Guide | `npx skills add okx/plugin-store --skill okx-buildx-hackathon-agent-track` | Starter |
+| Plan a token swap on Uniswap | Uniswap Swap Planner | `npx skills add okx/plugin-store --skill uniswap-swap-planner` | Starter |
+| Plan a liquidity position | Uniswap Liquidity Planner | `npx skills add okx/plugin-store --skill uniswap-liquidity-planner` | Starter |
+| Learn about Uniswap v4 hook security | Uniswap V4 Security Foundations | `npx skills add okx/plugin-store --skill uniswap-v4-security-foundations` | Starter |
+| Build apps with blockchain libraries | Uniswap Viem Integration | `npx skills add okx/plugin-store --skill uniswap-viem-integration` | Starter |
+| Swap tokens with AI-powered tools | Uniswap AI | `npx skills add okx/plugin-store --skill uniswap-ai` | Standard |
+| Integrate swaps into a project | Uniswap Swap Integration | `npx skills add okx/plugin-store --skill uniswap-swap-integration` | Standard |
+| Pay for things using any token | Uniswap Pay With Any Token | `npx skills add okx/plugin-store --skill uniswap-pay-with-any-token` | Standard |
+| Configure token auction contracts | Uniswap CCA Configurator | `npx skills add okx/plugin-store --skill uniswap-cca-configurator` | Standard |
+| Deploy auction smart contracts | Uniswap CCA Deployer | `npx skills add okx/plugin-store --skill uniswap-cca-deployer` | Standard |
+| Trade on prediction markets | Polymarket Agent Skills | `npx skills add okx/plugin-store --skill polymarket-agent-skills` | Standard |
+| Auto-trade newly launched meme tokens | Meme Trench Scanner | `npx skills add okx/plugin-store --skill meme-trench-scanner` | Advanced |
+| Snipe tokens from OKX leaderboard | Top Rank Tokens Sniper | `npx skills add okx/plugin-store --skill top-rank-tokens-sniper` | Advanced |
+| Copy trades from smart money wallets | Smart Money Signal Copy Trade | `npx skills add okx/plugin-store --skill smart-money-signal-copy-trade` | Advanced |
+| Run E2E test for Rust CLI integration | Test Rust CLI | `npx skills add okx/plugin-store --skill test-rust-cli` | Starter |
 
 ### Find by risk level
 
@@ -219,6 +267,7 @@ moves, nothing gets signed, nothing costs money.
 - Uniswap Liquidity Planner
 - Uniswap V4 Security Foundations
 - Uniswap Viem Integration
+- Test Rust CLI
 
 ---
 
@@ -469,64 +518,50 @@ monitor it. At every step, you were in control of the decision.
 
 ## 6. Managing Your Plugins
 
-Once you have plugins installed, here is how to manage them. You can either
-type these commands directly or just ask your AI assistant in plain English.
+All plugin management is done through the `npx skills add` command or by asking
+your AI assistant in plain English.
+
+### Install a plugin
+
+```
+npx skills add okx/plugin-store --skill <plugin-name>
+```
+
+Or just ask: *"Install the Uniswap Swap Planner plugin for me."*
+
+### Install Plugin Store itself
+
+```
+npx skills add okx/plugin-store --skill plugin-store
+```
+
+Or ask: *"Install the Plugin Store skill."*
 
 ### See what you have installed
 
-```
-plugin-store installed
-```
+Ask your AI assistant: *"What plugins do I have installed?"*
 
-Or just ask: *"What plugins do I have installed?"*
+### Update a plugin to the latest version
 
-### Update all your plugins to the latest version
+Reinstall the plugin to get the latest version:
 
 ```
-plugin-store update --all
+npx skills add okx/plugin-store --skill <plugin-name>
 ```
 
-Or ask: *"Update all my plugins."*
-
-### Uninstall a plugin you no longer need
-
-```
-plugin-store uninstall uniswap-swap-planner
-```
-
-Or ask: *"Remove the Uniswap Swap Planner plugin."*
+Or ask: *"Reinstall the Uniswap AI plugin to get the latest version."*
 
 ### Get details about a specific plugin
 
-```
-plugin-store info uniswap-ai
-```
-
-Or ask: *"Tell me more about the Uniswap AI plugin."*
+Ask your AI assistant: *"Tell me more about the Uniswap AI plugin."*
 
 ### Search for plugins by keyword
 
-```
-plugin-store search swap
-```
-
-Or ask: *"Are there any plugins for swapping tokens?"*
+Ask your AI assistant: *"Are there any plugins for swapping tokens?"*
 
 ### List all available plugins
 
-```
-plugin-store list
-```
-
-Or ask: *"Show me all available plugins."*
-
-### Update the Plugin Store itself
-
-```
-plugin-store self-update
-```
-
-Or ask: *"Update the Plugin Store to the latest version."*
+Ask your AI assistant: *"Show me all available plugins."*
 
 ---
 
@@ -620,7 +655,7 @@ your AI assistant's other settings.
 
 - They stay on your machine
 - They are not uploaded anywhere
-- You can remove them at any time with the uninstall command
+- You can remove them at any time
 
 ### Do I need to know how to code?
 
@@ -647,11 +682,10 @@ prediction markets, it will use the Polymarket plugin.
 
 Try these steps:
 
-1. **Update the plugin:** Ask your AI *"Update all my plugins"* or run
-   `plugin-store update --all`
-2. **Reinstall it:** Uninstall and install again
-3. **Check for issues:** Visit the plugin's GitHub page for known problems
-4. **Report it:** If nothing works, report the issue (see
+1. **Reinstall the plugin:** Run
+   `npx skills add okx/plugin-store --skill <plugin-name>` to get the latest version
+2. **Check for issues:** Visit the plugin's GitHub page for known problems
+3. **Report it:** If nothing works, report the issue (see
    [How to report issues](#how-to-report-issues) above)
 
 ### What is "paper mode"?
@@ -669,6 +703,12 @@ transaction. Think of them like postage for a letter -- you pay a small amount
 to have your transaction delivered and recorded. Gas fees vary depending on
 network activity. Plugins that only read information (Starter level) do not
 incur gas fees.
+
+### How many plugins are available?
+
+There are currently **16 plugins** available in the Plugin Store, spanning
+categories from DeFi trading and liquidity management to prediction markets
+and automated trading strategies.
 
 ---
 

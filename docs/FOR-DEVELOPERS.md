@@ -9,7 +9,7 @@
 ## Table of Contents
 
 1. [What Can You Build?](#1-what-can-you-build)
-2. [Quick Start (5 Minutes)](#2-quick-start-5-minutes)
+2. [Quick Start (7 Steps)](#2-quick-start-7-steps)
 3. [Plugin Structure](#3-plugin-structure)
 4. [Three Submission Modes](#4-three-submission-modes)
 5. [OnchainOS Integration](#5-onchainos-integration)
@@ -41,8 +41,8 @@ The Skill tells the AI agent what tools are available and when to use them.
 |----------|-----------|-------------|
 | Rust | `cargo build --release` | Native binary |
 | Go | `go build` | Native binary |
-| TypeScript | `npm install -g` | npm package |
-| Node.js | `npm install -g` | npm package |
+| TypeScript | Bun | Bun global install |
+| Node.js | Bun | Bun global install |
 | Python | `pip install` | pip package |
 
 ### What Makes a Good Plugin
@@ -53,7 +53,7 @@ The Skill tells the AI agent what tools are available and when to use them.
 
 ---
 
-## 2. Quick Start (5 Minutes)
+## 2. Quick Start (7 Steps)
 
 This walkthrough creates a minimal Skill-only plugin and submits it.
 
@@ -89,7 +89,7 @@ tags:
 
 components:
   skill:
-    dir: skills/my-plugin
+    dir: "."
 
 api_calls: []
 EOF
@@ -281,7 +281,7 @@ tags:
 
 components:
   skill:
-    dir: skills/sol-price-checker
+    dir: "."
 
 api_calls: []
 ```
@@ -331,7 +331,7 @@ tags:
 
 components:
   skill:
-    dir: skills/defi-yield-optimizer
+    dir: "."
 
 build:
   lang: rust
@@ -360,7 +360,7 @@ api_calls:
 | `tags` | No | Search keywords | Array of strings |
 | `type` | No | Author type | `"official"`, `"dapp-official"`, `"community-developer"` |
 | `link` | No | Project homepage | URL, displayed in the marketplace |
-| `components.skill.dir` | Mode A | Skill directory path | Relative path to directory containing SKILL.md |
+| `components.skill.dir` | Mode A | Skill directory path | Relative path within the plugin directory (use `"."` for the plugin root) |
 | `components.skill.repo` | Mode B | External repository | Format: `owner/repo` |
 | `components.skill.commit` | Mode B | Pinned commit | Full 40-character hex SHA |
 | `build.lang` | Binary only | Source language | `rust` / `go` / `typescript` / `node` / `python` |
@@ -530,8 +530,10 @@ simplest approach and recommended for most plugins.
 
 ```
 skills/my-plugin/
-├── plugin.yaml
-├── SKILL.md
+├── .claude-plugin/
+│   └── plugin.json   # Required
+├── plugin.yaml       # Required
+├── SKILL.md          # Required
 ├── scripts/          # Optional
 ├── assets/           # Optional
 ├── LICENSE
@@ -543,7 +545,7 @@ plugin.yaml uses `components.skill.dir`:
 ```yaml
 components:
   skill:
-    dir: skills/my-plugin
+    dir: "."
 ```
 
 **When to use**: You are comfortable putting all source code directly in the
@@ -677,39 +679,52 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ## 6. Review Process
 
-Every pull request goes through a 4-stage pipeline.
+Every pull request goes through a 4-phase CI pipeline.
 
-### Stage 1: Static Lint (Automatic, Instant)
+### Phase 1: Static Lint (Automatic, Instant)
 
 Validates plugin structure, naming conventions, version format, required files,
 and safety defaults. Results are posted as a PR comment.
 
 If lint fails, the PR is blocked. Fix the issues and push again.
 
-### Stage 2: AI Code Review (Automatic, ~2 Minutes)
+### Phase 2: Build Verification (Automatic, Binary Plugins Only)
+
+If your plugin has a `build` section, CI clones your source repo at the pinned
+commit SHA, compiles the code, and verifies the binary runs. Build failures
+block the PR.
+
+### Phase 3: AI Code Review (Automatic, ~2 Minutes)
 
 An AI reviewer reads your plugin and generates an 8-section report covering
 security, compliance, and quality. The report is posted as a collapsible PR
 comment. This stage is **advisory only** -- it does not block merge, but human
 reviewers will read the report.
 
-### Stage 3: Build Verification (Automatic, Binary Plugins Only)
+### Phase 4: Summary and Pre-flight (Automatic)
 
-If your plugin has a `build` section, CI clones your source repo at the pinned
-commit SHA, compiles the code, and verifies the binary runs. Build failures
-block the PR.
+A summary of all previous phases is generated. The pre-flight step auto-injects
+the following into the test environment:
 
-### Stage 4: Human Review (1-3 Business Days)
+- **onchainos CLI** -- the Agentic Wallet CLI
+- **Skills** -- your plugin's skill files
+- **plugin-store Skill** -- the plugin-store skill itself
+- **HMAC install report** -- a signed report confirming installation integrity
 
-A maintainer reviews the plugin for correctness, security, and quality. They
-check that the plugin makes sense, API calls are accurately declared, SKILL.md
-is well-written, and there are no security concerns.
+This ensures every plugin can be verified end-to-end in a realistic environment.
+
+### Human Review (1-3 Business Days)
+
+After all automated phases pass, a maintainer reviews the plugin for
+correctness, security, and quality. They check that the plugin makes sense,
+API calls are accurately declared, SKILL.md is well-written, and there are no
+security concerns.
 
 ### Top 10 Rejection Reasons
 
 | # | Reason | How to Avoid |
 |---|--------|-------------|
-| 1 | Missing `plugin.yaml` or `SKILL.md` | Both files are required in every plugin |
+| 1 | Missing `plugin.yaml`, `.claude-plugin/plugin.json`, or `SKILL.md` | All three files are required in every plugin |
 | 2 | Version mismatch between `plugin.yaml` and `SKILL.md` | Keep `version` identical in both files |
 | 3 | Hardcoded API keys or credentials | Use environment variables, never commit secrets |
 | 4 | No risk disclaimer for trading plugins | Add a disclaimer section in SKILL.md for any plugin that moves assets |
@@ -741,9 +756,9 @@ is well-written, and there are no security concerns.
 Copy this into your PR description:
 
 ```markdown
-- [ ] `plugin.yaml` and `SKILL.md` both present
+- [ ] `plugin.yaml`, `.claude-plugin/plugin.json`, and `SKILL.md` all present
 - [ ] `name` field is lowercase with hyphens only, 2-40 characters
-- [ ] `version` matches in both `plugin.yaml` and `SKILL.md`
+- [ ] `version` matches in `plugin.yaml`, `plugin.json`, and `SKILL.md`
 - [ ] `author.github` matches my GitHub username
 - [ ] `license` field uses a valid SPDX identifier
 - [ ] `category` is one of the allowed values
@@ -754,6 +769,7 @@ Copy this into your PR description:
 - [ ] No pre-compiled binary files in the submission
 - [ ] LICENSE file is present
 - [ ] PR title follows format: `[new-plugin] my-plugin v1.0.0`
+- [ ] PR branch name follows format: `submit/my-plugin`
 - [ ] PR only modifies files inside `skills/my-plugin/`
 - [ ] (If trading plugin) Risk disclaimer is included
 - [ ] (If trading plugin) Dry-run / paper-trade mode is supported
@@ -826,10 +842,10 @@ organization members.
 
 **Can I use any programming language?**
 
-For binary plugins, supported languages are Rust, Go, TypeScript, Node.js, and
-Python. For Skill-only plugins, you can include scripts in any language (Python
-and shell scripts are common) -- they run as part of the AI agent workflow, not
-compiled by CI.
+For binary plugins, supported languages are Rust, Go, TypeScript (Bun),
+Node.js (Bun), and Python. For Skill-only plugins, you can include scripts in
+any language (Python and shell scripts are common) -- they run as part of the
+AI agent workflow, not compiled by CI.
 
 **Do I have to use OnchainOS?**
 

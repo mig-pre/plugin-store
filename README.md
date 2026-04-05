@@ -1,5 +1,7 @@
 # OKX Plugin Store
 
+[English](README.md) | [中文](README-ZH.md)
+
 Discover, install, and build AI agent plugins for DeFi, trading, and Web3.
 
 **Supported platforms:** Claude Code, Cursor, OpenClaw
@@ -55,16 +57,16 @@ npx skills add okx/plugin-store --skill <plugin-name>
 
 ## Documentation
 
-| You are... | Go to... |
-|------------|----------|
-| Plugin user | [FOR-USERS.md](docs/FOR-USERS.md) |
-| Plugin developer | [FOR-DEVELOPERS.md](docs/FOR-DEVELOPERS.md) |
-| OKX/Partner team | [FOR-PARTNERS.md](docs/FOR-PARTNERS.md) |
-| Reviewing standards | [REVIEW-GUIDELINES.md](docs/REVIEW-GUIDELINES.md) |
+| You are... | English | 中文 |
+|------------|---------|------|
+| Plugin user | [FOR-USERS.md](docs/FOR-USERS.md) | [FOR-USERS-ZH.md](docs/FOR-USERS-ZH.md) |
+| Plugin developer | [FOR-DEVELOPERS.md](docs/FOR-DEVELOPERS.md) | [FOR-DEVELOPERS-ZH.md](docs/FOR-DEVELOPERS-ZH.md) |
+| OKX/Partner team | [FOR-PARTNERS.md](docs/FOR-PARTNERS.md) | [FOR-PARTNERS-ZH.md](docs/FOR-PARTNERS-ZH.md) |
+| Reviewing standards | [REVIEW-GUIDELINES.md](docs/REVIEW-GUIDELINES.md) | [REVIEW-GUIDELINES-ZH.md](docs/REVIEW-GUIDELINES-ZH.md) |
 
 ## Contributing
 
-To submit a plugin, see [FOR-DEVELOPERS.md](docs/FOR-DEVELOPERS.md). The workflow is Fork, develop, then open a Pull Request.
+To submit a plugin, see [FOR-DEVELOPERS.md](docs/FOR-DEVELOPERS.md) ([中文](docs/FOR-DEVELOPERS-ZH.md)). The workflow is Fork, develop, then open a Pull Request.
 
 ## Security
 
