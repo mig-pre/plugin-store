@@ -16,7 +16,7 @@
 
 $ErrorActionPreference = "Stop"
 
-$REPO = "ganlinux/plugin-store"
+$REPO = "okx/plugin-store"
 $BINARY = "plugin-store"
 $INSTALL_DIR = Join-Path $env:USERPROFILE ".local\bin"
 $CACHE_DIR = Join-Path $env:USERPROFILE ".plugin-store"
