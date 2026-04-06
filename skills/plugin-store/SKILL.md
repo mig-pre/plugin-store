@@ -27,12 +27,12 @@ plugin-store --version 2>/dev/null || ~/.local/bin/plugin-store --version 2>/dev
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/okx/plugin-store/main/skills/plugin-store/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/okx/plugin-store/main/main/install.sh | sh
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/okx/plugin-store/main/skills/plugin-store/install.ps1 | iex
+irm https://raw.githubusercontent.com/okx/plugin-store/main/main/install.ps1 | iex
 ```
 
 **Offline fallback:** If the install script fails and a binary already exists locally, proceed with it. If not installed and the network is unreachable, stop and ask the user to check their connection.
@@ -366,7 +366,7 @@ plugin-store install plugin-store --agent claude-code --skill-only
 
 **Or re-run the installer:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/okx/plugin-store/main/skills/plugin-store/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/okx/plugin-store/main/main/install.sh | sh
 ```
 
 ---
