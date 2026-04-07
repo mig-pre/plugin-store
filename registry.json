@@ -19,7 +19,7 @@
         "defi",
         "memepump"
       ],
-      "type": "official",
+      "type": "community-developer",
       "components": {
         "skill": {
           "repo": "okx/plugin-store",
@@ -34,7 +34,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "trust_source": "community",
+      "risk_level": "advanced"
     },
     {
       "name": "okx-buildx-hackathon-agent-track",
@@ -65,7 +67,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "trust_source": "official",
+      "risk_level": "starter"
     },
     {
       "name": "plugin-store",
@@ -94,7 +98,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "trust_source": "official",
+      "risk_level": "starter"
     },
     {
       "name": "polymarket-agent-skills",
@@ -107,7 +113,7 @@
       "tags": [
         "trading"
       ],
-      "type": "official",
+      "type": "dapp-official",
       "components": {
         "skill": {
           "repo": "okx/plugin-store",
@@ -121,7 +127,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "trust_source": "verified_partner",
+      "risk_level": "standard"
     },
     {
       "name": "rust-cli-inspector",
@@ -149,7 +157,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "trust_source": "official",
+      "risk_level": "starter"
     },
     {
       "name": "smart-money-signal-copy-trade",
@@ -166,7 +176,7 @@
         "sniper",
         "defi"
       ],
-      "type": "official",
+      "type": "community-developer",
       "components": {
         "skill": {
           "repo": "okx/plugin-store",
@@ -181,7 +191,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "trust_source": "community",
+      "risk_level": "advanced"
     },
     {
       "name": "top-rank-tokens-sniper",
@@ -200,7 +212,7 @@
         "defi",
         "ranking"
       ],
-      "type": "official",
+      "type": "community-developer",
       "components": {
         "skill": {
           "repo": "okx/plugin-store",
@@ -215,7 +227,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "trust_source": "community",
+      "risk_level": "advanced"
     },
     {
       "name": "uniswap-ai",
@@ -229,7 +243,7 @@
         "trading",
         "defi"
       ],
-      "type": "official",
+      "type": "dapp-official",
       "components": {
         "skill": {
           "repo": "okx/plugin-store",
@@ -243,7 +257,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "trust_source": "verified_partner",
+      "risk_level": "standard"
     },
     {
       "name": "uniswap-cca-configurator",
@@ -256,7 +272,7 @@
       "tags": [
         "defi"
       ],
-      "type": "official",
+      "type": "dapp-official",
       "components": {
         "skill": {
           "repo": "okx/plugin-store",
@@ -270,7 +286,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "trust_source": "verified_partner",
+      "risk_level": "standard"
     },
     {
       "name": "uniswap-cca-deployer",
@@ -283,7 +301,7 @@
       "tags": [
         "defi"
       ],
-      "type": "official",
+      "type": "dapp-official",
       "components": {
         "skill": {
           "repo": "okx/plugin-store",
@@ -297,7 +315,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "trust_source": "verified_partner",
+      "risk_level": "standard"
     },
     {
       "name": "uniswap-liquidity-planner",
@@ -310,7 +330,7 @@
       "tags": [
         "defi"
       ],
-      "type": "official",
+      "type": "dapp-official",
       "components": {
         "skill": {
           "repo": "okx/plugin-store",
@@ -324,7 +344,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "trust_source": "verified_partner",
+      "risk_level": "starter"
     },
     {
       "name": "uniswap-pay-with-any-token",
@@ -338,7 +360,7 @@
         "trading",
         "defi"
       ],
-      "type": "official",
+      "type": "dapp-official",
       "components": {
         "skill": {
           "repo": "okx/plugin-store",
@@ -352,7 +374,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "trust_source": "verified_partner",
+      "risk_level": "standard"
     },
     {
       "name": "uniswap-swap-integration",
@@ -366,7 +390,7 @@
         "trading",
         "defi"
       ],
-      "type": "official",
+      "type": "dapp-official",
       "components": {
         "skill": {
           "repo": "okx/plugin-store",
@@ -380,7 +404,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "trust_source": "verified_partner",
+      "risk_level": "standard"
     },
     {
       "name": "uniswap-swap-planner",
@@ -393,7 +419,7 @@
       "tags": [
         "defi"
       ],
-      "type": "official",
+      "type": "dapp-official",
       "components": {
         "skill": {
           "repo": "okx/plugin-store",
@@ -407,7 +433,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "trust_source": "verified_partner",
+      "risk_level": "starter"
     },
     {
       "name": "uniswap-v4-security-foundations",
@@ -420,7 +448,7 @@
       "tags": [
         "defi"
       ],
-      "type": "official",
+      "type": "dapp-official",
       "components": {
         "skill": {
           "repo": "okx/plugin-store",
@@ -434,7 +462,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "trust_source": "verified_partner",
+      "risk_level": "starter"
     },
     {
       "name": "uniswap-viem-integration",
@@ -447,7 +477,7 @@
       "tags": [
         "defi"
       ],
-      "type": "official",
+      "type": "dapp-official",
       "components": {
         "skill": {
           "repo": "okx/plugin-store",
@@ -461,7 +491,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "trust_source": "verified_partner",
+      "risk_level": "starter"
     }
   ]
 }

@@ -38,10 +38,15 @@ jobs:
           with open("registry.json") as f:
               registry = json.load(f)
 
-          community_plugins = [p for p in registry["plugins"]
-                               if p.get("type") not in ("official", None)
-                               or p.get("name") in ("uniswap-ai", "polymarket-agent-skills")]
-          # Keep dapp-official and community-developer entries untouched
+          # Build a map of existing plugin metadata to preserve type/trust/risk
+          existing_meta = {}
+          for p in registry["plugins"]:
+              existing_meta[p["name"]] = {
+                  "type": p.get("type", "official"),
+                  "trust_source": p.get("trust_source"),
+                  "risk_level": p.get("risk_level"),
+                  "category": p.get("category"),
+              }
 
           # ── Scan skills/ for official plugins ──
           official_plugins = []
@@ -129,15 +134,30 @@ jobs:
               has_scripts = os.path.isdir(f"{skill_dir}/scripts") and \
                   any(f.endswith(".py") for f in os.listdir(f"{skill_dir}/scripts"))
 
+              # Determine type: plugin.yaml > existing registry > infer
+              existing = existing_meta.get(name, {})
+              plugin_type = "official"
+              if os.path.exists(pyaml_path):
+                  import yaml as _y
+                  with open(pyaml_path) as _f:
+                      _yd = _y.safe_load(_f) or {}
+                  plugin_type = _yd.get("type", existing.get("type", "official"))
+              else:
+                  plugin_type = existing.get("type", "official")
+
+              # Preserve trust_source and risk_level from existing registry
+              trust_source = existing.get("trust_source")
+              top_risk = existing.get("risk_level")
+
               # Build registry entry
               reg_entry = {
                   "name": name,
                   "version": version,
                   "description": desc,
                   "author": {"name": pjson.get("author", {}).get("name", "OKX")},
-                  "category": category,
+                  "category": existing.get("category") or category,
                   "tags": tags[:10],
-                  "type": "official",
+                  "type": plugin_type,
                   "components": {
                       "skill": {
                           "repo": "okx/plugin-store",
@@ -147,11 +167,16 @@ jobs:
                   "link": "https://github.com/okx/plugin-store"
               }
 
+              if trust_source:
+                  reg_entry["trust_source"] = trust_source
+              if top_risk:
+                  reg_entry["risk_level"] = top_risk
+
               if chains:
                   reg_entry["extra"] = {
                       "chains": chains,
                       "protocols": [],
-                      "risk_level": risk
+                      "risk_level": top_risk or risk
                   }
 
               # Alias from plugin.json or generate from name
@@ -173,17 +198,13 @@ jobs:
 
               print(f"  ✓ {name} v{version} ({category})")
 
-          # ── Merge: official + community ──
-          # Keep non-official entries that aren't being regenerated
-          official_names = {p["name"] for p in official_plugins}
-          preserved = [p for p in community_plugins if p["name"] not in official_names]
-
-          registry["plugins"] = official_plugins + preserved
+          # ── Write registry ──
+          registry["plugins"] = official_plugins
           with open("registry.json", "w") as f:
               json.dump(registry, f, indent=2, ensure_ascii=False)
               f.write("\n")
 
-          print(f"\nRegistry: {len(official_plugins)} official + {len(preserved)} community/dapp = {len(registry['plugins'])} total")
+          print(f"\nRegistry: {len(official_plugins)} plugins total")
 
           # ── Update marketplace.json ──
           mp_path = ".claude-plugin/marketplace.json"
