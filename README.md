@@ -27,15 +27,11 @@ npx skills add okx/plugin-store --skill <plugin-name>
 
 ---
 
-## Documentation
-
-| | English | 中文 |
-|---|---------|------|
-| Plugin Developer Guide | [FOR-DEVELOPERS.md](docs/FOR-DEVELOPERS.md) | [FOR-DEVELOPERS-ZH.md](docs/FOR-DEVELOPERS-ZH.md) |
-
 ## Contributing
 
-To submit a plugin, see [FOR-DEVELOPERS.md](docs/FOR-DEVELOPERS.md) ([中文](docs/FOR-DEVELOPERS-ZH.md)). The workflow is Fork, develop, then open a Pull Request.
+To submit a plugin, see the developer guide: [English](docs/FOR-DEVELOPERS.md) | [中文](docs/FOR-DEVELOPERS-ZH.md)
+
+The workflow is Fork, develop, then open a Pull Request.
 
 ## Security
 
