@@ -333,6 +333,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build plugins
+        shell: bash
         env:
           BUILD_PLUGINS: ${{ needs.detect.outputs.build_plugins_json }}
         run: |
