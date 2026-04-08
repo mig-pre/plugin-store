@@ -337,7 +337,8 @@ jobs:
         env:
           BUILD_PLUGINS: ${{ needs.detect.outputs.build_plugins_json }}
         run: |
-          echo "$BUILD_PLUGINS" | jq -r '.[] | @base64' | while read ENCODED; do
+          echo "$BUILD_PLUGINS" | jq -r '.[] | @base64' | while read ENCODED; do (
+            set +e
             PLUGIN=$(echo "$ENCODED" | base64 -d)
             NAME=$(echo "$PLUGIN" | jq -r '.name')
             LANG=$(echo "$PLUGIN" | jq -r '.lang')
@@ -395,6 +396,7 @@ jobs:
                 ;;
             esac
             cd /tmp
+          ) || echo "::warning::Build failed for plugin, continuing with others"
           done
 
       - uses: actions/upload-artifact@v4
