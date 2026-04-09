@@ -2,14 +2,13 @@
 use std::process::Command;
 use serde_json::Value;
 
-/// Resolve the current logged-in wallet address via `wallet balance --output json`.
-pub fn resolve_wallet(chain_id: u64) -> anyhow::Result<String> {
-    let chain_str = chain_id.to_string();
+/// Resolve the current logged-in wallet EVM address via `wallet addresses`.
+pub fn resolve_wallet(_chain_id: u64) -> anyhow::Result<String> {
     let output = Command::new("onchainos")
-        .args(["wallet", "balance", "--chain", &chain_str, "--output", "json"])
+        .args(["wallet", "addresses"])
         .output()?;
     let json: Value = serde_json::from_str(&String::from_utf8_lossy(&output.stdout))?;
-    Ok(json["data"]["address"].as_str().unwrap_or("").to_string())
+    Ok(json["data"]["evmAddress"].as_str().unwrap_or("").to_string())
 }
 
 /// Call `onchainos wallet contract-call`.
@@ -85,16 +84,15 @@ pub fn extract_tx_hash_or_err(result: &Value) -> anyhow::Result<String> {
 }
 
 /// Run `onchainos security token-scan` and return the parsed JSON result.
+/// Uses `--tokens <chainId>:<address>` format as required by the onchainos CLI.
 pub fn security_token_scan(chain_id: u64, token_addr: &str) -> anyhow::Result<Value> {
-    let chain_str = chain_id.to_string();
+    let tokens_arg = format!("{}:{}", chain_id, token_addr);
     let output = Command::new("onchainos")
         .args([
             "security",
             "token-scan",
-            "--address",
-            token_addr,
-            "--chain",
-            &chain_str,
+            "--tokens",
+            &tokens_arg,
         ])
         .output()?;
     let stdout = String::from_utf8_lossy(&output.stdout);

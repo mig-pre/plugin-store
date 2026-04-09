@@ -11,6 +11,17 @@ tags:
   - base
 ---
 
+## Pre-flight
+
+Before running any command, verify:
+
+1. **`clanker` binary is installed** — check with `clanker --version`. If missing, install via:
+   ```bash
+   npx skills add clanker --global
+   ```
+2. **`onchainos` is installed and logged in** — check with `onchainos wallet addresses`. If not logged in, run `onchainos login`.
+3. **For write operations** (`deploy-token`, `claim-rewards`): ensure the wallet has sufficient ETH for gas on the target chain.
+
 ## Do NOT use for
 
 Do NOT use for: buying/selling Clanker tokens (use a DEX skill), non-Clanker token deployments

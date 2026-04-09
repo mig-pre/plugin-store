@@ -151,7 +151,8 @@ pub async fn run(
             "chain_id": chain_id,
             "tx_hash": tx_hash,
             "explorer_url": format!(
-                "https://basescan.org/tx/{}",
+                "https://{}/tx/{}",
+                if chain_id == 42161 { "arbiscan.io" } else { "basescan.org" },
                 tx_hash
             )
         }
