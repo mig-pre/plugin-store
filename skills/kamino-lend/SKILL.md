@@ -36,7 +36,11 @@ if ! command -v kamino-lend >/dev/null 2>&1; then
     darwin_x86_64) TARGET="x86_64-apple-darwin" ;;
     linux_x86_64)  TARGET="x86_64-unknown-linux-gnu" ;;
     linux_aarch64) TARGET="aarch64-unknown-linux-gnu" ;;
+    linux_i686)    TARGET="i686-unknown-linux-gnu" ;;
+    linux_armv7l)  TARGET="armv7-unknown-linux-gnueabihf" ;;
     mingw*_x86_64|msys*_x86_64|cygwin*_x86_64) TARGET="x86_64-pc-windows-msvc"; EXT=".exe" ;;
+    mingw*_i686|msys*_i686|cygwin*_i686)           TARGET="i686-pc-windows-msvc"; EXT=".exe" ;;
+    mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
   esac
   mkdir -p ~/.local/bin
   curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/kamino-lend@0.1.0/kamino-lend-${TARGET}${EXT}" -o ~/.local/bin/kamino-lend${EXT}
