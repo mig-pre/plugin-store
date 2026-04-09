@@ -19,3 +19,18 @@ pub const DEFAULT_TX_VERSION: &str = "V0";
 
 pub const PRICE_IMPACT_WARN_PCT: f64 = 5.0;
 pub const PRICE_IMPACT_BLOCK_PCT: f64 = 20.0;
+
+/// Validate a Solana mint/wallet address: base58, 32–44 chars, no 0/O/I/l.
+pub fn validate_solana_address(addr: &str) -> anyhow::Result<()> {
+    let len = addr.len();
+    if len < 32 || len > 44 {
+        anyhow::bail!("Invalid Solana address '{}': expected 32–44 chars, got {}", addr, len);
+    }
+    let invalid = addr.chars().find(|c| {
+        !matches!(c, '1'..='9' | 'A'..='H' | 'J'..='N' | 'P'..='Z' | 'a'..='k' | 'm'..='z')
+    });
+    if let Some(c) = invalid {
+        anyhow::bail!("Invalid Solana address '{}': contains invalid base58 character '{}'", addr, c);
+    }
+    Ok(())
+}

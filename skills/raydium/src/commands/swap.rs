@@ -58,6 +58,10 @@ pub struct SwapArgs {
 }
 
 pub async fn execute(args: &SwapArgs, dry_run: bool) -> Result<()> {
+    // Validate mint addresses before any API calls
+    crate::config::validate_solana_address(&args.input_mint)?;
+    crate::config::validate_solana_address(&args.output_mint)?;
+
     // dry_run guard — must come before resolve_wallet_solana()
     if dry_run {
         println!(
