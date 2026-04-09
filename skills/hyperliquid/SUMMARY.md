@@ -1,13 +1,13 @@
 # hyperliquid
-Trade perpetuals on Hyperliquid's high-performance on-chain DEX with full L1 settlement.
+Trade perpetual futures on Hyperliquid L1 with full on-chain settlement, offering CEX-like speed with DEX transparency.
 
 ## Highlights
 - Check open perpetual positions and unrealized PnL across 100+ markets
-- Get real-time mid prices for all Hyperliquid perpetual contracts
-- Place market and limit orders with leverage on Bitcoin, Ethereum, and altcoins
-- Cancel open orders with two-step confirmation for safety
-- Full on-chain settlement on Hyperliquid L1 with USDC margin
-- CEX-like speed with decentralized execution and custody
-- Secure signing through onchainos CLI with EIP712 message verification
-- Preview all trades before execution with mandatory confirmation flow
+- Get real-time mid prices for all Hyperliquid perpetual markets
+- Place market and limit orders with optional stop-loss/take-profit brackets
+- One-command position closing with automatic size and direction detection
+- Set stop-loss and take-profit orders on existing positions
+- Cancel open orders by order ID with EIP-712 signature verification
+- Deposit USDC from Arbitrum via official bridge contract with permit signatures
+- All trades settled in USDC on Hyperliquid L1 (chain ID 999)
 
