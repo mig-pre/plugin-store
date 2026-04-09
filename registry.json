@@ -59,6 +59,38 @@
       }
     },
     {
+      "name": "hyperliquid",
+      "version": "0.1.0",
+      "description": "Hyperliquid on-chain perpetuals DEX — check positions, get market prices, place and cancel perpetual orders on Hyperliquid L1 (chain_id 999).",
+      "author": {
+        "name": "GeoGu360"
+      },
+      "category": "trading-strategy",
+      "tags": [
+        "solana",
+        "ethereum",
+        "trading",
+        "defi"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/hyperliquid"
+        }
+      },
+      "link": "https://github.com/okx/plugin-store",
+      "extra": {
+        "chains": [
+          "solana",
+          "ethereum",
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "high"
+      }
+    },
+    {
       "name": "kamino-lend",
       "version": "0.1.0",
       "description": "Supply, borrow, and manage positions on Kamino Lend — the leading Solana lending protocol",
