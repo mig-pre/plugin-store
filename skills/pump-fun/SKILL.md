@@ -4,7 +4,7 @@ description: "Interact with pump.fun bonding curves on Solana: buy tokens, sell 
 license: MIT
 metadata:
   author: skylavis-sky
-  version: "0.1.0"
+  version: "1.2.0"
 ---
 
 

@@ -4,7 +4,7 @@ description: "Raydium AMM plugin for token swaps, price queries, and pool info o
 license: MIT
 metadata:
   author: skylavis-sky
-  version: "0.1.0"
+  version: "1.2.0"
 ---
 
 

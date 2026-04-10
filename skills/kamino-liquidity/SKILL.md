@@ -4,7 +4,7 @@ description: "Kamino Liquidity KVault earn vaults on Solana. Deposit tokens to e
 license: MIT
 metadata:
   author: GeoGu360
-  version: "0.1.0"
+  version: "1.2.0"
 version: 0.1.0
 author: GeoGu360
 ---
