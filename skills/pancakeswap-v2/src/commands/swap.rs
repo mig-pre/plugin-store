@@ -108,7 +108,7 @@ pub async fn run(args: SwapArgs) -> Result<serde_json::Value> {
                 args.chain_id,
                 &token_in_addr,
                 cfg.router02,
-                u128::MAX,
+                args.amount_in,
                 args.from.as_deref(),
                 args.dry_run,
             )
@@ -153,7 +153,7 @@ pub async fn run(args: SwapArgs) -> Result<serde_json::Value> {
                 args.chain_id,
                 &token_in_addr,
                 cfg.router02,
-                u128::MAX,
+                args.amount_in,
                 args.from.as_deref(),
                 args.dry_run,
             )

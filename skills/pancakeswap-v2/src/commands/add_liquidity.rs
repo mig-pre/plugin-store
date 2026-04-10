@@ -67,7 +67,7 @@ pub async fn run(args: AddLiquidityArgs) -> Result<serde_json::Value> {
         let allowance = rpc::erc20_allowance(&token_addr, &wallet, cfg.router02, rpc).await.unwrap_or(0);
         if allowance < token_amount {
             let r = erc20_approve(
-                args.chain_id, &token_addr, cfg.router02, u128::MAX,
+                args.chain_id, &token_addr, cfg.router02, token_amount,
                 args.from.as_deref(), args.dry_run,
             ).await?;
             steps.push(json!({"step":"approve_token","txHash": onchainos::extract_tx_hash(&r)}));
@@ -96,7 +96,7 @@ pub async fn run(args: AddLiquidityArgs) -> Result<serde_json::Value> {
         let allow_a = rpc::erc20_allowance(&token_a_addr, &wallet, cfg.router02, rpc).await.unwrap_or(0);
         if allow_a < args.amount_a {
             let r = erc20_approve(
-                args.chain_id, &token_a_addr, cfg.router02, u128::MAX,
+                args.chain_id, &token_a_addr, cfg.router02, args.amount_a,
                 args.from.as_deref(), args.dry_run,
             ).await?;
             steps.push(json!({"step":"approve_tokenA","txHash": onchainos::extract_tx_hash(&r)}));
@@ -107,7 +107,7 @@ pub async fn run(args: AddLiquidityArgs) -> Result<serde_json::Value> {
         let allow_b = rpc::erc20_allowance(&token_b_addr, &wallet, cfg.router02, rpc).await.unwrap_or(0);
         if allow_b < args.amount_b {
             let r = erc20_approve(
-                args.chain_id, &token_b_addr, cfg.router02, u128::MAX,
+                args.chain_id, &token_b_addr, cfg.router02, args.amount_b,
                 args.from.as_deref(), args.dry_run,
             ).await?;
             steps.push(json!({"step":"approve_tokenB","txHash": onchainos::extract_tx_hash(&r)}));
