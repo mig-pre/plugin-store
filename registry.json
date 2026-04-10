@@ -7,8 +7,10 @@
       "version": "0.1.0",
       "description": "Lend and borrow crypto assets on Aave V3 — the leading decentralized liquidity protocol. Trigger phrases: supply to aave, deposit to aave, borrow from aave, repay aave loan, aave health factor, my aave positions, aave interest rates, enable emode, disable collateral, claim aave rewards.",
       "author": {
-        "name": "skylavis-sky"
+        "name": "skylavis-sky",
+        "github": "skylavis-sky"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "lending",
@@ -22,9 +24,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/aave-v3-plugin",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -33,18 +33,13 @@
           "release_tag": "plugins/aave-v3-plugin@0.1.0"
         }
       },
+      "api_calls": [
+        "https://ethereum.publicnode.com",
+        "https://polygon-bor-rpc.publicnode.com",
+        "https://arbitrum-one-rpc.publicnode.com",
+        "https://base-rpc.publicnode.com"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/aave-v3-plugin",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aave-v3-plugin/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aave-v3-plugin/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aave-v3-plugin/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aave-v3-plugin/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "aave-v3-plugin"
-      },
       "extra": {
         "chains": [
           "ethereum",
@@ -59,8 +54,10 @@
       "version": "0.1.0",
       "description": "Deploy and manage Clanker ERC-20 tokens on Base and Arbitrum — launch tokens, search by creator, and claim LP fee rewards",
       "author": {
-        "name": "GeoGu360"
+        "name": "GeoGu360",
+        "github": "GeoGu360"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "token-launch",
@@ -72,9 +69,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/clanker",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -83,18 +78,13 @@
           "release_tag": "plugins/clanker@0.1.0"
         }
       },
+      "api_calls": [
+        "https://clanker.world/api",
+        "https://base-rpc.publicnode.com",
+        "https://arb1.arbitrum.io/rpc",
+        "https://basescan.org"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/clanker",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/clanker/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/clanker/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/clanker/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/clanker/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "clanker"
-      },
       "extra": {
         "chains": [
           "base"
@@ -108,8 +98,10 @@
       "version": "0.1.0",
       "description": "Compound V3 (Comet) lending plugin: supply collateral, borrow/repay the base asset, and claim COMP rewards",
       "author": {
-        "name": "skylavis-sky"
+        "name": "skylavis-sky",
+        "github": "skylavis-sky"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "lending",
@@ -121,9 +113,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/compound-v3",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -132,18 +122,13 @@
           "release_tag": "plugins/compound-v3@0.1.0"
         }
       },
+      "api_calls": [
+        "https://ethereum.publicnode.com",
+        "https://base-rpc.publicnode.com",
+        "https://arbitrum-one-rpc.publicnode.com",
+        "https://polygon-rpc.com"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/compound-v3",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/compound-v3/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/compound-v3/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/compound-v3/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/compound-v3/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "compound-v3"
-      },
       "extra": {
         "chains": [
           "ethereum",
@@ -158,8 +143,10 @@
       "version": "0.1.0",
       "description": "Curve DEX plugin — swap stablecoins, add/remove liquidity, query pools and APY across Ethereum, Arbitrum, Base, Polygon, and BSC.",
       "author": {
-        "name": "GeoGu360"
+        "name": "GeoGu360",
+        "github": "GeoGu360"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "dex",
@@ -171,9 +158,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/curve",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -182,18 +167,15 @@
           "release_tag": "plugins/curve@0.1.0"
         }
       },
+      "api_calls": [
+        "https://api.curve.finance/api/getPools",
+        "https://ethereum.publicnode.com",
+        "https://arbitrum-one-rpc.publicnode.com",
+        "https://base-rpc.publicnode.com",
+        "https://polygon-bor-rpc.publicnode.com",
+        "https://bsc-rpc.publicnode.com"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/curve",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/curve/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/curve/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/curve/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/curve/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "curve"
-      },
       "extra": {
         "chains": [
           "ethereum",
@@ -208,8 +190,10 @@
       "version": "0.1.0",
       "description": "Liquid restaking on Ethereum — deposit ETH to receive eETH, wrap eETH to weETH (ERC-4626), and check positions with APY",
       "author": {
-        "name": "GeoGu360"
+        "name": "GeoGu360",
+        "github": "GeoGu360"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "liquid-staking",
@@ -223,9 +207,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/etherfi",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -234,18 +216,12 @@
           "release_tag": "plugins/etherfi@0.1.0"
         }
       },
+      "api_calls": [
+        "ethereum-rpc.publicnode.com",
+        "app.ether.fi",
+        "etherscan.io"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/etherfi",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/etherfi/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/etherfi/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/etherfi/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/etherfi/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "etherfi"
-      },
       "extra": {
         "chains": [
           "ethereum",
@@ -260,8 +236,10 @@
       "version": "0.1.0",
       "description": "Trade perpetuals and spot on GMX V2 — open/close leveraged positions, place limit/stop orders, add/remove GM pool liquidity on Arbitrum and Avalanche",
       "author": {
-        "name": "GeoGu360"
+        "name": "GeoGu360",
+        "github": "GeoGu360"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "perpetuals",
@@ -273,9 +251,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/gmx-v2",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -284,18 +260,16 @@
           "release_tag": "plugins/gmx-v2@0.1.0"
         }
       },
+      "api_calls": [
+        "https://arbitrum-api.gmxinfra.io",
+        "https://arbitrum-api.gmxinfra2.io",
+        "https://avalanche-api.gmxinfra.io",
+        "https://avalanche-api.gmxinfra2.io",
+        "https://gmx.squids.live",
+        "https://arbitrum.publicnode.com",
+        "https://avalanche-c-chain-rpc.publicnode.com"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/gmx-v2",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/gmx-v2/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/gmx-v2/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/gmx-v2/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/gmx-v2/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "gmx-v2"
-      },
       "extra": {
         "chains": [
           "base"
@@ -309,8 +283,10 @@
       "version": "0.2.0",
       "description": "Trade perpetuals on Hyperliquid — check positions, get prices, place market/limit orders with TP/SL brackets, close positions, deposit USDC",
       "author": {
-        "name": "GeoGu360"
+        "name": "GeoGu360",
+        "github": "GeoGu360"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "perpetuals",
@@ -321,9 +297,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/hyperliquid",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -332,18 +306,13 @@
           "release_tag": "plugins/hyperliquid@0.2.0"
         }
       },
+      "api_calls": [
+        "https://api.hyperliquid.xyz",
+        "https://api.hyperliquid-testnet.xyz",
+        "https://arbitrum-one-rpc.publicnode.com",
+        "https://app.hyperliquid.xyz"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/hyperliquid",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "hyperliquid"
-      },
       "extra": {
         "chains": [
           "solana",
@@ -359,8 +328,10 @@
       "version": "0.1.0",
       "description": "Supply, borrow, and manage positions on Kamino Lend — the leading Solana lending protocol",
       "author": {
-        "name": "GeoGu360"
+        "name": "GeoGu360",
+        "github": "GeoGu360"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "lending",
@@ -372,9 +343,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/kamino-lend",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -383,18 +352,10 @@
           "release_tag": "plugins/kamino-lend@0.1.0"
         }
       },
+      "api_calls": [
+        "api.kamino.finance"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/kamino-lend",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-lend/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-lend/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-lend/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-lend/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "kamino-lend"
-      },
       "extra": {
         "chains": [
           "solana",
@@ -409,8 +370,10 @@
       "version": "0.1.0",
       "description": "Kamino Liquidity KVault earn vaults on Solana. Deposit tokens to earn yield, withdraw shares, and track positions.",
       "author": {
-        "name": "GeoGu360"
+        "name": "GeoGu360",
+        "github": "GeoGu360"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "solana",
@@ -421,9 +384,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/kamino-liquidity",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -432,18 +393,15 @@
           "release_tag": "plugins/kamino-liquidity@0.1.0"
         }
       },
+      "api_calls": [
+        "api.kamino.finance/kvaults/vaults",
+        "api.kamino.finance/kvaults/users",
+        "api.kamino.finance/ktx/kvault/deposit",
+        "api.kamino.finance/ktx/kvault/withdraw",
+        "api.kamino.finance",
+        "solscan.io/tx"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/kamino-liquidity",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-liquidity/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-liquidity/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-liquidity/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-liquidity/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "kamino-liquidity"
-      },
       "extra": {
         "chains": [
           "solana",
@@ -458,8 +416,10 @@
       "version": "0.2.0",
       "description": "Stake ETH with Lido liquid staking protocol — stake, manage withdrawals, and track staking rewards on Ethereum mainnet",
       "author": {
-        "name": "GeoGu360"
+        "name": "GeoGu360",
+        "github": "GeoGu360"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "staking",
@@ -471,9 +431,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/lido",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -482,18 +440,12 @@
           "release_tag": "plugins/lido@0.2.0"
         }
       },
+      "api_calls": [
+        "eth-api.lido.fi",
+        "wq-api.lido.fi",
+        "ethereum.publicnode.com"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/lido",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/lido/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/lido/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/lido/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/lido/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "lido"
-      },
       "extra": {
         "chains": [
           "ethereum",
@@ -508,28 +460,23 @@
       "version": "1.0.0",
       "description": "Meme Trench Scanner v1.0 — Solana Meme automated trading bot with 11 Launchpad coverage, 7-layer exit system, TraderSoul AI observation",
       "author": {
-        "name": "yz06276"
+        "name": "yz06276",
+        "github": "yz06276"
       },
+      "license": "MIT",
       "category": "trading-strategy",
       "tags": [
         "solana",
         "onchainos",
         "trading-bot"
       ],
-      "type": "community-developer",
+      "type": "community",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/meme-trench-scanner",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         }
       },
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/meme-trench-scanner",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meme-trench-scanner/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meme-trench-scanner/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meme-trench-scanner/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meme-trench-scanner/SKILL_SUMMARY.md",
       "extra": {
         "chains": [
           "solana",
@@ -544,8 +491,10 @@
       "version": "0.1.0",
       "description": "Meteora DLMM plugin for searching pools, getting swap quotes, checking positions, and executing swaps on Solana",
       "author": {
-        "name": "skylavis-sky"
+        "name": "skylavis-sky",
+        "github": "skylavis-sky"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "solana",
@@ -557,9 +506,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/meteora",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -568,18 +515,10 @@
           "release_tag": "plugins/meteora@0.1.0"
         }
       },
+      "api_calls": [
+        "https://dlmm.datapi.meteora.ag"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/meteora",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meteora/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meteora/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meteora/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meteora/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "skylavis-sky/onchainos-plugins",
-        "source_commit": "f539fe7bb9b4b386d073f3ce7768fd2ebc077b92",
-        "binary_name": "meteora"
-      },
       "extra": {
         "chains": [
           "solana",
@@ -594,8 +533,10 @@
       "version": "0.1.1",
       "description": "Supply, borrow and earn yield on Morpho — a permissionless lending protocol",
       "author": {
-        "name": "GeoGu360"
+        "name": "GeoGu360",
+        "github": "GeoGu360"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "lending",
@@ -608,9 +549,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/morpho",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -619,18 +558,13 @@
           "release_tag": "plugins/morpho@0.1.1"
         }
       },
+      "api_calls": [
+        "https://blue-api.morpho.org/graphql",
+        "https://ethereum-rpc.publicnode.com",
+        "https://base-rpc.publicnode.com",
+        "https://api.merkl.xyz"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/morpho",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/morpho/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/morpho/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/morpho/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/morpho/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "morpho"
-      },
       "extra": {
         "chains": [
           "ethereum",
@@ -645,8 +579,10 @@
       "version": "1.0.0",
       "description": "AI Hackathon participation guide — registration, wallet setup, project building, submission to Moltbook, voting, and scoring. Apr 1-15, 2026. $14,000 USDT in prizes.",
       "author": {
-        "name": "OKX"
+        "name": "OKX",
+        "github": "MigOKG"
       },
+      "license": "MIT",
       "category": "utility",
       "tags": [
         "hackathon",
@@ -658,25 +594,25 @@
       "type": "official",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/okx-buildx-hackathon-agent-track",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "skills/okx-buildx-hackathon-agent-track"
         }
       },
-      "link": "https://github.com/okx/plugin-store/tree/main/skills/okx-buildx-hackathon-agent-track",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/okx-buildx-hackathon-agent-track",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/okx-buildx-hackathon-agent-track/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/okx-buildx-hackathon-agent-track/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/okx-buildx-hackathon-agent-track/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/okx-buildx-hackathon-agent-track/SKILL_SUMMARY.md"
+      "api_calls": [
+        "www.moltbook.com",
+        "web3.okx.com",
+        "docs.uniswap.org"
+      ],
+      "link": "https://github.com/okx/plugin-store/tree/main/skills/okx-buildx-hackathon-agent-track"
     },
     {
       "name": "orca",
       "version": "0.1.0",
       "description": "Concentrated liquidity AMM on Solana — swap tokens and query pools via the Whirlpools CLMM program",
       "author": {
-        "name": "skylavis-sky"
+        "name": "skylavis-sky",
+        "github": "skylavis-sky"
       },
+      "license": "MIT",
       "category": "trading-strategy",
       "tags": [
         "dex",
@@ -689,9 +625,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/orca",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -700,71 +634,14 @@
           "release_tag": "plugins/orca@0.1.0"
         }
       },
+      "api_calls": [
+        "https://api.orca.so/v1/whirlpool/list",
+        "https://api.orca.so/v1"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/orca",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/orca/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/orca/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/orca/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/orca/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "skylavis-sky/onchainos-plugins",
-        "source_commit": "f539fe7bb9b4b386d073f3ce7768fd2ebc077b92",
-        "binary_name": "orca"
-      },
       "extra": {
         "chains": [
           "solana",
-          "base"
-        ],
-        "protocols": [],
-        "risk_level": "medium"
-      }
-    },
-    {
-      "name": "pancakeswap",
-      "version": "0.1.0",
-      "description": "Swap tokens and manage concentrated liquidity on PancakeSwap V3 on BNB Chain and Base",
-      "author": {
-        "name": "GeoGu360"
-      },
-      "category": "defi-protocol",
-      "tags": [
-        "dex",
-        "swap",
-        "liquidity",
-        "pancakeswap",
-        "bnb-chain",
-        "base"
-      ],
-      "type": "community-developer",
-      "components": {
-        "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/pancakeswap",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
-        },
-        "binary": {
-          "repo": "okx/plugin-store",
-          "asset_pattern": "pancakeswap-{target}",
-          "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/pancakeswap@0.1.0"
-        }
-      },
-      "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/pancakeswap",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "pancakeswap"
-      },
-      "extra": {
-        "chains": [
           "base"
         ],
         "protocols": [],
@@ -776,8 +653,10 @@
       "version": "0.1.0",
       "description": "PancakeSwap V3 CLMM farming plugin — stake LP NFTs into MasterChefV3, harvest CAKE rewards, collect swap fees across BSC, Ethereum, Base, and Arbitrum. Trigger phrases: stake LP NFT, farm CAKE, harvest CAKE rewards, collect fees, unfarm position, PancakeSwap farming, view positions.",
       "author": {
-        "name": "skylavis-sky"
+        "name": "skylavis-sky",
+        "github": "skylavis-sky"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "dex",
@@ -790,9 +669,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/pancakeswap-clmm",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -801,18 +678,13 @@
           "release_tag": "plugins/pancakeswap-clmm@0.1.0"
         }
       },
+      "api_calls": [
+        "https://bsc-rpc.publicnode.com",
+        "https://ethereum.publicnode.com",
+        "https://base-rpc.publicnode.com",
+        "https://arb1.arbitrum.io/rpc"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/pancakeswap-clmm",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-clmm/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-clmm/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-clmm/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-clmm/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "pancakeswap-clmm"
-      },
       "extra": {
         "chains": [
           "ethereum",
@@ -827,8 +699,10 @@
       "version": "0.1.0",
       "description": "Swap tokens and provide full-range liquidity on PancakeSwap V2 — the xyk AMM on BSC and Base. Trigger phrases: swap on pancakeswap v2, pancake swap, pcs v2 swap, add liquidity pancakeswap, remove liquidity pancake, pancake amm, pancakeswap v2 quote, check pancake pair.",
       "author": {
-        "name": "skylavis-sky"
+        "name": "skylavis-sky",
+        "github": "skylavis-sky"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "dex",
@@ -844,9 +718,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/pancakeswap-v2",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -855,18 +727,56 @@
           "release_tag": "plugins/pancakeswap-v2@0.1.0"
         }
       },
+      "api_calls": [
+        "https://bsc-rpc.publicnode.com",
+        "https://base-rpc.publicnode.com"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/pancakeswap-v2",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v2/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v2/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v2/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v2/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "pancakeswap-v2"
+      "extra": {
+        "chains": [
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "medium"
+      }
+    },
+    {
+      "name": "pancakeswap",
+      "version": "0.1.0",
+      "description": "Swap tokens and manage concentrated liquidity on PancakeSwap V3 on BNB Chain and Base",
+      "author": {
+        "name": "GeoGu360",
+        "github": "GeoGu360"
       },
+      "license": "MIT",
+      "category": "defi-protocol",
+      "tags": [
+        "dex",
+        "swap",
+        "liquidity",
+        "pancakeswap",
+        "bnb-chain",
+        "base"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "dir": "."
+        },
+        "binary": {
+          "repo": "okx/plugin-store",
+          "asset_pattern": "pancakeswap-{target}",
+          "checksums_asset": "checksums.txt",
+          "release_tag": "plugins/pancakeswap@0.1.0"
+        }
+      },
+      "api_calls": [
+        "bsc-rpc.publicnode.com",
+        "base-rpc.publicnode.com",
+        "api.studio.thegraph.com",
+        "api.thegraph.com"
+      ],
+      "link": "https://github.com/okx/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -880,8 +790,10 @@
       "version": "0.1.0",
       "description": "Pendle Finance yield tokenization — buy/sell PT & YT tokens, add/remove liquidity, mint/redeem PT+YT pairs",
       "author": {
-        "name": "skylavis-sky"
+        "name": "skylavis-sky",
+        "github": "skylavis-sky"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "yield-trading",
@@ -893,9 +805,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/pendle",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -904,100 +814,14 @@
           "release_tag": "plugins/pendle@0.1.0"
         }
       },
-      "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/pendle",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pendle/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pendle/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pendle/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pendle/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "pendle"
-      },
-      "extra": {
-        "chains": [
-          "ethereum",
-          "base"
-        ],
-        "protocols": [],
-        "risk_level": "high"
-      }
-    },
-    {
-      "name": "plugin-store",
-      "version": "1.0.0",
-      "description": "The main on-chain DeFi skill. Discover, install, update, and manage plugins — including trading strategies, DeFi integrations, and developer tools — across Claude Code, Cursor, and OpenClaw.",
-      "author": {
-        "name": "OKX"
-      },
-      "category": "trading-strategy",
-      "tags": [
-        "trading",
-        "defi",
-        "hackathon"
+      "api_calls": [
+        "https://api-v2.pendle.finance",
+        "https://cloudflare-eth.com",
+        "https://bsc-rpc.publicnode.com",
+        "https://base-rpc.publicnode.com",
+        "https://arb1.arbitrum.io/rpc"
       ],
-      "type": "official",
-      "components": {
-        "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/plugin-store"
-        }
-      },
       "link": "https://github.com/okx/plugin-store",
-      "trust_source": "official",
-      "risk_level": "starter",
-      "extra": {
-        "chains": [
-          "base"
-        ],
-        "protocols": [],
-        "risk_level": "starter"
-      }
-    },
-    {
-      "name": "polymarket",
-      "version": "0.1.0",
-      "description": "Trade prediction markets on Polymarket — buy and sell YES/NO outcome tokens on Polygon",
-      "author": {
-        "name": "skylavis-sky"
-      },
-      "category": "defi-protocol",
-      "tags": [
-        "prediction-market",
-        "polymarket",
-        "polygon",
-        "trading",
-        "defi",
-        "clob"
-      ],
-      "type": "community-developer",
-      "components": {
-        "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/polymarket",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
-        },
-        "binary": {
-          "repo": "okx/plugin-store",
-          "asset_pattern": "polymarket-{target}",
-          "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/polymarket@0.1.0"
-        }
-      },
-      "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/polymarket",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/polymarket/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/polymarket/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/polymarket/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/polymarket/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "polymarket"
-      },
       "extra": {
         "chains": [
           "ethereum",
@@ -1012,8 +836,10 @@
       "version": "1.0.0",
       "description": "Polymarket prediction market integration: trading, market data, WebSocket streaming, cross-chain bridge, and gasless transactions",
       "author": {
-        "name": "Polymarket"
+        "name": "Polymarket",
+        "github": "Polymarket"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "polymarket",
@@ -1026,25 +852,65 @@
       "type": "dapp-official",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/polymarket-agent-skills",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "skills/polymarket-agent-skills"
         }
       },
-      "link": "https://github.com/Polymarket/agent-skills",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/polymarket-agent-skills",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/polymarket-agent-skills/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/polymarket-agent-skills/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/polymarket-agent-skills/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/polymarket-agent-skills/SKILL_SUMMARY.md"
+      "link": "https://github.com/Polymarket/agent-skills"
+    },
+    {
+      "name": "polymarket",
+      "version": "0.1.0",
+      "description": "Trade prediction markets on Polymarket — buy and sell YES/NO outcome tokens on Polygon",
+      "author": {
+        "name": "skylavis-sky",
+        "github": "skylavis-sky"
+      },
+      "license": "MIT",
+      "category": "defi-protocol",
+      "tags": [
+        "prediction-market",
+        "polymarket",
+        "polygon",
+        "trading",
+        "defi",
+        "clob"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "dir": "."
+        },
+        "binary": {
+          "repo": "okx/plugin-store",
+          "asset_pattern": "polymarket-{target}",
+          "checksums_asset": "checksums.txt",
+          "release_tag": "plugins/polymarket@0.1.0"
+        }
+      },
+      "api_calls": [
+        "https://clob.polymarket.com",
+        "https://gamma-api.polymarket.com",
+        "https://data-api.polymarket.com"
+      ],
+      "link": "https://github.com/okx/plugin-store",
+      "extra": {
+        "chains": [
+          "ethereum",
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "high"
+      }
     },
     {
       "name": "pump-fun",
       "version": "0.1.0",
       "description": "Buy and sell tokens on pump.fun bonding curves on Solana mainnet",
       "author": {
-        "name": "skylavis-sky"
+        "name": "skylavis-sky",
+        "github": "skylavis-sky"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "solana",
@@ -1056,9 +922,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/pump-fun",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -1067,18 +931,11 @@
           "release_tag": "plugins/pump-fun@0.1.0"
         }
       },
+      "api_calls": [
+        "https://api.mainnet-beta.solana.com",
+        "https://frontend-api.pump.fun"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/pump-fun",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pump-fun/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pump-fun/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pump-fun/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pump-fun/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "pump-fun"
-      },
       "extra": {
         "chains": [
           "solana",
@@ -1093,8 +950,10 @@
       "version": "0.1.0",
       "description": "Raydium AMM plugin for token swaps, price queries, and pool info on Solana mainnet. Trigger phrases: swap on raydium, raydium swap, raydium price, raydium pool, get swap quote raydium, raydium dex, swap solana raydium.",
       "author": {
-        "name": "skylavis-sky"
+        "name": "skylavis-sky",
+        "github": "skylavis-sky"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "solana",
@@ -1106,9 +965,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/raydium",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -1117,18 +974,11 @@
           "release_tag": "plugins/raydium@0.1.0"
         }
       },
+      "api_calls": [
+        "https://api-v3.raydium.io",
+        "https://transaction-v1.raydium.io"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/raydium",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/raydium/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/raydium/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/raydium/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/raydium/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "raydium"
-      },
       "extra": {
         "chains": [
           "solana",
@@ -1143,28 +993,23 @@
       "version": "1.0.0",
       "description": "Smart Money Signal Copy Trade v1.0 — Smart money signal tracker with cost-aware TP, 15-check safety, 7-layer exit system",
       "author": {
-        "name": "yz06276"
+        "name": "yz06276",
+        "github": "yz06276"
       },
+      "license": "MIT",
       "category": "trading-strategy",
       "tags": [
         "solana",
         "onchainos",
         "trading-bot"
       ],
-      "type": "community-developer",
+      "type": "community",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/smart-money-signal-copy-trade",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         }
       },
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/smart-money-signal-copy-trade",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/smart-money-signal-copy-trade/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/smart-money-signal-copy-trade/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/smart-money-signal-copy-trade/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/smart-money-signal-copy-trade/SKILL_SUMMARY.md",
       "extra": {
         "chains": [
           "solana",
@@ -1179,28 +1024,23 @@
       "version": "1.0.0",
       "description": "Top Rank Tokens Sniper v1.0 — OKX ranking leaderboard sniper with momentum scoring, 3-level safety, 6-layer exit system",
       "author": {
-        "name": "yz06276"
+        "name": "yz06276",
+        "github": "yz06276"
       },
+      "license": "MIT",
       "category": "trading-strategy",
       "tags": [
         "solana",
         "onchainos",
         "trading-bot"
       ],
-      "type": "community-developer",
+      "type": "community",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/top-rank-tokens-sniper",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         }
       },
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/top-rank-tokens-sniper",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/top-rank-tokens-sniper/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/top-rank-tokens-sniper/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/top-rank-tokens-sniper/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/top-rank-tokens-sniper/SKILL_SUMMARY.md",
       "extra": {
         "chains": [
           "solana",
@@ -1215,8 +1055,10 @@
       "version": "1.7.0",
       "description": "AI-powered Uniswap developer tools: trading, hooks, drivers, and on-chain analysis across V2/V3/V4",
       "author": {
-        "name": "Uniswap"
+        "name": "Uniswap",
+        "github": "Uniswap"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "uniswap",
@@ -1230,25 +1072,20 @@
       "type": "dapp-official",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/uniswap-ai",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "skills/uniswap-ai"
         }
       },
-      "link": "https://github.com/Uniswap/uniswap-ai",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-ai",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-ai/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-ai/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-ai/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-ai/SKILL_SUMMARY.md"
+      "link": "https://github.com/Uniswap/uniswap-ai"
     },
     {
       "name": "uniswap-cca-configurator",
       "version": "1.0.0",
       "description": "Configure Continuous Clearing Auction (CCA) smart contract parameters for fair and transparent token distribution",
       "author": {
-        "name": "Uniswap Labs"
+        "name": "Uniswap Labs",
+        "github": "wkoutre"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "uniswap",
@@ -1261,25 +1098,20 @@
       "type": "dapp-official",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/uniswap-cca-configurator",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "skills/uniswap-cca-configurator"
         }
       },
-      "link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-cca-configurator",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-cca-configurator",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-cca-configurator/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-cca-configurator/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-cca-configurator/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-cca-configurator/SKILL_SUMMARY.md"
+      "link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-cca-configurator"
     },
     {
       "name": "uniswap-cca-deployer",
       "version": "1.0.0",
       "description": "Deploy Continuous Clearing Auction (CCA) smart contracts using the Factory pattern with CREATE2 for consistent addresses",
       "author": {
-        "name": "Uniswap Labs"
+        "name": "Uniswap Labs",
+        "github": "wkoutre"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "uniswap",
@@ -1293,25 +1125,20 @@
       "type": "dapp-official",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/uniswap-cca-deployer",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "skills/uniswap-cca-deployer"
         }
       },
-      "link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-cca-deployer",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-cca-deployer",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-cca-deployer/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-cca-deployer/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-cca-deployer/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-cca-deployer/SKILL_SUMMARY.md"
+      "link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-cca-deployer"
     },
     {
       "name": "uniswap-liquidity-planner",
       "version": "0.2.0",
       "description": "Plan and generate deep links for creating liquidity positions on Uniswap v2, v3, and v4",
       "author": {
-        "name": "Uniswap Labs"
+        "name": "Uniswap Labs",
+        "github": "wkoutre"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "uniswap",
@@ -1325,25 +1152,23 @@
       "type": "dapp-official",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/uniswap-liquidity-planner",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "skills/uniswap-liquidity-planner"
         }
       },
-      "link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-liquidity-planner",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-liquidity-planner",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-liquidity-planner/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-liquidity-planner/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-liquidity-planner/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-liquidity-planner/SKILL_SUMMARY.md"
+      "api_calls": [
+        "trade-api.gateway.uniswap.org"
+      ],
+      "link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-liquidity-planner"
     },
     {
       "name": "uniswap-pay-with-any-token",
       "version": "2.0.0",
       "description": "Pay HTTP 402 payment challenges using any token via Tempo CLI and Uniswap Trading API, supporting MPP and x402 protocols",
       "author": {
-        "name": "Uniswap Labs"
+        "name": "Uniswap Labs",
+        "github": "wkoutre"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "uniswap",
@@ -1357,25 +1182,23 @@
       "type": "dapp-official",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/uniswap-pay-with-any-token",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "skills/uniswap-pay-with-any-token"
         }
       },
-      "link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-pay-with-any-token",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-pay-with-any-token",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-pay-with-any-token/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-pay-with-any-token/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-pay-with-any-token/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-pay-with-any-token/SKILL_SUMMARY.md"
+      "api_calls": [
+        "trade-api.gateway.uniswap.org"
+      ],
+      "link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-pay-with-any-token"
     },
     {
       "name": "uniswap-swap-integration",
       "version": "1.3.0",
       "description": "Integrate Uniswap swaps into frontends, backends, and smart contracts via Trading API, Universal Router SDK, or direct contract calls",
       "author": {
-        "name": "Uniswap Labs"
+        "name": "Uniswap Labs",
+        "github": "wkoutre"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "uniswap",
@@ -1389,25 +1212,23 @@
       "type": "dapp-official",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/uniswap-swap-integration",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "skills/uniswap-swap-integration"
         }
       },
-      "link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-swap-integration",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-swap-integration",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-swap-integration/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-swap-integration/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-swap-integration/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-swap-integration/SKILL_SUMMARY.md"
+      "api_calls": [
+        "trade-api.gateway.uniswap.org"
+      ],
+      "link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-swap-integration"
     },
     {
       "name": "uniswap-swap-planner",
       "version": "0.2.1",
       "description": "Plan token swaps and generate Uniswap deep links across all supported chains, with token discovery and research workflows",
       "author": {
-        "name": "Uniswap Labs"
+        "name": "Uniswap Labs",
+        "github": "wkoutre"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "uniswap",
@@ -1421,25 +1242,23 @@
       "type": "dapp-official",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/uniswap-swap-planner",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "skills/uniswap-swap-planner"
         }
       },
-      "link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-swap-planner",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-swap-planner",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-swap-planner/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-swap-planner/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-swap-planner/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-swap-planner/SKILL_SUMMARY.md"
+      "api_calls": [
+        "trade-api.gateway.uniswap.org"
+      ],
+      "link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-swap-planner"
     },
     {
       "name": "uniswap-v4-security-foundations",
       "version": "1.1.0",
       "description": "Security-first guide for building Uniswap v4 hooks covering vulnerabilities, audit requirements, and best practices",
       "author": {
-        "name": "Uniswap Labs"
+        "name": "Uniswap Labs",
+        "github": "wkoutre"
       },
+      "license": "MIT",
       "category": "security",
       "tags": [
         "uniswap",
@@ -1453,25 +1272,20 @@
       "type": "dapp-official",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/uniswap-v4-security-foundations",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "skills/uniswap-v4-security-foundations"
         }
       },
-      "link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-v4-security-foundations",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-v4-security-foundations",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-v4-security-foundations/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-v4-security-foundations/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-v4-security-foundations/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-v4-security-foundations/SKILL_SUMMARY.md"
+      "link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-v4-security-foundations"
     },
     {
       "name": "uniswap-viem-integration",
       "version": "1.0.0",
       "description": "Integrate EVM blockchains using viem and wagmi for TypeScript and JavaScript applications",
       "author": {
-        "name": "Uniswap Labs"
+        "name": "Uniswap Labs",
+        "github": "wkoutre"
       },
+      "license": "MIT",
       "category": "utility",
       "tags": [
         "viem",
@@ -1485,25 +1299,20 @@
       "type": "dapp-official",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/uniswap-viem-integration",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "skills/uniswap-viem-integration"
         }
       },
-      "link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-viem-integration",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-viem-integration",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-viem-integration/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-viem-integration/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-viem-integration/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-viem-integration/SKILL_SUMMARY.md"
+      "link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-viem-integration"
     },
     {
       "name": "velodrome-v2",
       "version": "0.1.0",
       "description": "Swap tokens and manage classic AMM (volatile/stable) LP positions on Velodrome V2 on Optimism",
       "author": {
-        "name": "GeoGu360"
+        "name": "GeoGu360",
+        "github": "GeoGu360"
       },
+      "license": "MIT",
       "category": "defi-protocol",
       "tags": [
         "dex",
@@ -1517,9 +1326,7 @@
       "type": "community-developer",
       "components": {
         "skill": {
-          "repo": "okx/plugin-store",
-          "dir": "skills/velodrome-v2",
-          "commit": "55be2e53d687874449623f7c57a469c416f2c84b"
+          "dir": "."
         },
         "binary": {
           "repo": "okx/plugin-store",
@@ -1528,18 +1335,10 @@
           "release_tag": "plugins/velodrome-v2@0.1.0"
         }
       },
+      "api_calls": [
+        "optimism-rpc.publicnode.com"
+      ],
       "link": "https://github.com/okx/plugin-store",
-      "homepage": "https://github.com/okx/plugin-store/tree/main/skills/velodrome-v2",
-      "readme_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/velodrome-v2/README.md",
-      "skill_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/velodrome-v2/SKILL.md",
-      "summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/velodrome-v2/SUMMARY.md",
-      "skill_summary_url": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/velodrome-v2/SKILL_SUMMARY.md",
-      "build": {
-        "lang": "rust",
-        "source_repo": "null",
-        "source_commit": "null",
-        "binary_name": "velodrome-v2"
-      },
       "extra": {
         "chains": [
           "base"
