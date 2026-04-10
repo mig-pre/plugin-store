@@ -341,7 +341,8 @@
       "link": "https://github.com/okx/plugin-store",
       "extra": {
         "chains": [
-          "solana"
+          "solana",
+          "base"
         ],
         "protocols": [],
         "risk_level": "medium"
@@ -429,7 +430,8 @@
       "link": "https://github.com/okx/plugin-store",
       "extra": {
         "chains": [
-          "solana"
+          "solana",
+          "base"
         ],
         "protocols": [],
         "risk_level": "medium"
