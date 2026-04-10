@@ -16,6 +16,13 @@ pub async fn run(
     dry_run: bool,
     api_key: Option<&str>,
 ) -> Result<Value> {
+    // Validate inputs
+    onchainos::validate_evm_address(pt_address)?;
+    onchainos::validate_evm_address(yt_address)?;
+    onchainos::validate_evm_address(token_out)?;
+    onchainos::validate_amount(pt_amount, "--pt-amount")?;
+    onchainos::validate_amount(yt_amount, "--yt-amount")?;
+
     let wallet = from
         .map(|s| s.to_string())
         .unwrap_or_else(|| onchainos::resolve_wallet(chain_id).unwrap_or_default());
@@ -48,14 +55,21 @@ pub async fn run(
 
     let (calldata, router_to) = api::extract_sdk_calldata(&sdk_resp)?;
     let approvals = api::extract_required_approvals(&sdk_resp);
+    // Build token→amount map so each token is approved for its own exact amount
+    let pt_wei: u128 = pt_amount.parse().unwrap_or(u128::MAX);
+    let yt_wei: u128 = yt_amount.parse().unwrap_or(u128::MAX);
+    let mut token_amounts = std::collections::HashMap::new();
+    token_amounts.insert(pt_address.to_lowercase(), pt_wei);
+    token_amounts.insert(yt_address.to_lowercase(), yt_wei);
 
     let mut approve_hashes: Vec<String> = Vec::new();
     for (token_addr, spender) in &approvals {
+        let approve_amount = *token_amounts.get(&token_addr.to_lowercase()).unwrap_or(&u128::MAX);
         let approve_result = onchainos::erc20_approve(
             chain_id,
             token_addr,
             spender,
-            u128::MAX,
+            approve_amount,
             Some(&wallet),
             dry_run,
         )

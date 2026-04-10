@@ -15,6 +15,11 @@ pub async fn run(
     dry_run: bool,
     api_key: Option<&str>,
 ) -> Result<Value> {
+    // Validate inputs
+    onchainos::validate_evm_address(lp_address)?;
+    onchainos::validate_evm_address(token_out)?;
+    onchainos::validate_amount(lp_amount_in, "--lp-amount-in")?;
+
     let wallet = from
         .map(|s| s.to_string())
         .unwrap_or_else(|| onchainos::resolve_wallet(chain_id).unwrap_or_default());
@@ -41,6 +46,7 @@ pub async fn run(
 
     let (calldata, router_to) = api::extract_sdk_calldata(&sdk_resp)?;
     let approvals = api::extract_required_approvals(&sdk_resp);
+    let lp_amount_wei: u128 = lp_amount_in.parse().unwrap_or(u128::MAX);
 
     let mut approve_hashes: Vec<String> = Vec::new();
     for (token_addr, spender) in &approvals {
@@ -48,7 +54,7 @@ pub async fn run(
             chain_id,
             token_addr,
             spender,
-            u128::MAX,
+            lp_amount_wei,
             Some(&wallet),
             dry_run,
         )

@@ -1,5 +1,27 @@
 use serde_json::Value;
 
+/// Validate that an address looks like a well-formed EVM address (0x + 40 hex chars).
+pub fn validate_evm_address(addr: &str) -> anyhow::Result<()> {
+    if !addr.starts_with("0x") || addr.len() != 42 {
+        anyhow::bail!(
+            "Invalid EVM address '{}': expected 0x-prefixed 42-character hex string",
+            addr
+        );
+    }
+    Ok(())
+}
+
+/// Validate that a wei amount string is a positive integer.
+pub fn validate_amount(amount: &str, field: &str) -> anyhow::Result<()> {
+    let n: u128 = amount
+        .parse()
+        .map_err(|_| anyhow::anyhow!("Invalid amount for {}: '{}' is not a valid integer", field, amount))?;
+    if n == 0 {
+        anyhow::bail!("{} must be greater than zero", field);
+    }
+    Ok(())
+}
+
 /// Resolve the current logged-in wallet address for the given chain.
 /// Uses `wallet addresses --chain <id>` (EVM path).
 pub fn resolve_wallet(chain_id: u64) -> anyhow::Result<String> {
