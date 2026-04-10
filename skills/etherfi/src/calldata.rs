@@ -36,3 +36,34 @@ pub fn build_unwrap_calldata(shares: u128, receiver: &str) -> String {
         pad_address(receiver),
     )
 }
+
+/// Build calldata for LiquidityPool.requestWithdraw(address recipient, uint256 amountOfEEth)
+/// Selector: 0x397a1b28 (keccak256("requestWithdraw(address,uint256)")[0..4])
+///
+/// Burns the caller's eETH (via ERC-20 transferFrom) and mints a WithdrawRequestNFT.
+/// Caller must approve LiquidityPool to spend eETH before calling this.
+///
+/// ABI layout:
+///   [0..4]    selector 0x397a1b28
+///   [4..36]   recipient (address, padded to 32 bytes)
+///   [36..68]  amountOfEEth (uint256 = eETH amount in wei)
+pub fn build_request_withdraw_calldata(recipient: &str, amount_wei: u128) -> String {
+    format!(
+        "0x397a1b28{}{}",
+        pad_address(recipient),
+        pad_u256(amount_wei),
+    )
+}
+
+/// Build calldata for WithdrawRequestNFT.claimWithdraw(uint256 tokenId)
+/// Selector: 0xb13acedd (keccak256("claimWithdraw(uint256)")[0..4])
+///
+/// Burns the WithdrawRequestNFT and sends ETH to the recipient.
+/// Only callable after the withdrawal request has been finalized.
+///
+/// ABI layout:
+///   [0..4]    selector 0xb13acedd
+///   [4..36]   tokenId (uint256)
+pub fn build_claim_withdraw_calldata(token_id: u64) -> String {
+    format!("0xb13acedd{:0>64x}", token_id)
+}

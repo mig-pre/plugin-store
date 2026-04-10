@@ -16,6 +16,12 @@ pub fn liquidity_pool_address() -> &'static str {
     "0x308861A430be4cce5502d0A12724771Fc6DaF216"
 }
 
+/// ether.fi WithdrawRequestNFT — minted by LiquidityPool.requestWithdraw(),
+/// burned by claimWithdraw() to release ETH after finalization.
+pub fn withdraw_request_nft_address() -> &'static str {
+    "0x7d5706f6ef3F89B3951E23e557CDFBC3239D4E2c"
+}
+
 /// Ethereum mainnet public RPC endpoint.
 pub fn rpc_url() -> &'static str {
     "https://ethereum-rpc.publicnode.com"

@@ -1,7 +1,7 @@
 schema_version: 1
 name: etherfi
-version: 0.1.0
-description: Liquid restaking on Ethereum — deposit ETH to receive eETH, wrap eETH to weETH (ERC-4626), and check positions with APY
+version: 0.2.0
+description: Liquid restaking on Ethereum — deposit ETH to receive eETH, wrap/unwrap eETH/weETH (ERC-4626), unstake eETH back to ETH, and check positions with APY
 author:
   name: GeoGu360
   github: GeoGu360
