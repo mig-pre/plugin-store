@@ -36,6 +36,6 @@ pub fn chain_name(chain_id: u64) -> &'static str {
     match chain_id {
         1 => "Ethereum Mainnet",
         8453 => "Base",
-        _ => "Unknown",
+        _ => "Unknown Chain",
     }
 }
