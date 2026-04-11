@@ -39,6 +39,10 @@ pub async fn run(args: AddLiquidityArgs) -> Result<()> {
     let amount0_desired = crate::config::human_to_minimal(amount_a_str, decimals0)?;
     let amount1_desired = crate::config::human_to_minimal(amount_b_str, decimals1)?;
 
+    if amount0_desired == 0 && amount1_desired == 0 {
+        anyhow::bail!("Both amounts are zero — provide at least one non-zero amount.");
+    }
+
     let spacing = crate::config::tick_spacing(args.fee)?;
 
     // Resolve tick range + fetch pool slot0 (needed for both auto-tick and slippage math)
