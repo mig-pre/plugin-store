@@ -20,6 +20,42 @@ pub async fn run(
     auto_approve: bool,
     dry_run: bool,
 ) -> Result<()> {
+    // Parse USDC amount early so we can enforce the minimum order size
+    // check even on dry-run (the agent needs to know before placing).
+    let usdc_amount: f64 = amount.parse().context("invalid amount")?;
+    if usdc_amount <= 0.0 {
+        bail!("amount must be positive");
+    }
+
+    let client = Client::new();
+
+    // Resolve market (no auth required — public API)
+    let (condition_id, token_id, neg_risk) =
+        resolve_market_token(&client, market_id, outcome).await?;
+
+    // Fetch the order book to obtain min_order_size (and reuse for market orders later).
+    let book = get_orderbook(&client, &token_id).await?;
+
+    // ── Feature 1: minimum order size check ─────────────────────────────────
+    // min_order_size from the order book is expressed in USDC (collateral).
+    if let Some(min_str) = &book.min_order_size {
+        if let Ok(min_size) = min_str.parse::<f64>() {
+            if min_size > 0.0 && usdc_amount < min_size {
+                let msg = format!(
+                    "Amount {:.2} USDC is below market minimum of {:.2} USDC. \
+                     Re-run with --amount {:.2} to place the minimum order.",
+                    usdc_amount, min_size, min_size
+                );
+                println!(
+                    "{}",
+                    serde_json::json!({ "ok": false, "error": msg })
+                );
+                std::process::exit(1);
+            }
+        }
+    }
+    // ── End Feature 1 ────────────────────────────────────────────────────────
+
     if dry_run {
         println!(
             "{}",
@@ -37,8 +73,6 @@ pub async fn run(
         return Ok(());
     }
 
-    let client = Client::new();
-
     // onchainos wallet is the signer (approved operator of proxy wallet after polymarket.com onboarding)
     let signer_addr = get_wallet_address().await?;
 
@@ -49,19 +83,9 @@ pub async fn run(
     // No proxy wallet or polymarket.com onboarding required.
     let maker_addr = signer_addr.clone();
 
-    // Resolve market
-    let (condition_id, token_id, neg_risk) =
-        resolve_market_token(&client, market_id, outcome).await?;
-
     // Get tick size and market fee rate
     let tick_size = get_tick_size(&client, &token_id).await?;
     let fee_rate_bps = get_market_fee(&client, &condition_id).await.unwrap_or(0);
-
-    // Parse USDC amount
-    let usdc_amount: f64 = amount.parse().context("invalid amount")?;
-    if usdc_amount <= 0.0 {
-        bail!("amount must be positive");
-    }
 
     // Determine price (limit or market)
     let limit_price = if let Some(p) = price {
@@ -74,7 +98,7 @@ pub async fn run(
         }
         rp
     } else {
-        let book = get_orderbook(&client, &token_id).await?;
+        // Reuse the order book already fetched for the min-size check above.
         compute_buy_worst_price(&book.asks, usdc_amount)
             .ok_or_else(|| anyhow::anyhow!("No asks available in the order book"))?
     };

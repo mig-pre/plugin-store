@@ -75,6 +75,10 @@ enum Commands {
         /// Simulate without submitting order or approval
         #[arg(long)]
         dry_run: bool,
+
+        /// Confirm a previously gated action (reserved for future use)
+        #[arg(long)]
+        confirm: bool,
     },
 
     /// Sell YES or NO shares in a market (signs via onchainos wallet)
@@ -106,6 +110,10 @@ enum Commands {
         /// Simulate without submitting order or approval
         #[arg(long)]
         dry_run: bool,
+
+        /// Confirm a low-price market sell that was previously gated
+        #[arg(long)]
+        confirm: bool,
     },
 
     /// Cancel a single open order by order ID (signs via onchainos wallet)
@@ -146,6 +154,7 @@ async fn main() {
             order_type,
             approve,
             dry_run,
+            confirm: _confirm,
         } => {
             commands::buy::run(&market_id, &outcome, &amount, price, &order_type, approve, dry_run).await
         }
@@ -157,8 +166,9 @@ async fn main() {
             order_type,
             approve,
             dry_run,
+            confirm,
         } => {
-            commands::sell::run(&market_id, &outcome, &shares, price, &order_type, approve, dry_run).await
+            commands::sell::run(&market_id, &outcome, &shares, price, &order_type, approve, dry_run, confirm).await
         }
         Commands::Cancel { order_id, market, all } => {
             if all {

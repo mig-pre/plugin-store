@@ -298,7 +298,7 @@ polymarket buy --market-id 0xabc... --outcome no --amount 100
 ### `sell` — Sell Outcome Shares
 
 ```
-polymarket sell --market-id <id> --outcome <outcome> --shares <amount> [--price <0-1>] [--order-type <GTC|FOK>] [--approve]
+polymarket sell --market-id <id> --outcome <outcome> --shares <amount> [--price <0-1>] [--order-type <GTC|FOK>] [--approve] [--confirm]
 ```
 
 **Flags:**
@@ -310,6 +310,7 @@ polymarket sell --market-id <id> --outcome <outcome> --shares <amount> [--price 
 | `--price` | Limit price in (0, 1). Omit for market order (FOK) | — |
 | `--order-type` | `GTC` (resting limit) or `FOK` (fill-or-kill) | `GTC` |
 | `--approve` | Force CTF token approval before placing | false |
+| `--confirm` | Confirm a low-price market sell gated by the bad-price warning | false |
 
 **Auth required:** Yes — onchainos wallet; EIP-712 order signing via `onchainos sign-message --type eip712`
 
@@ -321,10 +322,13 @@ polymarket sell --market-id <id> --outcome <outcome> --shares <amount> [--price 
 
 > ⚠️ **Market order slippage**: When `--price` is omitted, the order is a FOK market order that fills at the best available bid. On thin markets, the received price may be well below mid. Use `--price` for any sell above a few shares to avoid slippage.
 
+> ⚠️ **Bad-price confirmation gate**: When `--price` is omitted (market order), the plugin checks the best available bid price. If it is below **0.50 per share**, the order is **not placed**. Instead the command outputs `{"ok": false, "requires_confirmation": true, "warning": "..."}` and exits 0. Re-run with `--confirm` to proceed. This gate is intentionally skipped when `--price` is provided, as the user has already acknowledged the price.
+
 **Example:**
 ```
 polymarket sell --market-id will-btc-hit-100k-by-2025 --outcome yes --shares 100 --price 0.72
 polymarket sell --market-id 0xabc... --outcome no --shares 50
+polymarket sell --market-id 0xabc... --outcome no --shares 50 --confirm
 ```
 
 ---

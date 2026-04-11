@@ -18,6 +18,7 @@ use super::buy::resolve_market_token;
 /// outcome: outcome label, case-insensitive (e.g. "yes", "no", "trump")
 /// shares: number of token shares to sell (human-readable)
 /// price: limit price in [0, 1], or None for market order (FOK)
+/// confirm: skip the bad-price confirmation gate
 pub async fn run(
     market_id: &str,
     outcome: &str,
@@ -26,6 +27,7 @@ pub async fn run(
     order_type: &str,
     auto_approve: bool,
     dry_run: bool,
+    confirm: bool,
 ) -> Result<()> {
     if dry_run {
         println!(
@@ -68,6 +70,8 @@ pub async fn run(
     }
 
     // Determine price
+    // Track whether this is a market order (no explicit price) for the bad-price gate.
+    let is_market_order = price.is_none();
     let limit_price = if let Some(p) = price {
         if p <= 0.0 || p >= 1.0 {
             bail!("price must be in range (0, 1)");
@@ -82,6 +86,27 @@ pub async fn run(
         compute_sell_worst_price(&book.bids, share_amount)
             .ok_or_else(|| anyhow::anyhow!("No bids available in the order book"))?
     };
+
+    // ── Feature 2: bad-price confirmation gate ───────────────────────────────
+    // Only applies to market orders (no explicit --price). If the best available
+    // bid is below 50 cents per share, require --confirm to proceed.
+    if is_market_order && limit_price < 0.5 && !confirm {
+        let warning = format!(
+            "Market sell price is {:.2} per share (below 50%). \
+             Re-run with --confirm to proceed with this sell.",
+            limit_price
+        );
+        println!(
+            "{}",
+            serde_json::json!({
+                "ok": false,
+                "requires_confirmation": true,
+                "warning": warning
+            })
+        );
+        return Ok(());
+    }
+    // ── End Feature 2 ────────────────────────────────────────────────────────
 
     // Check CTF token balance
     let token_balance = get_balance_allowance(&client, &signer_addr, &creds, "CONDITIONAL", Some(&token_id)).await?;
