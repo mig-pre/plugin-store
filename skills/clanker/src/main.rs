@@ -69,12 +69,8 @@ enum Commands {
         address: String,
     },
 
-    /// Deploy a new ERC-20 token via Clanker REST API (requires partner API key)
+    /// Deploy a new ERC-20 token directly on-chain via the Clanker V4 factory (no API key required)
     DeployToken {
-        /// Clanker partner API key (or set CLANKER_API_KEY env var)
-        #[arg(long, default_value = "")]
-        api_key: String,
-
         /// Token name (e.g. "SkyDog")
         #[arg(long)]
         name: String,
@@ -90,18 +86,6 @@ enum Commands {
         /// Token image URL (IPFS or HTTPS)
         #[arg(long)]
         image_url: Option<String>,
-
-        /// Token description
-        #[arg(long)]
-        description: Option<String>,
-
-        /// Percentage of supply to lock in vault (0-90)
-        #[arg(long)]
-        vault_percentage: Option<u32>,
-
-        /// Vault lockup duration in days (minimum 7 if vault_percentage is set)
-        #[arg(long)]
-        vault_lockup_days: Option<u32>,
     },
 
     /// Claim LP fee rewards for a Clanker token you created
@@ -147,31 +131,17 @@ async fn main() {
         }
 
         Commands::DeployToken {
-            api_key,
             name,
             symbol,
             from,
             image_url,
-            description,
-            vault_percentage,
-            vault_lockup_days,
         } => {
-            // Resolve API key from flag or environment variable
-            let resolved_key = if api_key.is_empty() {
-                std::env::var("CLANKER_API_KEY").unwrap_or_default()
-            } else {
-                api_key
-            };
             commands::deploy_token::run(
                 cli.chain,
-                &resolved_key,
                 &name,
                 &symbol,
                 from.as_deref(),
                 image_url.as_deref(),
-                description.as_deref(),
-                vault_percentage,
-                vault_lockup_days,
                 cli.dry_run,
             )
             .await
