@@ -304,9 +304,13 @@ pancakeswap remove-liquidity --token-id 345455 --liquidity-pct 50 --slippage 1.0
 
 ### v0.2.2 (2026-04-11)
 
-- **fix**: Add `wait_and_check_receipt` — polls `eth_getTransactionReceipt` after every `mint()` broadcast and returns an error if the transaction reverts on-chain (status=0x0). Previously, on-chain reverts (e.g. price slippage check failure) were silently reported as "LP position minted successfully!".
-- **fix**: Propagate `ok:false` from `onchainos wallet contract-call` as an immediate error instead of swallowing the error response and continuing. Previously, simulation rejections produced a `"pending"` tx hash, which caused a 60 s poll timeout before the operation appeared to succeed.
-- **test**: Add 7 regression tests in `onchainos::tests` covering the receipt-check and hash-guard paths; two tests poll real BSC RPC endpoints using confirmed on-chain tx hashes (one reverted, one successful).
+- **fix**: Add `wait_and_check_receipt` — polls `eth_getTransactionReceipt` after every `mint()` broadcast and returns an error if the transaction reverts on-chain (status=0x0). Previously, on-chain reverts were silently reported as "LP position minted successfully!".
+- **fix**: Propagate `ok:false` from `onchainos wallet contract-call` as an immediate error. Previously, simulation rejections produced a `"pending"` tx hash, causing a 60 s poll timeout that appeared as a soft success.
+- **fix**: Input validation guards — bail before any network calls for: both amounts zero (`add-liquidity`), `liquidity-pct` out of 1–100 range (`remove-liquidity`), zero amount or same token in/out (`swap`, `quote`).
+- **fix**: `remove-liquidity` 100% precision — f64 cast of large u128 liquidity values caused rounding that exceeded actual position liquidity, reverting on-chain. Now uses exact integer value for 100% removal.
+- **fix**: `positions` on-chain enumeration capped at 100 results with a warning — previously hung indefinitely on high-balance addresses (e.g. burn address).
+- **fix**: `quote` no-pool error replaced raw JSON RPC dump with a clean human-readable message.
+- **test**: 7 regression tests in `onchainos::tests`; two tests poll real BSC RPC using confirmed on-chain tx hashes (one reverted `0x8b267fbf...`, one successful `0xce2e4fa2...`).
 
 ### v0.2.1 (2026-04-11)
 
