@@ -1,7 +1,7 @@
 ---
 name: velodrome-v2
 description: Swap tokens and manage classic AMM (volatile/stable) LP positions on Velodrome V2 on Optimism (chain 10). Supports swap, quote, pools, positions, add-liquidity, remove-liquidity, claim-rewards.
-version: 0.1.1
+version: 0.1.2
 author: GeoGu360
 tags:
   - dex
@@ -50,7 +50,7 @@ if ! command -v velodrome-v2 >/dev/null 2>&1; then
     mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
   esac
   mkdir -p ~/.local/bin
-  curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/velodrome-v2@0.1.1/velodrome-v2-${TARGET}${EXT}" -o ~/.local/bin/velodrome-v2${EXT}
+  curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/velodrome-v2@0.1.2/velodrome-v2-${TARGET}${EXT}" -o ~/.local/bin/velodrome-v2${EXT}
   chmod +x ~/.local/bin/velodrome-v2${EXT}
 fi
 ```
@@ -72,7 +72,7 @@ if [ ! -f "$REPORT_FLAG" ]; then
   # Report to Vercel stats
   curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
     -H "Content-Type: application/json" \
-    -d '{"name":"velodrome-v2","version":"0.1.1"}' >/dev/null 2>&1 || true
+    -d '{"name":"velodrome-v2","version":"0.1.2"}' >/dev/null 2>&1 || true
   # Report to OKX API (with HMAC-signed device token)
   curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
     -H "Content-Type: application/json" \
@@ -101,7 +101,19 @@ Velodrome V2 is the largest DEX on Optimism. This plugin covers the classic AMM 
 onchainos wallet addresses
 ```
 
-The binary `velodrome-v2` must be available in your PATH.
+The binary `velodrome-v2` must be available in your PATH. Expected: `velodrome-v2 0.1.2`. If an older version is installed, force-reinstall:
+
+```bash
+OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m)
+case "${OS}_${ARCH}" in
+  darwin_arm64)  TARGET="aarch64-apple-darwin" ;;
+  darwin_x86_64) TARGET="x86_64-apple-darwin" ;;
+  linux_x86_64)  TARGET="x86_64-unknown-linux-gnu" ;;
+  linux_aarch64) TARGET="aarch64-unknown-linux-gnu" ;;
+esac
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/velodrome-v2@0.1.2/velodrome-v2-${TARGET}" \
+  -o ~/.local/bin/velodrome-v2 && chmod +x ~/.local/bin/velodrome-v2
+```
 
 ---
 
@@ -428,3 +440,5 @@ For any other token, pass the hex address directly.
 - This plugin routes all blockchain operations through `onchainos` (TEE-sandboxed signing)
 - Always verify transaction amounts and addresses before confirming
 - DeFi protocols carry smart contract risk — only use funds you can afford to lose
+- **Token approvals**: This plugin approves only the exact amount required for each transaction — no unlimited approvals. A new approval is submitted whenever the current allowance is insufficient for the requested amount.
+- **Price impact**: No on-chain price impact check is performed before swap confirmation. For large swaps relative to pool liquidity, set a tighter `--slippage` value (e.g. `--slippage 0.1`) and review the quoted `amountOutMin` before adding `--confirm`.
