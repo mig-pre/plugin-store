@@ -117,16 +117,29 @@ pub async fn run(
         eprintln!("[polymarket] Approval tx: {}", tx_hash);
     }
 
-    // Build order amounts — compute shares first, then back-compute USDC from
-    // price × rounded_shares to guarantee the maker/taker ratio is exactly limit_price.
-    // (Rounding shares and USDC independently produces a skewed ratio that fails API
-    // tick-size validation, e.g. 10_000_000 / 10_200_000 = 50/51 ≠ 0.98.)
-    let shares = usdc_amount / limit_price;
-    let rounded_shares = round_size_down(shares);
-    let taker_amount_raw = to_token_units(rounded_shares);
-    let actual_usdc = limit_price * rounded_shares;
-    let rounded_usdc = round_amount_down(actual_usdc, tick_size);
-    let maker_amount_raw = to_token_units(rounded_usdc);
+    // Build order amounts using integer arithmetic to guarantee maker/taker == limit_price exactly.
+    //
+    // Polymarket requires:
+    //   maker_raw (USDC, 6 dec) divisible by 10,000  → max 2 USDC decimal places
+    //   taker_raw (shares, 6 dec) divisible by 100   → max 4 share decimal places
+    //   maker_raw / taker_raw == limit_price exactly
+    //
+    // Express price as integer cents (e.g. 0.48 → 48). Then:
+    //   maker_raw = price_cents × taker_raw / 100
+    // For maker_raw to be a multiple of 10,000, taker_raw must be a multiple of:
+    //   step = 1,000,000 / gcd(price_cents, 1,000,000)
+    // We snap taker_raw DOWN to the nearest step, then maker_raw follows exactly.
+    fn gcd(mut a: u128, mut b: u128) -> u128 {
+        while b != 0 { let t = b; b = a % b; a = t; }
+        a
+    }
+    let price_cents = (limit_price * 100.0).round() as u128;
+    let g = gcd(price_cents, 1_000_000);
+    let step = (1_000_000 / g).max(100); // also satisfies the ÷100 taker constraint
+
+    let max_taker_raw = (usdc_amount / limit_price * 1_000_000.0).floor() as u128;
+    let taker_amount_raw = (max_taker_raw / step) * step;
+    let maker_amount_raw = price_cents * taker_amount_raw / 100;
 
     let salt = rand_salt();
 
@@ -136,8 +149,8 @@ pub async fn run(
         signer: signer_addr.clone(),
         taker: "0x0000000000000000000000000000000000000000".to_string(),
         token_id: token_id.clone(),
-        maker_amount: maker_amount_raw,
-        taker_amount: taker_amount_raw,
+        maker_amount: maker_amount_raw as u64,
+        taker_amount: taker_amount_raw as u64,
         expiration: 0,
         nonce: 0,
         fee_rate_bps,
@@ -188,8 +201,8 @@ pub async fn run(
             "side": "BUY",
             "order_type": order_type.to_uppercase(),
             "limit_price": limit_price,
-            "usdc_amount": rounded_usdc,
-            "shares": rounded_shares,
+            "usdc_amount": maker_amount_raw as f64 / 1_000_000.0,
+            "shares": taker_amount_raw as f64 / 1_000_000.0,
             "tx_hashes": resp.tx_hashes,
         }
     });
