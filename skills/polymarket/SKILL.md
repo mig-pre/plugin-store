@@ -478,6 +478,65 @@ export POLYMARKET_PASSPHRASE=<passphrase>
 
 ---
 
+## Order Type Selection Guide
+
+There are four effective order types. The agent should match user intent to the right one — and proactively suggest upgrades where applicable.
+
+| Order type | Flags | When to use |
+|------------|-------|-------------|
+| **FOK** (Fill-or-Kill) | *(omit `--price`)* | User wants to trade immediately at the best available price. Fills in full or not at all. |
+| **GTC** (Good Till Cancelled) | `--price <x>` | User sets a limit price and is happy to wait indefinitely for a fill. Default for limit orders. |
+| **POST_ONLY** (Maker-only GTC) | `--price <x> --post-only` | User wants guaranteed maker status on a resting limit. Qualifies for Polymarket maker rebates (up to 50% of fees returned daily). |
+| **GTD** (Good Till Date) | `--price <x> --expires <unix_ts>` | User wants a resting limit that auto-cancels at a specific time. |
+
+### When to proactively suggest POST_ONLY
+
+When a user places a resting limit order (i.e. `--price` is provided and the price is **below the best ask** for a buy, or **above the best bid** for a sell), mention maker rebates and offer `--post-only`:
+
+> *"Since this is a resting limit below the current ask, it will sit in the order book as a maker order. Polymarket returns up to 50% of fees to makers daily — would you like me to add `--post-only` to guarantee maker status and qualify for rebates?"*
+
+Do **not** suggest `--post-only` for FOK orders (incompatible) or for limit prices at or above the best ask (those are marketable and would be rejected by the flag).
+
+### When to proactively suggest GTD
+
+When the user expresses a time constraint on their order — phrases like:
+
+- *"cancel if it doesn't fill by end of day"*
+- *"good for the next hour"*
+- *"don't leave this open overnight"*
+- *"only valid until [time]"*
+- *"auto-cancel at [time]"*
+
+Compute the target Unix timestamp and suggest `--expires`:
+
+> *"I can set this to auto-cancel at [time] using `--expires $(date -d '[target]' +%s)`. Want me to add that?"*
+
+Minimum expiry is **90 seconds** from now. For human-friendly inputs ("1 hour", "end of day"), convert to a Unix timestamp before passing to the flag.
+
+### When to combine POST_ONLY + GTD
+
+If the user wants both maker status and a time limit, combine both flags:
+
+```
+polymarket buy --market-id <id> --outcome yes --amount <usdc> --price <x> --post-only --expires <unix_ts>
+```
+
+### Decision tree (quick reference)
+
+```
+User wants to trade:
+├── Immediately (no price preference)         → FOK        (omit --price)
+└── At a specific price (resting limit)
+    ├── No time limit
+    │   ├── Fee savings matter?               → POST_ONLY  (--price x --post-only)
+    │   └── No preference                    → GTC        (--price x)
+    └── With a time limit
+        ├── Fee savings matter?               → GTD + POST_ONLY  (--price x --post-only --expires ts)
+        └── No preference                    → GTD        (--price x --expires ts)
+```
+
+---
+
 ## Command Routing Table
 
 | User Intent | Command |
@@ -486,10 +545,14 @@ export POLYMARKET_PASSPHRASE=<passphrase>
 | Find a specific market | `polymarket get-market --market-id <slug_or_condition_id>` |
 | Check my open positions | `polymarket get-positions` |
 | Check positions for specific wallet | `polymarket get-positions --address <addr>` |
-| Buy YES shares | `polymarket buy --market-id <id> --outcome yes --amount <usdc>` |
-| Buy NO shares | `polymarket buy --market-id <id> --outcome no --amount <usdc>` |
-| Place limit buy order | `polymarket buy --market-id <id> --outcome yes --amount <usdc> --price <0-1>` |
-| Sell YES shares | `polymarket sell --market-id <id> --outcome yes --shares <n>` |
+| Buy YES/NO shares immediately (market order) | `polymarket buy --market-id <id> --outcome <yes\|no> --amount <usdc>` |
+| Place a resting limit buy | `polymarket buy --market-id <id> --outcome yes --amount <usdc> --price <0-1>` |
+| Place a maker-only limit buy (rebates) | `polymarket buy ... --price <x> --post-only` |
+| Place a time-limited limit buy | `polymarket buy ... --price <x> --expires <unix_ts>` |
+| Sell shares immediately (market order) | `polymarket sell --market-id <id> --outcome yes --shares <n>` |
+| Place a resting limit sell | `polymarket sell --market-id <id> --outcome yes --shares <n> --price <0-1>` |
+| Place a maker-only limit sell (rebates) | `polymarket sell ... --price <x> --post-only` |
+| Place a time-limited limit sell | `polymarket sell ... --price <x> --expires <unix_ts>` |
 | Cancel a specific order | `polymarket cancel --order-id <0x...>` |
 | Cancel all orders for market | `polymarket cancel --market <condition_id>` |
 | Cancel all open orders | `polymarket cancel --all` |
