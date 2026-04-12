@@ -257,7 +257,7 @@ polymarket list-markets [--limit <N>] [--keyword <text>]
 
 **Output fields:** `question`, `condition_id`, `slug`, `end_date`, `active`, `accepting_orders`, `neg_risk`, `yes_price`, `no_price`, `yes_token_id`, `no_token_id`, `volume_24hr`, `liquidity`
 
-**Geo-access check:** Every `list-markets` call silently probes the Polymarket CLOB. If the CLOB returns HTTP 403 or 451, an `access_warning` field is added to the output. **If `access_warning` is present, immediately surface it to the user and do not proceed with `buy`, `sell`, or any USDC top-up.** The check fails open — a network error does not add a warning or block the command.
+**Geo-access check:** Every `list-markets` call silently sends an empty `POST /order` to the CLOB with no auth headers. The CLOB applies geo-checks before auth on this endpoint — a restricted IP returns HTTP 403 with `"Trading restricted in your region"` in the body; an unrestricted IP returns 400/401/422. If the geo-restriction message is detected, an `access_warning` field is added to the output. **If `access_warning` is present, immediately surface it to the user and do not proceed with `buy`, `sell`, or any USDC top-up.** Fails open on network errors.
 
 **Example:**
 ```
@@ -686,7 +686,7 @@ Fees are deducted by the exchange from the received amount. The `feeRateBps` fie
 
 ### v0.2.5 (2026-04-12)
 
-- **feat**: `list-markets` now includes a geo-access check on every call. The Polymarket CLOB is probed silently; if it returns HTTP 403 or 451, an `access_warning` field is added to the output before any markets are shown. Agents must surface this warning immediately and must not proceed with trading or USDC top-up. Fails open — network errors do not block market browsing.
+- **feat**: `list-markets` now includes a geo-access check on every call. Sends an empty `POST /order` to the CLOB with no auth headers — the CLOB applies geo-checks before auth on this endpoint, returning HTTP 403 + `"Trading restricted in your region"` for blocked IPs and 400/401/422 for unrestricted ones. If the geo-restriction message is detected, an `access_warning` field is added to the output. Agents must surface this warning immediately and must not proceed with trading or USDC top-up. Fails open on network errors. Tested live on both restricted and unrestricted IPs.
 - **feat**: `redeem --market-id <id>` command — redeems winning outcome tokens after a market resolves by calling `redeemPositions` on the Gnosis CTF contract with `indexSets=[1,2]`. The CTF contract pays out winning tokens and silently no-ops for losing ones, so passing both is safe. `--dry-run` previews the call without submitting. Not supported for `neg_risk: true` markets (use Polymarket web UI).
 - **fix (critical)**: `sell` on `neg_risk: true` markets no longer always fails with "allowance not enough". `approve_ctf` now approves both `NEG_RISK_CTF_EXCHANGE` and `NEG_RISK_ADAPTER` for neg_risk markets, mirroring the `approve_usdc` pattern already used by `buy`.
 - **fix**: `sell` no longer fires a redundant `setApprovalForAll` transaction when CTF tokens are already approved. Approval state is now read via direct on-chain `isApprovedForAll` eth_call to the Polygon RPC before deciding whether to approve.
