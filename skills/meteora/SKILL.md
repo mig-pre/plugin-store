@@ -1,7 +1,7 @@
 ---
 name: meteora
 description: "Meteora DLMM plugin for Solana — search liquidity pools, get swap quotes, view user positions, execute token swaps, add and remove liquidity"
-version: "0.3.2"
+version: "0.3.3"
 tags:
   - solana
   - dex
@@ -44,7 +44,7 @@ if ! command -v meteora >/dev/null 2>&1; then
     mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
   esac
   mkdir -p ~/.local/bin
-  curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/meteora@0.3.2/meteora-${TARGET}${EXT}" -o ~/.local/bin/meteora${EXT}
+  curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/meteora@0.3.3/meteora-${TARGET}${EXT}" -o ~/.local/bin/meteora${EXT}
   chmod +x ~/.local/bin/meteora${EXT}
 fi
 ```
@@ -63,7 +63,7 @@ if [ ! -f "$REPORT_FLAG" ]; then
   unset _K
   curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
     -H "Content-Type: application/json" \
-    -d '{"name":"meteora","version":"0.3.2"}' >/dev/null 2>&1 || true
+    -d '{"name":"meteora","version":"0.3.3"}' >/dev/null 2>&1 || true
   curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
     -H "Content-Type: application/json" \
     -d '{"pluginName":"meteora","divId":"'"$DIV_ID"'"}' >/dev/null 2>&1 || true
@@ -76,10 +76,11 @@ fi
 
 ## Architecture
 
-- **Read operations** (`get-pools`, `get-pool-detail`, `get-swap-quote`, `get-user-positions`) → direct REST API calls to `https://dlmm.datapi.meteora.ag`; no wallet or confirmation needed
+- **Read operations** (`get-pools`, `get-pool-detail`, `get-swap-quote`) → direct REST API calls to `https://dlmm.datapi.meteora.ag`; no wallet or confirmation needed
+- **`get-user-positions`** → queries on-chain via Solana `getProgramAccounts` + BinArray accounts; computes token amounts directly from chain state; no wallet or confirmation needed
 - **Swap** (`swap`) → after user confirmation, executes via `onchainos swap execute --chain solana`; CLI handles signing and broadcast automatically
-- **Add liquidity** (`add-liquidity`) → builds a Solana transaction natively in Rust (initialize position + add liquidity instructions), submits via `onchainos wallet contract-call --chain 501`; uses SpotBalanced strategy distributing tokens across 70-bin position centered at active bin
-- **Remove liquidity** (`remove-liquidity`) → builds a `removeLiquidityByRange` instruction and optionally a `closePosition` instruction, submits via `onchainos wallet contract-call --chain 501`; 600k compute budget requested
+- **Add liquidity** (`add-liquidity`) → builds a Solana transaction natively in Rust (initialize position + add liquidity instructions), submits via `onchainos wallet contract-call --chain 501`; uses SpotBalanced strategy distributing tokens across 70-bin position centered at active bin; auto-wraps SOL to WSOL when needed; retries once on simulation errors
+- **Remove liquidity** (`remove-liquidity`) → builds `removeLiquidityByRange` + optional `claimFee` + `closePositionIfEmpty` instructions, submits via `onchainos wallet contract-call --chain 501`; 600k compute budget requested
 
 ## Supported Operations
 
@@ -133,13 +134,20 @@ meteora get-swap-quote --from-token So11111111111111111111111111111111111111112 
 
 ### get-user-positions — View LP positions
 
-View a user's DLMM LP positions including token amounts, bin ranges, and unclaimed fees.
+View a user's DLMM LP positions with token amounts computed from on-chain BinArray data.
 
 ```
 meteora get-user-positions [--wallet <address>] [--pool <pool_address>]
 ```
 
 If `--wallet` is omitted, uses the currently logged-in onchainos wallet.
+
+**Output fields per position:** `position_address`, `pool_address`, `owner`,
+  `token_x_mint`, `token_y_mint`, `token_x_amount`, `token_y_amount`,
+  `token_x_decimals`, `token_y_decimals`,
+  `bin_range` (lower_bin_id / upper_bin_id), `active_bins`, `source`
+
+> Use `position_address` directly as `--position` when calling `remove-liquidity`.
 
 **Examples:**
 ```
