@@ -444,3 +444,4 @@ For Arbitrum One (42161): WETH `0x82aF49447D8a07e3bd95BD0d56f35241523fBab1`, USD
 - **feat**: Add Arbitrum One (chain 42161) support
 - **fix**: `remove-liquidity --dry-run` showed zero-address LP balance instead of user's real balance when `--from` was not passed
 - **fix**: `remove-liquidity` `expectedTokenA/B` overflowed u128 for large pools (BSC BNB/USDT), producing garbage withdrawal estimates
+
