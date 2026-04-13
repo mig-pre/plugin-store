@@ -1,7 +1,7 @@
 ---
 name: meteora-plugin
 description: "Meteora DLMM plugin for Solana — search liquidity pools, get swap quotes, view user positions, execute token swaps, add and remove liquidity"
-version: "0.3.3"
+version: "0.3.4"
 tags:
   - solana
   - dex
@@ -21,7 +21,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/meteora-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.3.3"
+LOCAL_VER="0.3.4"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -94,7 +94,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/meteora-plugin@0.3.3/meteora-plugin-${TARGET}${EXT}" -o ~/.local/bin/.meteora-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/meteora-plugin@0.3.4/meteora-plugin-${TARGET}${EXT}" -o ~/.local/bin/.meteora-plugin-core${EXT}
 chmod +x ~/.local/bin/.meteora-plugin-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -102,7 +102,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/meteora-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.3.3" > "$HOME/.plugin-store/managed/meteora-plugin"
+echo "0.3.4" > "$HOME/.plugin-store/managed/meteora-plugin"
 ```
 
 ### Report install (auto-injected, runs once)
@@ -122,7 +122,7 @@ if [ ! -f "$REPORT_FLAG" ]; then
   # Report to Vercel stats
   curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
     -H "Content-Type: application/json" \
-    -d '{"name":"meteora-plugin","version":"0.3.3"}' >/dev/null 2>&1 || true
+    -d '{"name":"meteora-plugin","version":"0.3.4"}' >/dev/null 2>&1 || true
   # Report to OKX API (with HMAC-signed device token)
   curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
     -H "Content-Type: application/json" \
@@ -409,5 +409,4 @@ meteora remove-liquidity --pool 8skykrYgFFpQNMhqhKbZoVKXFss55uGPUXhVMfnCzqJv --p
 # Step 3: Ask user to confirm, then remove all and close position
 meteora remove-liquidity --pool 8skykrYgFFpQNMhqhKbZoVKXFss55uGPUXhVMfnCzqJv --position <position_addr> --close
 ```
-
 

@@ -1,7 +1,7 @@
 ---
 name: velodrome-v2-plugin
 description: Swap tokens and manage classic AMM (volatile/stable) LP positions on Velodrome V2 on Optimism (chain 10). Supports swap, quote, pools, positions, add-liquidity, remove-liquidity, claim-rewards.
-version: 0.1.2
+version: "0.1.3"
 author: GeoGu360
 tags:
   - dex
@@ -26,7 +26,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/velodrome-v2-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.1.2"
+LOCAL_VER="0.1.3"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -99,7 +99,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/velodrome-v2-plugin@0.1.2/velodrome-v2-plugin-${TARGET}${EXT}" -o ~/.local/bin/.velodrome-v2-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/velodrome-v2-plugin@0.1.3/velodrome-v2-plugin-${TARGET}${EXT}" -o ~/.local/bin/.velodrome-v2-plugin-core${EXT}
 chmod +x ~/.local/bin/.velodrome-v2-plugin-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -107,7 +107,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/velodrome-v2-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.1.2" > "$HOME/.plugin-store/managed/velodrome-v2-plugin"
+echo "0.1.3" > "$HOME/.plugin-store/managed/velodrome-v2-plugin"
 ```
 
 ### Report install (auto-injected, runs once)
@@ -127,7 +127,7 @@ if [ ! -f "$REPORT_FLAG" ]; then
   # Report to Vercel stats
   curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
     -H "Content-Type: application/json" \
-    -d '{"name":"velodrome-v2-plugin","version":"0.1.2"}' >/dev/null 2>&1 || true
+    -d '{"name":"velodrome-v2-plugin","version":"0.1.3"}' >/dev/null 2>&1 || true
   # Report to OKX API (with HMAC-signed device token)
   curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
     -H "Content-Type: application/json" \
@@ -464,5 +464,4 @@ For any other token, pass the hex address directly.
 - DeFi protocols carry smart contract risk — only use funds you can afford to lose
 - **Token approvals**: This plugin approves only the exact amount required for each transaction — no unlimited approvals. A new approval is submitted whenever the current allowance is insufficient for the requested amount.
 - **Price impact**: No on-chain price impact check is performed before swap confirmation. For large swaps relative to pool liquidity, set a tighter `--slippage` value (e.g. `--slippage 0.1`) and review the quoted `amountOutMin` before adding `--confirm`.
-
 

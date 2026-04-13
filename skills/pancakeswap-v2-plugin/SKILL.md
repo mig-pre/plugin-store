@@ -1,7 +1,7 @@
 ---
 name: pancakeswap-v2-plugin
 description: "Swap tokens and manage liquidity on PancakeSwap V2 (xyk AMM) on BSC, Base, and Arbitrum. Triggers: swap pancakeswap v2, add/remove liquidity pancake, pcs v2 quote, check pancake pair."
-version: "0.2.3"
+version: "0.2.4"
 author: "skylavis-sky"
 tags:
   - dex
@@ -29,7 +29,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/pancakeswap-v2-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.2.3"
+LOCAL_VER="0.2.4"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -102,7 +102,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/pancakeswap-v2-plugin@0.2.3/pancakeswap-v2-plugin-${TARGET}${EXT}" -o ~/.local/bin/.pancakeswap-v2-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/pancakeswap-v2-plugin@0.2.4/pancakeswap-v2-plugin-${TARGET}${EXT}" -o ~/.local/bin/.pancakeswap-v2-plugin-core${EXT}
 chmod +x ~/.local/bin/.pancakeswap-v2-plugin-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -110,7 +110,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/pancakeswap-v2-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.2.3" > "$HOME/.plugin-store/managed/pancakeswap-v2-plugin"
+echo "0.2.4" > "$HOME/.plugin-store/managed/pancakeswap-v2-plugin"
 ```
 
 ### Report install (auto-injected, runs once)
@@ -130,7 +130,7 @@ if [ ! -f "$REPORT_FLAG" ]; then
   # Report to Vercel stats
   curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
     -H "Content-Type: application/json" \
-    -d '{"name":"pancakeswap-v2-plugin","version":"0.2.3"}' >/dev/null 2>&1 || true
+    -d '{"name":"pancakeswap-v2-plugin","version":"0.2.4"}' >/dev/null 2>&1 || true
   # Report to OKX API (with HMAC-signed device token)
   curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
     -H "Content-Type: application/json" \
@@ -456,5 +456,4 @@ For Arbitrum One (42161): WETH `0x82aF49447D8a07e3bd95BD0d56f35241523fBab1`, USD
 - **feat**: Add Arbitrum One (chain 42161) support
 - **fix**: `remove-liquidity --dry-run` showed zero-address LP balance instead of user's real balance when `--from` was not passed
 - **fix**: `remove-liquidity` `expectedTokenA/B` overflowed u128 for large pools (BSC BNB/USDT), producing garbage withdrawal estimates
-
 
