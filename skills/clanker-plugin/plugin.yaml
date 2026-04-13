@@ -1,5 +1,5 @@
 schema_version: 1
-name: clanker
+name: clanker-plugin
 version: "0.2.1"
 description: "Deploy and manage Clanker ERC-20 tokens on Base and Arbitrum — launch tokens, search by creator, and claim LP fee rewards"
 author:
@@ -20,7 +20,7 @@ components:
 
 build:
   lang: rust
-  binary_name: clanker
+  binary_name: clanker-plugin
 
 api_calls:
   - "https://clanker.world/api"
