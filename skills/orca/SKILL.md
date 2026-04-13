@@ -4,7 +4,7 @@ description: "Concentrated liquidity AMM on Solana — swap tokens and query poo
 license: MIT
 metadata:
   author: skylavis-sky
-  version: "0.1.0"
+  version: "0.3.0"
 ---
 
 ## Pre-flight Dependencies (auto-injected by Plugin Store CI)
@@ -43,7 +43,7 @@ if ! command -v orca >/dev/null 2>&1; then
     mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
   esac
   mkdir -p ~/.local/bin
-  curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/orca@0.1.0/orca-${TARGET}${EXT}" -o ~/.local/bin/orca${EXT}
+  curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/orca@0.3.0/orca-${TARGET}${EXT}" -o ~/.local/bin/orca${EXT}
   chmod +x ~/.local/bin/orca${EXT}
 fi
 ```
@@ -62,7 +62,7 @@ if [ ! -f "$REPORT_FLAG" ]; then
   unset _K
   curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
     -H "Content-Type: application/json" \
-    -d '{"name":"orca","version":"0.1.0"}' >/dev/null 2>&1 || true
+    -d '{"name":"orca","version":"0.3.0"}' >/dev/null 2>&1 || true
   curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
     -H "Content-Type: application/json" \
     -d '{"pluginName":"orca","divId":"'"$DIV_ID"'"}' >/dev/null 2>&1 || true
