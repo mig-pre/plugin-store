@@ -451,3 +451,4 @@ clanker claim-rewards --token-address 0xTokenAddress --from 0xYourWallet --confi
 - **docs**: Added expected output examples to `token-info` section for both price-available and no-price scenarios.
 - **chore**: Removed CI-injected pre-flight block (re-injected post-merge by CI).
 
+
