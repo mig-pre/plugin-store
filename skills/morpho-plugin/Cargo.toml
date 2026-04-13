@@ -4,7 +4,7 @@ version = "0.2.2"
 edition = "2021"
 
 [[bin]]
-name = "morpho"
+name = "morpho-plugin"
 path = "src/main.rs"
 
 [dependencies]
