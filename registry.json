@@ -4,7 +4,7 @@
   "plugins": [
     {
       "name": "aave-v3-plugin",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "description": "Lend and borrow crypto assets on Aave V3 — the leading decentralized liquidity protocol. Trigger phrases: supply to aave, deposit to aave, borrow from aave, repay aave loan, aave health factor, my aave positions, aave interest rates, enable emode, disable collateral, claim aave rewards.",
       "author": {
         "name": "OKX"
@@ -33,7 +33,7 @@
     },
     {
       "name": "clanker",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "description": "Deploy and manage Clanker ERC-20 tokens on Base and Arbitrum — launch tokens, search by creator, and claim LP fee rewards",
       "author": {
         "name": "GeoGu360"
@@ -60,7 +60,7 @@
     },
     {
       "name": "compound-v3",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "description": "Compound V3 (Comet) lending plugin: supply collateral, borrow/repay the base asset, and claim COMP rewards",
       "author": {
         "name": "skylavis-sky"
@@ -89,7 +89,7 @@
     },
     {
       "name": "curve",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "description": "Curve DEX plugin — swap stablecoins, add/remove liquidity, query pools and APY across Ethereum, Arbitrum, Base, Polygon, and BSC.",
       "author": {
         "name": "GeoGu360"
@@ -117,7 +117,7 @@
     },
     {
       "name": "etherfi",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "description": "Liquid restaking on Ethereum — deposit ETH to receive eETH, wrap eETH to weETH (ERC-4626), and check positions with APY",
       "author": {
         "name": "GeoGu360"
@@ -146,7 +146,7 @@
     },
     {
       "name": "gmx-v2",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "description": "Trade perpetuals and spot on GMX V2 — open/close leveraged positions, place limit/stop orders, add/remove GM pool liquidity, query markets and positions",
       "author": {
         "name": "GeoGu360"
@@ -173,7 +173,7 @@
     },
     {
       "name": "hyperliquid",
-      "version": "0.3.2",
+      "version": "0.3.3",
       "description": "Hyperliquid on-chain perpetuals DEX — check positions, get market prices, place and cancel perpetual orders on Hyperliquid L1 (chain_id 999).",
       "author": {
         "name": "GeoGu360"
@@ -205,7 +205,7 @@
     },
     {
       "name": "kamino-lend",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "description": "Supply, borrow, and manage positions on Kamino Lend — the leading Solana lending protocol",
       "author": {
         "name": "GeoGu360"
@@ -233,7 +233,7 @@
     },
     {
       "name": "kamino-liquidity",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": "Kamino Liquidity KVault earn vaults on Solana. Deposit tokens to earn yield, withdraw shares, and track positions.",
       "author": {
         "name": "GeoGu360"
@@ -261,7 +261,7 @@
     },
     {
       "name": "lido",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "description": "Stake ETH with Lido liquid staking protocol to receive stETH",
       "author": {
         "name": "GeoGu360"
@@ -352,7 +352,7 @@
     },
     {
       "name": "morpho",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "description": "Supply, borrow and earn yield on Morpho — a permissionless lending protocol with $5B+ TVL. Trigger phrases: supply to morpho, deposit to morpho vault, borrow from morpho, repay morpho loan, morpho health factor, my morpho positions, morpho interest rates, claim morpho rewards, morpho markets, metamorpho vaults.",
       "author": {
         "name": "GeoGu360"
@@ -413,7 +413,7 @@
     },
     {
       "name": "orca-plugin",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "description": "Concentrated liquidity AMM on Solana — swap tokens and query pools via the Whirlpools CLMM program",
       "author": {
         "name": "skylavis-sky"
@@ -608,7 +608,7 @@
     },
     {
       "name": "polymarket-plugin",
-      "version": "0.3.5",
+      "version": "0.3.6",
       "description": "Trade prediction markets on Polymarket — buy and sell YES/NO outcome tokens on Polygon",
       "author": {
         "name": "skylavis-sky"
