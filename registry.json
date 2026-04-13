@@ -413,7 +413,7 @@
     },
     {
       "name": "orca",
-      "version": "0.1.0",
+      "version": "0.3.0",
       "description": "Concentrated liquidity AMM on Solana — swap tokens and query pools via the Whirlpools CLMM program",
       "author": {
         "name": "skylavis-sky"
