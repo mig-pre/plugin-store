@@ -205,3 +205,4 @@ raydium swap \
 - The `--dry-run` flag skips all on-chain operations and returns a simulated response.
 - Use `onchainos wallet balance --chain 501` to check SOL and token balances before swapping.
 - `--amount` accepts human-readable decimal values: `0.1` for 0.1 SOL, `1.5` for 1.5 USDC. The plugin resolves token decimals automatically (SOL=9, USDC=6; other SPL tokens fetched from Raydium mint API).
+
