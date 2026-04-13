@@ -321,3 +321,4 @@ All commands return structured JSON. On error:
 {"ok": false, "error": "human-readable error message"}
 ```
 
+
