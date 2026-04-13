@@ -627,6 +627,84 @@ pub async fn list_gamma_markets(
     }
 }
 
+/// Fetch events from Gamma sorted by 24h volume, with optional client-side filtering.
+///
+/// `exclude_5m`  — remove 5-minute rolling Up/Down markets
+/// `tag_filter`  — if Some, keep only events whose tags include at least one matching label
+async fn fetch_gamma_events(
+    client: &Client,
+    fetch_limit: u32,
+    exclude_5m: bool,
+    tag_filter: Option<&[&str]>,
+) -> Result<Vec<serde_json::Value>> {
+    let url = format!(
+        "{}/events?active=true&closed=false&limit={}&order=volume24hr&ascending=false",
+        Urls::GAMMA, fetch_limit
+    );
+
+    let all: Vec<serde_json::Value> = client
+        .get(&url)
+        .header("User-Agent", "polymarket-cli/1.0")
+        .send()
+        .await?
+        .json()
+        .await
+        .context("parsing Gamma events")?;
+
+    Ok(all
+        .into_iter()
+        .filter(|e| {
+            if exclude_5m {
+                let slug = e["slug"].as_str().unwrap_or("");
+                let title = e["title"].as_str().unwrap_or("").to_lowercase();
+                if slug.contains("updown-5m") || title.contains("up or down") {
+                    return false;
+                }
+            }
+            if let Some(tags) = tag_filter {
+                let event_tags: Vec<String> = e["tags"]
+                    .as_array()
+                    .unwrap_or(&vec![])
+                    .iter()
+                    .filter_map(|t| t["label"].as_str().map(|s| s.to_lowercase()))
+                    .collect();
+                return tags.iter().any(|t| event_tags.contains(&t.to_lowercase()));
+            }
+            true
+        })
+        .collect())
+}
+
+/// Fetch "breaking" events: highest 24h volume non-5M events.
+pub async fn list_breaking_events(client: &Client, limit: u32) -> Result<Vec<serde_json::Value>> {
+    let all = fetch_gamma_events(client, (limit + 10).min(100), true, None).await?;
+    Ok(all.into_iter().take(limit as usize).collect())
+}
+
+/// Fetch events for a named category: "sports", "elections", or "crypto".
+/// Returns top events by 24h volume that match the category's tag set.
+pub async fn list_category_events(
+    client: &Client,
+    category: &str,
+    limit: u32,
+) -> Result<Vec<serde_json::Value>> {
+    let tags: &[&str] = match category {
+        "sports" => &[
+            "sports", "soccer", "tennis", "esports", "football", "basketball",
+            "baseball", "golf", "nfl", "nba", "fifa world cup", "epl",
+            "counter strike 2", "dota 2", "cricket", "hockey", "rugby",
+        ],
+        "elections" => &["elections", "global elections", "world elections"],
+        "crypto" => &["crypto", "crypto prices", "bitcoin", "ethereum", "hit price"],
+        _ => return Ok(vec![]),
+    };
+
+    // Fetch enough to fill the requested limit after tag filtering
+    let fetch_limit = (limit * 5).min(500);
+    let all = fetch_gamma_events(client, fetch_limit, true, Some(tags)).await?;
+    Ok(all.into_iter().take(limit as usize).collect())
+}
+
 pub async fn get_gamma_market_by_slug(client: &Client, slug: &str) -> Result<GammaMarket> {
     let url = format!("{}/markets/slug/{}", Urls::GAMMA, slug);
     let v: Value = client.get(&url).send().await?.json().await?;
@@ -747,4 +825,196 @@ pub fn round_amount_down(amount: f64, tick_size: f64) -> f64 {
 /// Scale float to 6-decimal integer units (USDC or token shares).
 pub fn to_token_units(amount: f64) -> u64 {
     (amount * 1_000_000.0).round() as u64
+}
+
+// ─── Token price (DeFiLlama) ─────────────────────────────────────────────────
+
+/// Fetch USD spot price for a token using DeFiLlama coins API.
+///
+/// `chain_id` is the bridge chainId string (e.g. "1", "42161", "8453").
+/// `token_address` is the ERC-20 contract address, or the ETH sentinel
+///   `0xEeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE` for native ether.
+///
+/// Returns `None` if the price could not be fetched (network error, unknown token).
+pub async fn get_token_price_usd(
+    client: &Client,
+    chain_id: &str,
+    token_address: &str,
+) -> Option<f64> {
+    // Map bridge chainId → DeFiLlama chain slug
+    let chain_slug = match chain_id {
+        "1"     => "ethereum",
+        "42161" => "arbitrum",
+        "8453"  => "base",
+        "10"    => "optimism",
+        "56"    => "bsc",
+        "137"   => "polygon",
+        "143"   => "monad",
+        _       => return None,
+    };
+
+    // ETH sentinel → use the coingecko:ethereum key (no contract on-chain for native)
+    let coin_key = if token_address.to_lowercase() == "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" {
+        "coingecko:ethereum".to_string()
+    } else {
+        format!("{}:{}", chain_slug, token_address.to_lowercase())
+    };
+
+    let url = format!("https://coins.llama.fi/prices/current/{}", coin_key);
+    let resp: serde_json::Value = client.get(&url).send().await.ok()?.json().await.ok()?;
+    resp["coins"][&coin_key]["price"].as_f64()
+}
+
+// ─── Bridge API ───────────────────────────────────────────────────────────────
+
+/// A single supported asset entry from GET /supported-assets.
+#[derive(Debug, Clone, Deserialize)]
+pub struct BridgeAsset {
+    #[serde(rename = "chainId")]
+    pub chain_id: String,
+    #[serde(rename = "chainName")]
+    pub chain_name: String,
+    pub token: BridgeToken,
+    #[serde(rename = "minCheckoutUsd")]
+    pub min_checkout_usd: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BridgeToken {
+    pub name: String,
+    pub symbol: String,
+    pub address: String,
+    pub decimals: u8,
+}
+
+/// Fetch the list of all supported deposit assets from the bridge API.
+pub async fn bridge_supported_assets(client: &Client) -> Result<Vec<BridgeAsset>> {
+    #[derive(Deserialize)]
+    struct Resp {
+        #[serde(rename = "supportedAssets")]
+        supported_assets: Vec<BridgeAsset>,
+    }
+    let resp: Resp = client
+        .get(format!("{}/supported-assets", Urls::BRIDGE))
+        .send()
+        .await?
+        .json()
+        .await
+        .context("parsing bridge /supported-assets")?;
+    Ok(resp.supported_assets)
+}
+
+/// Call POST /deposit with the proxy wallet address.
+/// Returns the EVM deposit address assigned to this wallet.
+pub async fn bridge_get_deposit_address(client: &Client, proxy_wallet: &str) -> Result<String> {
+    let body = serde_json::json!({ "address": proxy_wallet });
+    let resp: serde_json::Value = client
+        .post(format!("{}/deposit", Urls::BRIDGE))
+        .json(&body)
+        .send()
+        .await?
+        .json()
+        .await
+        .context("calling bridge /deposit")?;
+
+    resp["address"]["evm"]
+        .as_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| anyhow::anyhow!("bridge /deposit: no evm address in response: {}", resp))
+}
+
+/// Bridge deposit status values returned by GET /status/{address}.
+#[derive(Debug, PartialEq)]
+pub enum BridgeStatus {
+    Completed,
+    Failed,
+    Pending(String), // intermediate state name
+}
+
+/// Poll GET /status/{evm_deposit_address} once and return the current status.
+pub async fn bridge_poll_status(client: &Client, evm_address: &str) -> Result<BridgeStatus> {
+    let url = format!("{}/status/{}", Urls::BRIDGE, evm_address);
+    let resp: serde_json::Value = client
+        .get(&url)
+        .send()
+        .await?
+        .json()
+        .await
+        .context("calling bridge /status")?;
+
+    // Response format: {"transactions": [{..., "status": "COMPLETED"}, ...]}
+    // When no deposit has arrived yet: {"error": "cannot get transaction status"}
+    // In that case we treat it as still pending.
+    let status = resp["transactions"]
+        .as_array()
+        .and_then(|arr| arr.last())
+        .and_then(|tx| tx["status"].as_str())
+        .unwrap_or("PENDING")
+        .to_string();
+
+    Ok(match status.as_str() {
+        "COMPLETED" => BridgeStatus::Completed,
+        "FAILED" => BridgeStatus::Failed,
+        s => BridgeStatus::Pending(s.to_string()),
+    })
+}
+
+// ─── 5-minute markets (Gamma API) ────────────────────────────────────────────
+
+/// A single 5-minute crypto Up/Down market from Gamma API.
+#[derive(Debug, Clone)]
+pub struct FiveMinMarket {
+    pub slug: String,
+    pub condition_id: String,
+    pub question: String,
+    pub up_price: f64,
+    pub down_price: f64,
+    pub end_date: String,    // ISO-8601 UTC
+    pub up_token_id: String,
+    pub down_token_id: String,
+    pub accepting_orders: bool,
+}
+
+/// Fetch a single 5-minute market by its slug from the Gamma API.
+/// Returns `None` if the market does not exist yet.
+pub async fn get_5m_market(client: &Client, slug: &str) -> Result<Option<FiveMinMarket>> {
+    let url = format!("{}/markets?slug={}", Urls::GAMMA, slug);
+    let resp: serde_json::Value = client
+        .get(&url)
+        .header("User-Agent", "polymarket-cli/1.0")
+        .send()
+        .await
+        .context("gamma /markets request")?
+        .json()
+        .await
+        .context("parsing gamma /markets response")?;
+
+    let arr = match resp.as_array() {
+        Some(a) if !a.is_empty() => a,
+        _ => return Ok(None),
+    };
+    let m = &arr[0];
+
+    let prices: Vec<f64> = m["outcomePrices"]
+        .as_str()
+        .and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
+        .map(|v| v.iter().filter_map(|x| x.parse().ok()).collect())
+        .unwrap_or_default();
+
+    let token_ids: Vec<String> = m["clobTokenIds"]
+        .as_str()
+        .and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
+        .unwrap_or_default();
+
+    Ok(Some(FiveMinMarket {
+        slug: slug.to_string(),
+        condition_id: m["conditionId"].as_str().unwrap_or("").to_string(),
+        question: m["question"].as_str().unwrap_or("").to_string(),
+        up_price: prices.first().copied().unwrap_or(0.0),
+        down_price: prices.get(1).copied().unwrap_or(0.0),
+        end_date: m["endDate"].as_str().unwrap_or("").to_string(),
+        up_token_id: token_ids.first().cloned().unwrap_or_default(),
+        down_token_id: token_ids.get(1).cloned().unwrap_or_default(),
+        accepting_orders: m["acceptingOrders"].as_bool().unwrap_or(false),
+    }))
 }

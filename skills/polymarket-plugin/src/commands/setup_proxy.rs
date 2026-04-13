@@ -22,6 +22,13 @@ use reqwest::Client;
 pub async fn run(dry_run: bool) -> Result<()> {
     let client = Client::new();
 
+    // Geo check — WARNING only, do not abort. Users in restricted regions can still
+    // set up a proxy wallet; trading commands (buy/sell) will hard-fail separately.
+    if let Some(geo_msg) = crate::api::check_clob_access(&client).await {
+        eprintln!("[polymarket] WARNING: {}", geo_msg);
+        eprintln!("[polymarket] Continuing setup — proxy wallet creation does not require trading access.");
+    }
+
     let signer_addr = crate::onchainos::get_wallet_address().await?;
     let mut creds = crate::auth::ensure_credentials(&client, &signer_addr).await?;
 

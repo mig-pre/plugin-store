@@ -33,6 +33,14 @@ enum Commands {
         /// Filter markets by keyword
         #[arg(long)]
         keyword: Option<String>,
+
+        /// Show hottest breaking events by 24h volume (excludes 5-minute rolling markets)
+        #[arg(long)]
+        breaking: bool,
+
+        /// Filter by category: sports, elections, crypto
+        #[arg(long, value_parser = ["sports", "elections", "crypto"])]
+        category: Option<String>,
     },
 
     /// Get details for a specific market (no auth required)
@@ -167,12 +175,25 @@ enum Commands {
         dry_run: bool,
     },
 
-    /// Deposit USDC.e into the proxy wallet (POLY_PROXY mode only).
+    /// Deposit tokens into the proxy wallet via Polygon direct transfer or bridge.
     /// Requires `setup-proxy` to have been run first.
+    /// Use --list to see all supported chains and tokens.
     Deposit {
-        /// USDC.e amount to transfer (e.g. "50" = $50.00)
+        /// USD amount to deposit (e.g. "50" = $50). Always in USD — non-stablecoins are auto-converted at live price. Not required with --list.
         #[arg(long)]
-        amount: String,
+        amount: Option<String>,
+
+        /// Source chain (default: polygon). Examples: polygon, ethereum, arbitrum, base, optimism, bnb, monad
+        #[arg(long, default_value = "polygon")]
+        chain: String,
+
+        /// Token symbol to deposit (default: USDC). Examples: USDC, USDC.e, ETH, WBTC
+        #[arg(long, default_value = "USDC")]
+        token: String,
+
+        /// List all supported chains and tokens, then exit
+        #[arg(long)]
+        list: bool,
 
         /// Preview the transfer without submitting
         #[arg(long)]
@@ -222,6 +243,19 @@ enum Commands {
         #[arg(long)]
         all: bool,
     },
+
+    /// List upcoming 5-minute crypto Up/Down markets on Polymarket.
+    /// Supported coins: BTC, ETH, SOL, XRP, BNB, DOGE, HYPE
+    #[command(name = "list-5m")]
+    List5m {
+        /// Coin to list markets for (BTC, ETH, SOL, XRP, BNB, DOGE, HYPE)
+        #[arg(long)]
+        coin: Option<String>,
+
+        /// Number of upcoming 5-minute windows to show (default: 5, max: 20)
+        #[arg(long, default_value = "5")]
+        count: u32,
+    },
 }
 
 #[tokio::main]
@@ -232,8 +266,8 @@ async fn main() {
         Commands::CheckAccess => {
             commands::check_access::run().await
         }
-        Commands::ListMarkets { limit, keyword } => {
-            commands::list_markets::run(limit, keyword.as_deref()).await
+        Commands::ListMarkets { limit, keyword, breaking, category } => {
+            commands::list_markets::run(limit, keyword.as_deref(), breaking, category.as_deref()).await
         }
         Commands::GetMarket { market_id } => {
             commands::get_market::run(&market_id).await
@@ -278,8 +312,8 @@ async fn main() {
         Commands::SetupProxy { dry_run } => {
             commands::setup_proxy::run(dry_run).await
         }
-        Commands::Deposit { amount, dry_run } => {
-            commands::deposit::run(&amount, dry_run).await
+        Commands::Deposit { amount, chain, token, list, dry_run } => {
+            commands::deposit::run(amount.as_deref(), &chain, &token, list, dry_run).await
         }
         Commands::Withdraw { amount, dry_run } => {
             commands::withdraw::run(&amount, dry_run).await
@@ -302,6 +336,9 @@ async fn main() {
                     "Specify --order-id <id>, --market <condition_id>, or --all"
                 ))
             }
+        }
+        Commands::List5m { coin, count } => {
+            commands::list_5m::run(coin.as_deref(), count).await
         }
     };
 

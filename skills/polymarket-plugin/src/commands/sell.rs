@@ -58,6 +58,11 @@ pub async fn run(
 
     let client = Client::new();
 
+    // Geo check — hard fail before any trading attempt.
+    if let Some(geo_msg) = crate::api::check_clob_access(&client).await {
+        bail!("{}", geo_msg);
+    }
+
     // ── Public API phase (no auth, runs for dry-run too) ─────────────────────
 
     let (condition_id, token_id, neg_risk) = resolve_market_token(&client, market_id, outcome).await?;
@@ -233,6 +238,25 @@ pub async fn run(
              in this order.",
             share_amount, actual_shares, share_amount - actual_shares
         );
+    }
+
+    // EOA mode: verify POL balance for gas. Proxy mode uses relayer — no POL needed.
+    if effective_mode == TradingMode::Eoa {
+        const MIN_POL: f64 = 0.01;
+        match crate::onchainos::get_pol_balance(&signer_addr).await {
+            Ok(pol) if pol < MIN_POL => {
+                bail!(
+                    "Insufficient POL for gas: have {:.4} POL, need at least {} POL. \
+                     Swap USDC to POL using `pancakeswap-v3 swap` or `okx-dex swap`, \
+                     or switch to gasless POLY_PROXY mode with `polymarket setup-proxy`.",
+                    pol, MIN_POL
+                );
+            }
+            Err(e) => {
+                eprintln!("[polymarket] Warning: could not verify POL balance ({}); proceeding.", e);
+            }
+            Ok(_) => {}
+        }
     }
 
     // EOA mode: check and submit CTF setApprovalForAll if needed.

@@ -789,6 +789,83 @@ pub async fn wait_for_tx_receipt(tx_hash: &str, max_wait_secs: u64) -> Result<()
 ///
 /// Returns Ok(true) if approved, Ok(false) if not approved, Err if the RPC call fails.
 /// Callers should treat Err as "unknown — approve to be safe" (setApprovalForAll is idempotent).
+// ─── Multi-chain transfers (for bridge deposit) ───────────────────────────────
+
+/// Transfer an ERC-20 token on any EVM chain supported by onchainos.
+///
+/// `chain` accepts onchainos chain names or IDs (e.g. "ethereum", "1", "arbitrum", "42161").
+/// `token_contract` is the ERC-20 contract address on the source chain.
+/// `to` is the destination address (e.g. Polymarket bridge EVM deposit address).
+/// `amount` is the raw token amount in smallest units (respecting token decimals).
+///
+/// Uses `onchainos wallet contract-call --chain <chain>` (not hardcoded to Polygon).
+pub async fn transfer_erc20_on_chain(
+    chain: &str,
+    token_contract: &str,
+    to: &str,
+    amount: u128,
+) -> Result<String> {
+    let recipient_padded = pad_address(to);
+    let amount_padded = pad_u256(amount);
+    // ERC-20 transfer(address,uint256) selector = 0xa9059cbb
+    let calldata = format!("0xa9059cbb{}{}", recipient_padded, amount_padded);
+
+    let output = tokio::process::Command::new("onchainos")
+        .args([
+            "wallet", "contract-call",
+            "--chain", chain,
+            "--to", token_contract,
+            "--input-data", &calldata,
+            "--force",
+        ])
+        .output()
+        .await
+        .context("Failed to spawn onchainos wallet contract-call (multi-chain)")?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!(
+            "onchainos contract-call on {} failed ({}): {}",
+            chain, output.status, stderr.trim()
+        );
+    }
+    let result: Value = serde_json::from_str(stdout.trim())
+        .with_context(|| format!("parsing contract-call output: {}", stdout.trim()))?;
+    extract_tx_hash(&result)
+}
+
+/// Send native tokens (ETH, BNB, etc.) on any EVM chain supported by onchainos.
+///
+/// `chain` accepts onchainos chain names or IDs.
+/// `to` is the destination address.
+/// `amount_wei` is the amount in wei (18 decimals for ETH-like, 9 for others).
+pub async fn transfer_native_on_chain(chain: &str, to: &str, amount_wei: u128) -> Result<String> {
+    let output = tokio::process::Command::new("onchainos")
+        .args([
+            "wallet", "contract-call",
+            "--chain", chain,
+            "--to", to,
+            "--amt", &amount_wei.to_string(),
+            "--force",
+        ])
+        .output()
+        .await
+        .context("Failed to spawn onchainos wallet contract-call (native)")?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!(
+            "onchainos native transfer on {} failed ({}): {}",
+            chain, output.status, stderr.trim()
+        );
+    }
+    let result: Value = serde_json::from_str(stdout.trim())
+        .with_context(|| format!("parsing contract-call output: {}", stdout.trim()))?;
+    extract_tx_hash(&result)
+}
+
 pub async fn is_ctf_approved_for_all(owner: &str, operator: &str) -> Result<bool> {
     use crate::config::{Contracts, Urls};
     // isApprovedForAll(address,address) selector = 0xe985e9c5

@@ -1,7 +1,7 @@
 ---
 name: polymarket-plugin
-description: "Trade prediction markets on Polymarket - buy outcome tokens (YES/NO and categorical markets), check positions, list markets, manage orders, and redeem winning tokens on Polygon. Trigger phrases: buy polymarket shares, sell polymarket position, check my polymarket positions, list polymarket markets, get polymarket market, cancel polymarket order, redeem polymarket tokens, polymarket yes token, polymarket no token, prediction market trade, polymarket price, get started with polymarket, just installed polymarket, how do I use polymarket, set up polymarket, polymarket quickstart, new to polymarket, polymarket setup, help me trade on polymarket, place a bet on, buy prediction market, bet on, trade on prediction markets, prediction trading, place a prediction market bet, i want to bet on."
-version: "0.3.7"
+description: "Trade prediction markets on Polymarket - buy outcome tokens (YES/NO and categorical markets), check positions, list markets, manage orders, redeem winning tokens, and deposit funds on Polygon. Trigger phrases: buy polymarket shares, sell polymarket position, check my polymarket positions, list polymarket markets, get polymarket market, cancel polymarket order, redeem polymarket tokens, polymarket yes token, polymarket no token, prediction market trade, polymarket price, get started with polymarket, just installed polymarket, how do I use polymarket, set up polymarket, polymarket quickstart, new to polymarket, polymarket setup, help me trade on polymarket, place a bet on, buy prediction market, bet on, trade on prediction markets, prediction trading, place a prediction market bet, i want to bet on, deposit, 充值, 充钱, 转入, 打钱, fund polymarket, top up polymarket, add funds to polymarket, recharge polymarket, deposit usdc, deposit eth, polymarket deposit."
+version: "0.4.0"
 author: "skylavis-sky"
 tags:
   - prediction-market
@@ -25,7 +25,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/polymarket-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.3.7"
+LOCAL_VER="0.3.0"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -98,7 +98,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/polymarket-plugin@0.3.7/polymarket-plugin-${TARGET}${EXT}" -o ~/.local/bin/.polymarket-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/polymarket-plugin@0.3.0/polymarket-plugin-${TARGET}${EXT}" -o ~/.local/bin/.polymarket-plugin-core${EXT}
 chmod +x ~/.local/bin/.polymarket-plugin-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -106,7 +106,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/polymarket-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.3.7" > "$HOME/.plugin-store/managed/polymarket-plugin"
+echo "0.3.0" > "$HOME/.plugin-store/managed/polymarket-plugin"
 ```
 
 ### Report install (auto-injected, runs once)
@@ -126,7 +126,7 @@ if [ ! -f "$REPORT_FLAG" ]; then
   # Report to Vercel stats
   curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
     -H "Content-Type: application/json" \
-    -d '{"name":"polymarket-plugin","version":"0.3.7"}' >/dev/null 2>&1 || true
+    -d '{"name":"polymarket-plugin","version":"0.3.0"}' >/dev/null 2>&1 || true
   # Report to OKX API (with HMAC-signed device token)
   curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
     -H "Content-Type: application/json" \
@@ -309,7 +309,7 @@ The first `buy` or `sell` automatically derives your Polymarket API credentials 
 polymarket-plugin --version
 ```
 
-Expected: `polymarket-plugin 0.3.7`. If missing or wrong version, run the install script in **Pre-flight Dependencies** above.
+Expected: `polymarket-plugin 0.3.0`. If missing or wrong version, run the install script in **Pre-flight Dependencies** above.
 
 ### Step 2 — Install `onchainos` CLI (required for buy/sell/cancel/redeem only)
 
@@ -395,25 +395,75 @@ polymarket-plugin check-access
 
 ---
 
-### `list-markets` — Browse Active Prediction Markets
+### `list-5m` — List 5-Minute Crypto Up/Down Markets
+
+**Trigger phrases:** 5-minute market, 5m market, 5分钟市场, 短线市场, BTC 5分钟, 哪个 5 分钟, 5m, updown market, 五分钟
+
+List upcoming 5-minute Bitcoin/Crypto Up or Down markets. Shows the next N rounds (ET time), current Up/Down prices, and `conditionId` for direct trading.
 
 ```
-polymarket-plugin list-markets [--limit <N>] [--keyword <text>]
+polymarket-plugin list-5m --coin <COIN> [--count <N>]
 ```
 
 **Flags:**
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--limit` | Number of markets to return | 20 |
-| `--keyword` | Filter by keyword (searches market titles) | — |
+| `--coin` | Coin to show markets for: `BTC`, `ETH`, `SOL`, `XRP`, `BNB`, `DOGE`, `HYPE` | required |
+| `--count` | Number of upcoming 5-minute windows (1–20) | `5` |
 
 **Auth required:** No
 
-**Output fields:** `question`, `condition_id`, `slug`, `end_date`, `active`, `accepting_orders`, `neg_risk`, `yes_price`, `no_price`, `yes_token_id`, `no_token_id`, `volume_24hr`, `liquidity`
+**Missing parameters:** If `--coin` is not provided, the command returns `"missing_params": ["coin"]` with a hint. The Agent **must ask the user** which coin before retrying.
+
+**Output fields per market:** `slug`, `conditionId`, `question` (includes ET time range), `timeWindow`, `endDateUtc`, `upPrice`, `downPrice`, `upTokenId`, `downTokenId`, `acceptingOrders`
+
+**Example:**
+```bash
+polymarket-plugin list-5m --coin BTC            # next 5 BTC 5-minute markets
+polymarket-plugin list-5m --coin ETH --count 3  # next 3 ETH 5-minute markets
+```
+
+**To trade:** Copy the `conditionId` and use `buy --market-id <conditionId> --outcome up --amount <usdc>` (or `down`).
+
+---
+
+### `list-markets` — Browse Active Prediction Markets
+
+**Trigger phrases (general):** list markets, 列出市场, 有哪些市场, 看看市场, 有什么可以买, browse markets
+
+**Trigger phrases (breaking):** breaking, 热门, 最热, 最新市场, 有什么新市场, 当前热点, 最近在炒什么, 爆款, 热点, 有什么好玩的, what's hot, what's trending, breaking news market
+
+**Trigger phrases (sports):** sports, 体育, 足球, 篮球, NBA, NFL, FIFA, 世界杯, 网球, 电竞, esports, soccer, tennis, F1, 赛车, 球赛, 比赛预测, 体育市场
+
+**Trigger phrases (elections):** elections, 选举, 大选, 政治, 总统选举, 谁会赢, 议会, 政党, election markets, who will win election, 匈牙利, 秘鲁, 美国大选
+
+**Trigger phrases (crypto):** crypto markets, 加密市场, BTC price target, ETH will hit, bitcoin above, 比特币会到, 价格预测, crypto price prediction, 币价目标
+
+```
+polymarket-plugin list-markets [--limit <N>] [--keyword <text>] [--breaking] [--category <sports|elections|crypto>]
+```
+
+**Flags:**
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--limit` | Number of markets/events to return | 20 |
+| `--keyword` | Filter by keyword (searches market titles) | — |
+| `--breaking` | Hottest non-5M events by 24h volume (mirrors Polymarket breaking page) | — |
+| `--category` | Filter by category: `sports`, `elections`, `crypto` | — |
+
+**Auth required:** No
+
+**Output fields (normal mode):** `question`, `condition_id`, `slug`, `end_date`, `active`, `accepting_orders`, `neg_risk`, `yes_price`, `no_price`, `yes_token_id`, `no_token_id`, `volume_24hr`, `liquidity`
+
+**Output fields (--breaking / --category):** `title`, `slug`, `volume_24hr`, `start_date`, `end_date`, `market_count`
 
 **Example:**
 ```
 polymarket-plugin list-markets --limit 10 --keyword "bitcoin"
+polymarket-plugin list-markets --breaking --limit 10
+polymarket-plugin list-markets --category sports --limit 10
+polymarket-plugin list-markets --category elections --limit 10
+polymarket-plugin list-markets --category crypto --limit 10
 ```
 
 ---
@@ -749,26 +799,43 @@ polymarket setup-proxy
 
 ### `deposit` — Fund the Proxy Wallet
 
-Transfer USDC.e from the EOA wallet to the proxy wallet. Only applicable in POLY_PROXY mode. Requires `setup-proxy` to have been run first.
+**Trigger phrases:** deposit, 充值, 充钱, 转入, 打钱进去, fund, top up, add funds, recharge, 充 USDC, 往钱包充, 存钱, 入金
+
+Fund the proxy wallet from any supported chain. Supports Polygon direct transfer (fastest) and multi-chain bridge (ETH/ARB/BASE/OP/BNB/Monad). `--amount` is always in **USD** — non-stablecoins are auto-converted at live price.
 
 ```
-polymarket-plugin deposit --amount <usdc> [--dry-run]
+polymarket-plugin deposit --amount <usd> [--chain <chain>] [--token <symbol>] [--dry-run]
+polymarket-plugin deposit --list
 ```
 
 **Flags:**
-| Flag | Description |
-|------|-------------|
-| `--amount` | USDC.e amount to transfer, e.g. `50` = $50.00 | required |
-| `--dry-run` | Preview the transfer without submitting |
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--amount` | USD amount to deposit, e.g. `50` = $50 | required |
+| `--chain` | Source chain: `polygon`, `ethereum`, `arbitrum`, `base`, `optimism`, `bnb`, `monad` | `polygon` |
+| `--token` | Token symbol: `USDC`, `USDC.e`, `ETH`, `WETH`, `WBTC`, … | `USDC` |
+| `--list` | List all supported chains and tokens, then exit | — |
+| `--dry-run` | Preview without submitting any transaction | — |
 
-**Auth required:** Yes — onchainos wallet (signs the on-chain ERC-20 transfer)
+**Bridge minimums (enforced before any on-chain action):**
+- Ethereum mainnet: **$7** minimum
+- All other chains (ARB, BASE, OP, BNB, Monad): **$2** minimum
+- Polygon direct: no minimum
 
-**Output fields:** `tx_hash`, `from` (EOA), `to` (proxy wallet), `token`, `amount`
+**Missing parameters:** If `--amount` is not provided, the command returns `"missing_params": ["amount"]` and a `"hint"` field. The Agent **must ask the user** for the missing value before retrying — do not assume or default the amount.
+
+**Auth required:** Yes — onchainos wallet
+
+**Output fields (Polygon):** `tx_hash`, `chain`, `from`, `to`, `token`, `amount`
+**Output fields (bridge):** `status`, `chain`, `token`, `amount_usd`, `token_qty`, `token_price_usd`, `bridge_deposit_address`, `tx_hash`, `proxy_wallet`
 
 **Example:**
 ```bash
-polymarket-plugin deposit --amount 100 --dry-run
-polymarket-plugin deposit --amount 100
+polymarket-plugin deposit --amount 50                              # Polygon USDC.e (default)
+polymarket-plugin deposit --amount 50 --chain arbitrum             # ARB USDC via bridge
+polymarket-plugin deposit --amount 50 --chain base --token ETH     # Base ETH via bridge ($50 worth)
+polymarket-plugin deposit --list                                   # show all supported chains/tokens
+polymarket-plugin deposit --amount 100 --dry-run                   # preview without submitting
 ```
 
 ---
@@ -994,5 +1061,4 @@ Fees are deducted by the exchange from the received amount. The `feeRateBps` fie
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for full version history. Current version: **0.3.7** (2026-04-13).
-
+See [CHANGELOG.md](CHANGELOG.md) for full version history. Current version: **0.3.0** (2026-04-13).
