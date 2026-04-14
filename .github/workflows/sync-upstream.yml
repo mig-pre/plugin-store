@@ -1,12 +1,8 @@
 name: Sync from upstream
 
 on:
-  # Triggered by upstream via repository_dispatch
-  repository_dispatch:
-    types: [upstream-sync]
-  # Fallback: every 4 hours in case dispatch missed
   schedule:
-    - cron: '0 */4 * * *'
+    - cron: '*/15 * * * *'  # Every 15 minutes
   workflow_dispatch:
 
 jobs:
@@ -15,6 +11,11 @@ jobs:
     steps:
       - name: Sync fork with upstream
         run: |
-          gh api repos/${{ github.repository }}/merge-upstream -f branch=main
+          RESULT=$(gh api repos/${{ github.repository }}/merge-upstream -f branch=main 2>&1)
+          echo "$RESULT"
+          # Only log when there's actual changes (not "already up to date")
+          if echo "$RESULT" | grep -q "fast-forward\|merge"; then
+            echo "Synced successfully"
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
