@@ -1,4 +1,4 @@
-# token-launch
+# one-click-token-launch
 One-click multi-launchpad token creation with bundled initial buy, IPFS metadata upload, and MEV protection across Solana and BSC.
 
 ## Highlights

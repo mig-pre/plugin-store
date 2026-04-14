@@ -1,5 +1,5 @@
 ---
-name: token-launch
+name: one-click-token-launch
 version: "1.0.0"
 description: "One-click multi-launchpad token creation with bundled buy, IPFS metadata, MEV protection across 6 launchpads on Solana and BSC"
 updated: 2026-04-13

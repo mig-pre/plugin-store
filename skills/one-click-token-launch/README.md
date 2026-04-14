@@ -21,7 +21,7 @@ One-click multi-launchpad token creation — supports pump.fun, Bags.fm, LetsBon
 ## Install
 
 ```bash
-npx skills add okx/plugin-store --skill token-launch
+npx skills add okx/plugin-store --skill one-click-token-launch
 ```
 
 ## Prerequisites
