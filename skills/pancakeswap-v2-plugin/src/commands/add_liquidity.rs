@@ -7,6 +7,65 @@ use crate::config::{chain_config, resolve_token_address, is_native};
 use crate::onchainos::{self, erc20_approve};
 use crate::rpc;
 
+/// Estimate LP tokens minted using V2 formula:
+///   lp = min(amount0 * totalSupply / reserve0, amount1 * totalSupply / reserve1)
+/// Returns "N/A" if reserves or total supply cannot be fetched (e.g. new pair).
+async fn estimate_lp_received(
+    pair_addr: &str,
+    token0: &str,
+    token1: &str,
+    amount0: u128,
+    amount1: u128,
+    rpc_url: &str,
+) -> String {
+    let ts = match rpc::erc20_total_supply(pair_addr, rpc_url).await {
+        Ok(v) => v,
+        Err(_) => return "N/A".to_string(),
+    };
+    if ts == 0 {
+        // Brand-new pair — first deposit mints sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
+        // Use integer approximation via Newton's method
+        let product = (amount0 as u128).saturating_mul(amount1 as u128);
+        let sqrt = isqrt_u128(product).saturating_sub(1000);
+        return format_lp_human(sqrt);
+    }
+    let (r0, r1, _) = match rpc::pair_get_reserves(pair_addr, rpc_url).await {
+        Ok(v) => v,
+        Err(_) => return "N/A".to_string(),
+    };
+    // Determine which reserve matches which token
+    let (res0, res1) = if token0.to_lowercase() < token1.to_lowercase() {
+        (r0, r1)
+    } else {
+        (r1, r0)
+    };
+    if res0 == 0 || res1 == 0 {
+        return "N/A".to_string();
+    }
+    let lp0 = (amount0 as u128).saturating_mul(ts) / res0;
+    let lp1 = (amount1 as u128).saturating_mul(ts) / res1;
+    let lp = lp0.min(lp1);
+    format_lp_human(lp)
+}
+
+fn isqrt_u128(n: u128) -> u128 {
+    if n == 0 { return 0; }
+    let mut x = n;
+    let mut y = (x + 1) / 2;
+    while y < x {
+        x = y;
+        y = (x + n / x) / 2;
+    }
+    x
+}
+
+fn format_lp_human(lp: u128) -> String {
+    // LP tokens have 18 decimals
+    let whole = lp / 1_000_000_000_000_000_000u128;
+    let frac  = (lp % 1_000_000_000_000_000_000u128) / 1_000_000_000_000u128;
+    format!("{}.{:06}", whole, frac)
+}
+
 pub struct AddLiquidityArgs {
     pub chain_id: u64,
     pub token_a: String,
@@ -32,11 +91,13 @@ pub async fn run(args: AddLiquidityArgs) -> Result<serde_json::Value> {
     }
 
     // Resolve wallet
-    let wallet = if args.dry_run {
-        "0x0000000000000000000000000000000000000000".to_string()
+    let wallet = if let Some(ref f) = args.from {
+        f.clone()
+    } else if args.dry_run {
+        // Use a recognisable placeholder so dry-run output is clearly non-live
+        "0xDRYRUN00000000000000000000000000000000000".to_string()
     } else {
-        let w = args.from.clone()
-            .unwrap_or_else(|| onchainos::resolve_wallet(args.chain_id).unwrap_or_default());
+        let w = onchainos::resolve_wallet(args.chain_id).unwrap_or_default();
         if w.is_empty() {
             anyhow::bail!("Cannot resolve wallet address. Pass --from or ensure onchainos is logged in.");
         }
@@ -62,6 +123,9 @@ pub async fn run(args: AddLiquidityArgs) -> Result<serde_json::Value> {
     }
 
     let mut steps = vec![];
+    // Track resolved addresses for LP estimation
+    let mut token_a_addr_for_lp = String::new();
+    let mut token_b_addr_for_lp = String::new();
 
     if native_a || native_b {
         // addLiquidityETH variant
@@ -73,6 +137,8 @@ pub async fn run(args: AddLiquidityArgs) -> Result<serde_json::Value> {
         let token_addr = resolve_token_address(token_sym, args.chain_id);
         let token_min = token_amount * (10000 - args.slippage_bps) as u128 / 10000;
         let eth_min = eth_amount * (10000 - args.slippage_bps) as u128 / 10000;
+        token_a_addr_for_lp = token_addr.clone();
+        token_b_addr_for_lp = cfg.weth.to_string();
 
         // Approve token if needed
         let allowance = rpc::erc20_allowance(&token_addr, &wallet, cfg.router02, rpc).await.unwrap_or(0);
@@ -103,6 +169,8 @@ pub async fn run(args: AddLiquidityArgs) -> Result<serde_json::Value> {
         // addLiquidity variant (token + token)
         let token_a_addr = resolve_token_address(&args.token_a, args.chain_id);
         let token_b_addr = resolve_token_address(&args.token_b, args.chain_id);
+        token_a_addr_for_lp = token_a_addr.clone();
+        token_b_addr_for_lp = token_b_addr.clone();
         let amount_a_min = amount_a * (10000 - args.slippage_bps) as u128 / 10000;
         let amount_b_min = amount_b * (10000 - args.slippage_bps) as u128 / 10000;
 
@@ -149,6 +217,20 @@ pub async fn run(args: AddLiquidityArgs) -> Result<serde_json::Value> {
         }));
     }
 
+    // Estimate LP tokens received from on-chain pair state
+    let lp_received = if args.dry_run {
+        "estimated (dry-run)".to_string()
+    } else {
+        let pair_addr = rpc::factory_get_pair(
+            cfg.factory, &token_a_addr_for_lp, &token_b_addr_for_lp, rpc
+        ).await.unwrap_or_default();
+        if pair_addr.len() > 2 && pair_addr != "0x0000000000000000000000000000000000000000" {
+            estimate_lp_received(&pair_addr, &token_a_addr_for_lp, &token_b_addr_for_lp, amount_a, amount_b, rpc).await
+        } else {
+            "N/A".to_string()
+        }
+    };
+
     Ok(json!({
         "ok": true,
         "steps": steps,
@@ -157,6 +239,7 @@ pub async fn run(args: AddLiquidityArgs) -> Result<serde_json::Value> {
             "tokenB": args.token_b,
             "amountA": amount_a.to_string(),
             "amountB": amount_b.to_string(),
+            "lpReceived": lp_received,
             "chain": args.chain_id
         }
     }))

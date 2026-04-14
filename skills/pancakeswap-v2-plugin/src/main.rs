@@ -16,8 +16,8 @@ struct Cli {
     #[arg(long, default_value = "56")]
     chain: u64,
 
-    /// Slippage tolerance in basis points (default 50 = 0.5%)
-    #[arg(long, default_value = "50")]
+    /// Slippage tolerance in basis points (default 100 = 1%)
+    #[arg(long, default_value = "100")]
     slippage_bps: u64,
 
     /// Swap/LP deadline in seconds from now (default 300 = 5 min)

@@ -1,7 +1,7 @@
 ---
 name: pancakeswap-v2-plugin
 description: "Swap tokens and manage liquidity on PancakeSwap V2 (xyk AMM) on BSC, Base, and Arbitrum. Triggers: swap pancakeswap v2, add/remove liquidity pancake, pcs v2 quote, check pancake pair."
-version: "0.2.4"
+version: "0.2.5"
 author: "skylavis-sky"
 tags:
   - dex
@@ -29,7 +29,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/pancakeswap-v2-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.2.4"
+LOCAL_VER="0.2.5"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -102,7 +102,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/pancakeswap-v2-plugin@0.2.4/pancakeswap-v2-plugin-${TARGET}${EXT}" -o ~/.local/bin/.pancakeswap-v2-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/pancakeswap-v2-plugin@0.2.5/pancakeswap-v2-plugin-${TARGET}${EXT}" -o ~/.local/bin/.pancakeswap-v2-plugin-core${EXT}
 chmod +x ~/.local/bin/.pancakeswap-v2-plugin-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -130,7 +130,7 @@ if [ ! -f "$REPORT_FLAG" ]; then
   # Report to Vercel stats
   curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
     -H "Content-Type: application/json" \
-    -d '{"name":"pancakeswap-v2-plugin","version":"0.2.4"}' >/dev/null 2>&1 || true
+    -d '{"name":"pancakeswap-v2-plugin","version":"0.2.5"}' >/dev/null 2>&1 || true
   # Report to OKX API (with HMAC-signed device token)
   curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
     -H "Content-Type: application/json" \
@@ -157,7 +157,7 @@ Do NOT use for: PancakeSwap V3 swaps (use pancakeswap skill), concentrated liqui
 - Read ops (quote, get-pair, get-reserves, lp-balance) → direct `eth_call` via public RPC; no confirmation needed
 - Write ops (swap, add-liquidity, remove-liquidity) → after user confirmation, submits via `onchainos wallet contract-call`
 - ERC-20 approvals → manually encoded `approve()` calldata, submitted via `onchainos wallet contract-call`
-- Supports BSC (chain 56, default), Base (chain 8453), and Arbitrum One (chain 42161)
+- Supports BSC (chain 56, default), Base (chain 8453), and Arbitrum One (chain 42161 — ARB token is tradeable here)
 - V2 uses constant-product xyk formula; LP tokens are standard ERC-20 (not NFTs); fixed 0.25% swap fee
 
 ## Global Flags
@@ -168,7 +168,7 @@ These flags apply to the **entire binary** and must be placed **before** the sub
 |------|---------|-------------|
 | `--chain <id>` | `56` | Chain ID: 56 (BSC), 8453 (Base), 42161 (Arbitrum) |
 | `--dry-run` | false | Simulate without broadcasting — no onchainos call made |
-| `--slippage-bps <n>` | `50` | Slippage tolerance in basis points (50 = 0.5%) |
+| `--slippage-bps <n>` | `100` | Slippage tolerance in basis points (100 = 1%) |
 | `--deadline-secs <n>` | `300` | Transaction deadline in seconds from now |
 | `--from <address>` | wallet | Override sender address |
 | `--rpc-url <url>` | (chain default) | Override RPC endpoint |
@@ -262,7 +262,7 @@ pancakeswap-v2 --dry-run --chain 56 swap --token-in USDT --token-out CAKE --amou
 | tokenIn | `--token-in` | Input token: symbol or address. Use BNB/ETH for native |
 | tokenOut | `--token-out` | Output token: symbol or address |
 | amountIn | `--amount-in` | Input amount as a human-readable decimal (e.g. 100, 1.5, 0.001) |
-| slippageBps | `--slippage-bps` | Slippage in basis points (default 50 = 0.5%) — global flag |
+| slippageBps | `--slippage-bps` | Slippage in basis points (default 100 = 1%) — global flag |
 | deadlineSecs | `--deadline-secs` | Seconds until deadline (default 300) — global flag |
 | dryRun | `--dry-run` | Preview calldata only, no broadcast — **global flag, place before subcommand** |
 
@@ -314,7 +314,7 @@ pancakeswap-v2 --dry-run --chain 56 add-liquidity --token-a USDT --token-b BNB -
 | tokenB | `--token-b` | Second token. Use BNB/ETH for native |
 | amountA | `--amount-a` | Desired amount of tokenA as a human-readable decimal (e.g. 10, 0.5) |
 | amountB | `--amount-b` | Desired amount of tokenB (or native BNB/ETH) as a human-readable decimal |
-| slippageBps | `--slippage-bps` | Slippage tolerance (default 50 = 0.5%) — global flag |
+| slippageBps | `--slippage-bps` | Slippage tolerance (default 100 = 1%) — global flag |
 | dryRun | `--dry-run` | Preview calldata only — **global flag, place before subcommand** |
 
 **Execution flow:**
@@ -323,7 +323,10 @@ pancakeswap-v2 --dry-run --chain 56 add-liquidity --token-a USDT --token-b BNB -
 3. **Ask user to confirm** the amounts and LP token receipt before proceeding
 4. Approve Router02 to spend the exact tokenA/tokenB amounts via `onchainos wallet contract-call` (if needed); **ask user to confirm** each approval
 5. Submit `addLiquidity` or `addLiquidityETH` via `onchainos wallet contract-call`
-6. Report txHash and LP tokens received
+6. Report txHash and `lpReceived` — the estimated LP tokens minted, computed from post-tx pool reserves
+
+> **Dry-run wallet address**: When `--dry-run` is passed without `--from`, the wallet field shows `0xDRYRUN...` as a placeholder. Pass `--from <address>` to use a real address in dry-run output.
+> **ARB support**: Arbitrum One (chain 42161) is fully supported via `--chain 42161`.
 
 ---
 
@@ -346,7 +349,7 @@ pancakeswap-v2 --chain 56 remove-liquidity --token-a CAKE --token-b USDT --liqui
 | tokenA | `--token-a` | First token |
 | tokenB | `--token-b` | Second token. Use BNB/ETH to receive native |
 | liquidity | `--liquidity` | LP tokens to burn as a human-readable decimal (e.g. 1.0). Omit to remove all |
-| slippageBps | `--slippage-bps` | Slippage tolerance (default 50 = 0.5%) — global flag |
+| slippageBps | `--slippage-bps` | Slippage tolerance (default 100 = 1%) — global flag |
 | dryRun | `--dry-run` | Preview only — **global flag, place before subcommand** |
 
 **Execution flow:**
@@ -430,6 +433,13 @@ For Arbitrum One (42161): WETH `0x82aF49447D8a07e3bd95BD0d56f35241523fBab1`, USD
 ---
 
 ## Changelog
+
+### v0.2.5 (2026-04-14)
+
+- **fix**: Default slippage increased from 50 bps (0.5%) to 100 bps (1%) — the previous default was too tight for pairs with normal spread, causing add-liquidity to revert. Use `--slippage-bps 50` to restore the old value.
+- **feat**: `add-liquidity` output now includes `lpReceived` — the estimated LP tokens minted, computed from post-tx pool reserves using V2 formula. Shows `"estimated (dry-run)"` in dry-run mode.
+- **fix**: `add-liquidity --dry-run` without `--from` now uses `0xDRYRUN...` placeholder instead of `0x0000...` zero address, so dry-run output is clearly non-live.
+- **docs**: Added ARB (Arbitrum, chain 42161) support note; updated default slippage in all examples; documented `lpReceived` field; documented dry-run wallet placeholder behaviour.
 
 ### v0.2.3 (2026-04-11)
 
