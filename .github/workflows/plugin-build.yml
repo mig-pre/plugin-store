@@ -52,7 +52,7 @@ jobs:
           id: check
           run: |
             echo "Checking PR for .github/ modifications..."
-            CHANGES=$(git diff --name-only origin/main...${{ github.event.pull_request.head.sha }} | grep "^\.github/" || true)
+            CHANGES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...${{ github.event.pull_request.head.sha }} | grep "^\.github/" || true)
             if [ -n "$CHANGES" ]; then
               echo "::error::Fork PRs cannot modify .github/ files:"
               echo "$CHANGES"
@@ -93,7 +93,7 @@ jobs:
       - name: Find plugin and parse build config
         id: find
         run: |
-          CHANGED=$(git diff --name-only origin/main...${{ github.event.pull_request.head.sha }} -- 'skills/' | head -100)
+          CHANGED=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...${{ github.event.pull_request.head.sha }} -- 'skills/' | head -100)
           PLUGIN_NAME=$(echo "$CHANGED" | head -1 | cut -d'/' -f2)
 
           # Validate plugin name (prevent injection via malicious folder names)
