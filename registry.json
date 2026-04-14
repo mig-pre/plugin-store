@@ -5,7 +5,7 @@
     {
       "name": "aave-v3-plugin",
       "version": "0.2.3",
-      "description": "Lend and borrow crypto assets on Aave V3 — the leading decentralized liquidity protocol. Trigger phrases: supply to aave, deposit to aave, borrow from aave, repay aave loan, aave health factor, my aave positions, aave interest rates, enable emode, disable collateral, claim aave rewards.",
+      "description": "Lend and borrow crypto assets on Aave V3 \u2014 the leading decentralized liquidity protocol. Trigger phrases: supply to aave, deposit to aave, borrow from aave, repay aave loan, aave health factor, my aave positions, aave interest rates, enable emode, disable collateral, claim aave rewards.",
       "author": {
         "name": "skylavis-sky",
         "github": "skylavis-sky"
@@ -52,7 +52,7 @@
     {
       "name": "clanker-plugin",
       "version": "0.2.4",
-      "description": "Deploy and manage Clanker ERC-20 tokens on Base and Arbitrum — launch tokens, search by creator, and claim LP fee rewards",
+      "description": "Deploy and manage Clanker ERC-20 tokens on Base and Arbitrum \u2014 launch tokens, search by creator, and claim LP fee rewards",
       "author": {
         "name": "GeoGu360",
         "github": "GeoGu360"
@@ -126,7 +126,7 @@
     {
       "name": "curve-plugin",
       "version": "0.2.6",
-      "description": "Curve DEX plugin — swap stablecoins, add/remove liquidity, query pools and APY across Ethereum, Arbitrum, Base, Polygon, and BSC.",
+      "description": "Curve DEX plugin \u2014 swap stablecoins, add/remove liquidity, query pools and APY across Ethereum, Arbitrum, Base, Polygon, and BSC.",
       "author": {
         "name": "GeoGu360",
         "github": "GeoGu360"
@@ -166,7 +166,7 @@
     {
       "name": "etherfi-plugin",
       "version": "0.2.6",
-      "description": "Liquid restaking on Ethereum — deposit ETH to receive eETH, wrap/unwrap eETH/weETH (ERC-4626), unstake eETH back to ETH, and check positions with APY",
+      "description": "Liquid restaking on Ethereum \u2014 deposit ETH to receive eETH, wrap/unwrap eETH/weETH (ERC-4626), unstake eETH back to ETH, and check positions with APY",
       "author": {
         "name": "GeoGu360",
         "github": "GeoGu360"
@@ -204,7 +204,7 @@
     {
       "name": "gmx-v2-plugin",
       "version": "0.2.5",
-      "description": "Trade perpetuals and spot on GMX V2 — open/close leveraged positions, place limit/stop orders, add/remove GM pool liquidity on Arbitrum and Avalanche",
+      "description": "Trade perpetuals and spot on GMX V2 \u2014 open/close leveraged positions, place limit/stop orders, add/remove GM pool liquidity on Arbitrum and Avalanche",
       "author": {
         "name": "GeoGu360",
         "github": "GeoGu360"
@@ -242,7 +242,7 @@
     {
       "name": "hyperliquid-plugin",
       "version": "0.3.4",
-      "description": "Trade perpetuals on Hyperliquid — check positions, get prices, place market/limit orders with TP/SL brackets, close positions, deposit USDC",
+      "description": "Trade perpetuals on Hyperliquid \u2014 check positions, get prices, place market/limit orders with TP/SL brackets, close positions, deposit USDC",
       "author": {
         "name": "GeoGu360",
         "github": "GeoGu360"
@@ -279,7 +279,7 @@
     {
       "name": "kamino-lend-plugin",
       "version": "0.1.3",
-      "description": "Supply, borrow, and manage positions on Kamino Lend — the leading Solana lending protocol",
+      "description": "Supply, borrow, and manage positions on Kamino Lend \u2014 the leading Solana lending protocol",
       "author": {
         "name": "GeoGu360",
         "github": "GeoGu360"
@@ -349,7 +349,7 @@
     {
       "name": "lido-plugin",
       "version": "0.2.5",
-      "description": "Stake ETH with Lido liquid staking protocol — stake, manage withdrawals, and track staking rewards on Ethereum mainnet",
+      "description": "Stake ETH with Lido liquid staking protocol \u2014 stake, manage withdrawals, and track staking rewards on Ethereum mainnet",
       "author": {
         "name": "GeoGu360",
         "github": "GeoGu360"
@@ -384,7 +384,7 @@
     {
       "name": "meme-trench-scanner",
       "version": "1.0.0",
-      "description": "Meme Trench Scanner v1.0 — Solana Meme automated trading bot with 11 Launchpad coverage, 7-layer exit system, TraderSoul AI observation",
+      "description": "Meme Trench Scanner v1.0 \u2014 Solana Meme automated trading bot with 11 Launchpad coverage, 7-layer exit system, TraderSoul AI observation",
       "author": {
         "name": "yz06276",
         "github": "yz06276"
@@ -450,7 +450,7 @@
     {
       "name": "morpho-plugin",
       "version": "0.2.4",
-      "description": "Supply, borrow and earn yield on Morpho — a permissionless lending protocol",
+      "description": "Supply, borrow and earn yield on Morpho \u2014 a permissionless lending protocol",
       "author": {
         "name": "GeoGu360",
         "github": "GeoGu360"
@@ -487,7 +487,7 @@
     {
       "name": "okx-buildx-hackathon-agent-track",
       "version": "1.0.0",
-      "description": "AI Hackathon participation guide — registration, wallet setup, project building, submission to Moltbook, voting, and scoring. Apr 1-15, 2026. $14,000 USDT in prizes.",
+      "description": "AI Hackathon participation guide \u2014 registration, wallet setup, project building, submission to Moltbook, voting, and scoring. Apr 1-15, 2026. $14,000 USDT in prizes.",
       "author": {
         "name": "OKX",
         "github": "MigOKG"
@@ -525,7 +525,7 @@
     {
       "name": "orca-plugin",
       "version": "0.6.2",
-      "description": "Concentrated liquidity AMM on Solana — swap tokens and query pools via the Whirlpools CLMM program",
+      "description": "Concentrated liquidity AMM on Solana \u2014 swap tokens and query pools via the Whirlpools CLMM program",
       "author": {
         "name": "skylavis-sky",
         "github": "skylavis-sky"
@@ -569,7 +569,7 @@
     {
       "name": "pancakeswap-clmm-plugin",
       "version": "0.1.2",
-      "description": "PancakeSwap V3 CLMM farming plugin — stake LP NFTs into MasterChefV3, harvest CAKE rewards, collect swap fees across BSC, Ethereum, Base, and Arbitrum. Trigger phrases: stake LP NFT, farm CAKE, harvest CAKE rewards, collect fees, unfarm position, PancakeSwap farming, view positions.",
+      "description": "PancakeSwap V3 CLMM farming plugin \u2014 stake LP NFTs into MasterChefV3, harvest CAKE rewards, collect swap fees across BSC, Ethereum, Base, and Arbitrum. Trigger phrases: stake LP NFT, farm CAKE, harvest CAKE rewards, collect fees, unfarm position, PancakeSwap farming, view positions.",
       "author": {
         "name": "skylavis-sky",
         "github": "skylavis-sky"
@@ -685,7 +685,7 @@
     {
       "name": "pendle-plugin",
       "version": "0.2.2",
-      "description": "Pendle Finance yield tokenization plugin — buy/sell PT & YT, add/remove liquidity, mint/redeem PT+YT pairs across Ethereum, Arbitrum, BSC, and Base",
+      "description": "Pendle Finance yield tokenization plugin \u2014 buy/sell PT & YT, add/remove liquidity, mint/redeem PT+YT pairs across Ethereum, Arbitrum, BSC, and Base",
       "author": {
         "name": "skylavis-sky",
         "github": "skylavis-sky"
@@ -716,42 +716,9 @@
       ]
     },
     {
-      "name": "polymarket-agent-skills",
-      "version": "1.0.0",
-      "description": "Polymarket prediction market integration: trading, market data, WebSocket streaming, cross-chain bridge, and gasless transactions",
-      "author": {
-        "name": "Polymarket",
-        "github": "Polymarket"
-      },
-      "license": "MIT",
-      "category": "defi-protocol",
-      "tags": [
-        "polymarket",
-        "prediction-market",
-        "trading",
-        "polygon",
-        "gasless",
-        "bridge"
-      ],
-      "type": "dapp-official",
-      "components": {
-        "skill": {
-          "dir": "skills/polymarket-agent-skills"
-        }
-      },
-      "link": "https://github.com/okx/plugin-store",
-      "extra": {
-        "chains": [
-          "base"
-        ],
-        "protocols": [],
-        "risk_level": "high"
-      }
-    },
-    {
       "name": "polymarket-plugin",
-      "version": "0.4.2",
-      "description": "Trade prediction markets on Polymarket — buy and sell YES/NO outcome tokens on Polygon",
+      "version": "0.4.0",
+      "description": "Trade prediction markets on Polymarket \u2014 buy and sell YES/NO outcome tokens on Polygon",
       "author": {
         "name": "skylavis-sky",
         "github": "skylavis-sky"
@@ -775,7 +742,7 @@
           "repo": "okx/plugin-store",
           "asset_pattern": "polymarket-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/polymarket-plugin@0.4.2"
+          "release_tag": "plugins/polymarket-plugin@0.4.0"
         }
       },
       "api_calls": [
@@ -869,7 +836,7 @@
     {
       "name": "smart-money-signal-copy-trade",
       "version": "1.0.0",
-      "description": "Smart Money Signal Copy Trade v1.0 — Smart money signal tracker with cost-aware TP, 15-check safety, 7-layer exit system",
+      "description": "Smart Money Signal Copy Trade v1.0 \u2014 Smart money signal tracker with cost-aware TP, 15-check safety, 7-layer exit system",
       "author": {
         "name": "yz06276",
         "github": "yz06276"
@@ -900,7 +867,7 @@
     {
       "name": "top-rank-tokens-sniper",
       "version": "1.0.0",
-      "description": "Top Rank Tokens Sniper v1.0 — OKX ranking leaderboard sniper with momentum scoring, 3-level safety, 6-layer exit system",
+      "description": "Top Rank Tokens Sniper v1.0 \u2014 OKX ranking leaderboard sniper with momentum scoring, 3-level safety, 6-layer exit system",
       "author": {
         "name": "yz06276",
         "github": "yz06276"
