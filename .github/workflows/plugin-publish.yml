@@ -16,7 +16,7 @@ name: "Phase 5: Publish"
 
 on:
   push:
-    branches: [main]
+    branches: [main, test]
     paths:
       - 'skills/**'
   workflow_dispatch:

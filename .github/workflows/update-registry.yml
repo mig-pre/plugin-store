@@ -11,7 +11,7 @@ name: "Update Registry"
 
 on:
   push:
-    branches: [main]
+    branches: [main, test]
     paths:
       - 'skills/**'
 
