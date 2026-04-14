@@ -22,4 +22,5 @@ components:
 
 api_calls:
   - https://www.okx.com
+  - http://localhost:3250
 type: community-developer

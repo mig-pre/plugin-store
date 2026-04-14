@@ -667,8 +667,8 @@ Commands used by this system (all via `okx.py` wrapper). `--chain <idx>` is dyna
 |---------|-------------|
 | `onchainos market kline --chain <idx> --address <token> --bar 15m --limit 299` | Fetch recent candle data |
 | `onchainos swap quote --chain <idx> --from <token> --to <token> --amount <raw>` | Get swap quote |
-| `onchainos swap swap --chain <idx> --from <token> --to <token> --amount <raw> --slippage 0.005 --wallet-address <addr>` | Execute swap (returns unsigned tx) |
-| `onchainos wallet contract-call --chain <idx> --to <addr> --unsigned-tx <tx>` | Sign via TEE + broadcast |
+| `onchainos swap swap --chain <idx> --from <token> --to <token> --amount <raw> --slippage 0.005 --wallet-address <addr>` | Execute swap (returns unsigned tx) — **requires user confirmation before first live trade** (see Live Trading Confirmation Protocol above) |
+| `onchainos wallet contract-call --chain <idx> --to <addr> --unsigned-tx <tx>` | Sign via TEE + broadcast — **requires user confirmation before first live trade** (see Live Trading Confirmation Protocol above) |
 | `onchainos wallet history --tx-hash <hash> --chain <idx> --address <addr>` | Check transaction status |
 | `onchainos wallet status` | Check wallet login |
 | `onchainos wallet addresses --chain <idx>` | Get wallet address (solana or evm) |
