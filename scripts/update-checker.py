@@ -11,7 +11,7 @@ import os, sys, json, time, subprocess, tempfile
 
 CACHE_DIR = os.path.join(os.path.expanduser("~"), ".plugin-store", "version-cache")
 REGISTRY_URL = "https://raw.githubusercontent.com/okx/plugin-store/main/registry.json"
-CHECK_INTERVAL = 0  # 0 for testing, restore to 3600 after verification
+CHECK_INTERVAL = 3600  # 1 hour
 
 
 def check(name, current_version):
