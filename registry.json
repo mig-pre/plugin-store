@@ -27,7 +27,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "aave-v3-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/aave-v3-plugin@0.2.3"
@@ -39,7 +39,7 @@
         "https://arbitrum-one-rpc.publicnode.com",
         "https://base-rpc.publicnode.com"
       ],
-      "link": "https://github.com/okx/plugin-store",
+      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "ethereum",
@@ -72,7 +72,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "clanker-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/clanker-plugin@0.2.4"
@@ -108,7 +108,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "compound-v3-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/compound-v3-plugin@0.2.4"
@@ -146,7 +146,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "curve-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/curve-plugin@0.2.6"
@@ -188,7 +188,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "etherfi-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/etherfi-plugin@0.2.6"
@@ -224,7 +224,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "gmx-v2-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/gmx-v2-plugin@0.2.5"
@@ -261,7 +261,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "hyperliquid-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/hyperliquid-plugin@0.3.4"
@@ -299,7 +299,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "kamino-lend-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/kamino-lend-plugin@0.1.3"
@@ -331,7 +331,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "kamino-liquidity-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/kamino-liquidity-plugin@0.1.2"
@@ -369,7 +369,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "lido-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/lido-plugin@0.2.5"
@@ -402,7 +402,7 @@
           "dir": "."
         }
       },
-      "link": "https://github.com/okx/plugin-store",
+      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "solana",
@@ -435,7 +435,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "meteora-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/meteora-plugin@0.3.4"
@@ -471,7 +471,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "morpho-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/morpho-plugin@0.2.4"
@@ -512,7 +512,7 @@
         "web3.okx.com",
         "docs.uniswap.org"
       ],
-      "link": "https://github.com/okx/plugin-store",
+      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base",
@@ -546,7 +546,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "orca-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/orca-plugin@0.6.2"
@@ -556,7 +556,7 @@
         "https://api.orca.so/v1/whirlpool/list",
         "https://api.orca.so/v1"
       ],
-      "link": "https://github.com/okx/plugin-store",
+      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "solana",
@@ -590,7 +590,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "pancakeswap-clmm-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/pancakeswap-clmm-plugin@0.1.2"
@@ -631,7 +631,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "pancakeswap-v2-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/pancakeswap-v2-plugin@0.2.4"
@@ -668,7 +668,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "pancakeswap-v3-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/pancakeswap-v3-plugin@1.0.1"
@@ -705,7 +705,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "pendle-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/pendle-plugin@0.2.2"
@@ -739,7 +739,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "polymarket-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/polymarket-plugin@0.4.2"
@@ -754,7 +754,7 @@
         "polygon.drpc.org",
         "polygon-bor-rpc.publicnode.com"
       ],
-      "link": "https://github.com/okx/plugin-store",
+      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "ethereum",
@@ -787,7 +787,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "pump-fun-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/pump-fun-plugin@0.1.3"
@@ -821,7 +821,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "raydium-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/raydium-plugin@0.1.4"
@@ -854,7 +854,7 @@
           "dir": "."
         }
       },
-      "link": "https://github.com/okx/plugin-store",
+      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "solana",
@@ -885,7 +885,7 @@
           "dir": "."
         }
       },
-      "link": "https://github.com/okx/plugin-store",
+      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "solana",
@@ -920,7 +920,7 @@
           "dir": "skills/uniswap-ai"
         }
       },
-      "link": "https://github.com/okx/plugin-store",
+      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -953,7 +953,7 @@
           "dir": "skills/uniswap-cca-configurator"
         }
       },
-      "link": "https://github.com/okx/plugin-store",
+      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -987,7 +987,7 @@
           "dir": "skills/uniswap-cca-deployer"
         }
       },
-      "link": "https://github.com/okx/plugin-store",
+      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -1024,7 +1024,7 @@
       "api_calls": [
         "trade-api.gateway.uniswap.org"
       ],
-      "link": "https://github.com/okx/plugin-store",
+      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -1061,7 +1061,7 @@
       "api_calls": [
         "trade-api.gateway.uniswap.org"
       ],
-      "link": "https://github.com/okx/plugin-store",
+      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -1098,7 +1098,7 @@
       "api_calls": [
         "trade-api.gateway.uniswap.org"
       ],
-      "link": "https://github.com/okx/plugin-store",
+      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -1135,7 +1135,7 @@
       "api_calls": [
         "trade-api.gateway.uniswap.org"
       ],
-      "link": "https://github.com/okx/plugin-store",
+      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -1169,7 +1169,7 @@
           "dir": "skills/uniswap-v4-security-foundations"
         }
       },
-      "link": "https://github.com/okx/plugin-store",
+      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -1203,7 +1203,7 @@
           "dir": "skills/uniswap-viem-integration"
         }
       },
-      "link": "https://github.com/okx/plugin-store",
+      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -1237,7 +1237,7 @@
           "dir": "."
         },
         "binary": {
-          "repo": "okx/plugin-store",
+          "repo": "mig-pre/plugin-store",
           "asset_pattern": "velodrome-v2-plugin-{target}",
           "checksums_asset": "checksums.txt",
           "release_tag": "plugins/velodrome-v2-plugin@0.1.3"

@@ -5,7 +5,7 @@
 The Morpho skill enables interaction with Morpho's permissionless lending protocol, which operates on two layers: Morpho Blue isolated lending markets and MetaMorpho ERC-4626 vaults curated by risk managers like Gauntlet and Steakhouse. Users can supply assets to earn yield, borrow against collateral, manage positions, and claim rewards across Ethereum Mainnet and Base networks with over $5B in total value locked.
 
 ## Usage
-Install with `npx skills add okx/plugin-store-community --skill morpho`, ensure your wallet is connected via `onchainos wallet login`, then use commands like `morpho positions` to view your portfolio or `morpho markets --asset USDC` to browse lending opportunities. All write operations use dry-run simulation first and require explicit user confirmation before executing on-chain transactions.
+Install with `npx skills add mig-pre/plugin-store-community --skill morpho`, ensure your wallet is connected via `onchainos wallet login`, then use commands like `morpho positions` to view your portfolio or `morpho markets --asset USDC` to browse lending opportunities. All write operations use dry-run simulation first and require explicit user confirmation before executing on-chain transactions.
 
 ## Commands
 | Command | Description |

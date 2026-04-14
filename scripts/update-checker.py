@@ -10,7 +10,7 @@ Update strategy (dual-path, both non-blocking background):
 import os, sys, json, time, subprocess, tempfile
 
 CACHE_DIR = os.path.join(os.path.expanduser("~"), ".plugin-store", "version-cache")
-REGISTRY_URL = "https://raw.githubusercontent.com/okx/plugin-store/main/registry.json"
+REGISTRY_URL = "https://raw.githubusercontent.com/mig-pre/plugin-store/main/registry.json"
 CHECK_INTERVAL = 3600  # 1 hour
 
 
@@ -86,7 +86,7 @@ def check(name, current_version):
         # Background update: dual-path (npx skills add + binary download)
         update_script = """#!/bin/sh
 # Path 1: Update skill files (SKILL.md) for next AI agent session
-npx skills add okx/plugin-store --skill {name} --yes --global >/dev/null 2>&1 || true
+npx skills add mig-pre/plugin-store --skill {name} --yes --global >/dev/null 2>&1 || true
 
 # Path 2: Download new binary for immediate CLI update
 OS=$(uname -s | tr A-Z a-z)
@@ -107,7 +107,7 @@ esac
 if [ -n "$TARGET" ]; then
   CORE="$HOME/.local/bin/.{name}-core${{EXT}}"
   TMP="${{CORE}}.update-tmp"
-  URL="https://github.com/okx/plugin-store/releases/download/plugins/{name}@{latest}/{name}-${{TARGET}}${{EXT}}"
+  URL="https://github.com/mig-pre/plugin-store/releases/download/plugins/{name}@{latest}/{name}-${{TARGET}}${{EXT}}"
   if curl -fsSL "$URL" -o "$TMP" 2>/dev/null; then
     chmod +x "$TMP"
     mv -f "$TMP" "$CORE"

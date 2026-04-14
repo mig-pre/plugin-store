@@ -347,11 +347,11 @@ jobs:
           # Detect external repo: check components.skill.repo first, then build.source_repo
           _SKILL_REPO=$(yq '.components.skill.repo // ""' "$YAML_FILE" 2>/dev/null || echo "")
           _SKILL_COMMIT=$(yq '.components.skill.commit // ""' "$YAML_FILE" 2>/dev/null || echo "")
-          if [ -z "$_SKILL_REPO" ] || [ "$_SKILL_REPO" = "okx/plugin-store" ]; then
+          if [ -z "$_SKILL_REPO" ] || [ "$_SKILL_REPO" = "mig-pre/plugin-store" ]; then
             _SKILL_REPO=$(yq '.build.source_repo // ""' "$YAML_FILE" 2>/dev/null || echo "")
             _SKILL_COMMIT=$(yq '.build.source_commit // ""' "$YAML_FILE" 2>/dev/null || echo "")
           fi
-          if [ -n "$_SKILL_REPO" ] && [ "$_SKILL_REPO" != "okx/plugin-store" ]; then
+          if [ -n "$_SKILL_REPO" ] && [ "$_SKILL_REPO" != "mig-pre/plugin-store" ]; then
             SKILL_REPO="$_SKILL_REPO $_SKILL_COMMIT"
           else
             SKILL_REPO=""

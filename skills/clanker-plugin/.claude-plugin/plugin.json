@@ -3,8 +3,8 @@
   "description": "Deploy and manage Clanker ERC-20 tokens on Base and Arbitrum — launch tokens, search by creator, and claim LP fee rewards",
   "version": "0.2.1",
   "author": {"name": "GeoGu360", "github": "GeoGu360"},
-  "homepage": "https://github.com/okx/plugin-store",
-  "repository": "https://github.com/okx/plugin-store",
+  "homepage": "https://github.com/mig-pre/plugin-store",
+  "repository": "https://github.com/mig-pre/plugin-store",
   "license": "MIT",
   "keywords": ["token-launch", "meme", "erc20", "uniswap-v4", "base"]
 }

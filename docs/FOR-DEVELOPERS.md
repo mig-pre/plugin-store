@@ -2,7 +2,7 @@
 
 > This guide walks you through developing a Plugin for the Plugin Store ecosystem
 > and submitting it for review. By the end, you will have a working Plugin that
-> users can install via `npx skills add okx/plugin-store --skill <name>`.
+> users can install via `npx skills add mig-pre/plugin-store --skill <name>`.
 
 ---
 
@@ -95,7 +95,7 @@ or anything else that benefits from AI-agent orchestration.
 - Basic understanding of the domain your Plugin covers
 
 > **Note:** The plugin-store CLI is optional for local linting. Users install
-> your finished Plugin via `npx skills add okx/plugin-store --skill <name>` --
+> your finished Plugin via `npx skills add mig-pre/plugin-store --skill <name>` --
 > no CLI installation required on their end.
 
 ### Key Rules
@@ -132,7 +132,7 @@ Then authenticate and fork:
 
 ```
 gh auth login
-gh repo fork okx/plugin-store --clone
+gh repo fork mig-pre/plugin-store --clone
 cd plugin-store
 ```
 
@@ -261,7 +261,7 @@ git commit -m "[new-plugin] my-plugin v1.0.0"
 git push origin submit/my-plugin
 ```
 
-Then open a Pull Request from your fork to `okx/plugin-store`. Use this title:
+Then open a Pull Request from your fork to `mig-pre/plugin-store`. Use this title:
 
 ```
 [new-plugin] my-plugin v1.0.0
@@ -652,7 +652,7 @@ Find the optimal swap route to enter a DeFi position.
 
 | Error | Cause | Resolution |
 |-------|-------|------------|
-| Binary connection failed | Server not running | Run `npx skills add okx/plugin-store --skill defi-yield-optimizer` |
+| Binary connection failed | Server not running | Run `npx skills add mig-pre/plugin-store --skill defi-yield-optimizer` |
 | "Pool not found" | Invalid pool address | Verify the pool contract address |
 | "Insufficient balance" | Not enough tokens | Check balance with `onchainos portfolio all-balances` |
 
@@ -1396,7 +1396,7 @@ The following will result in immediate rejection regardless of risk level:
    No. Onchain OS is optional. Plugins can freely use any on-chain technology.
 
 6. **How do users install my Plugin?**
-   After your PR is merged: `npx skills add okx/plugin-store --skill my-plugin`. No plugin-store CLI installation is required on the user's end.
+   After your PR is merged: `npx skills add mig-pre/plugin-store --skill my-plugin`. No plugin-store CLI installation is required on the user's end.
 
 7. **What if the AI review flags something?**
    The AI review is advisory only and does not block your PR. However, human reviewers will read the AI report. Addressing flagged issues speeds up approval.
@@ -1426,8 +1426,8 @@ The following will result in immediate rejection regardless of risk level:
 
 ## 13. Getting Help
 
-- Open an [issue](https://github.com/okx/plugin-store/issues) on GitHub
+- Open an [issue](https://github.com/mig-pre/plugin-store/issues) on GitHub
 - Look at existing Plugins in `skills/` for working examples
 - Run the lint command locally before submitting -- it catches most issues
-- Check [GitHub Actions logs](https://github.com/okx/plugin-store/actions) if
+- Check [GitHub Actions logs](https://github.com/mig-pre/plugin-store/actions) if
   your PR checks fail

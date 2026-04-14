@@ -180,7 +180,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-lint-
 
       - name: Install plugin-store CLI
-        run: cargo install --git https://github.com/okx/plugin-store.git plugin-store
+        run: cargo install --git https://github.com/mig-pre/plugin-store.git plugin-store
 
       - name: Check if PR author is OKX org member
         id: org_check
@@ -222,7 +222,7 @@ jobs:
 
           # Fetch current registry and check for duplicate name
           REGISTRY=$(curl -sSL --max-time 10 \
-            "https://raw.githubusercontent.com/okx/plugin-store/main/registry.json" 2>/dev/null || echo '{"plugins":[]}')
+            "https://raw.githubusercontent.com/mig-pre/plugin-store/main/registry.json" 2>/dev/null || echo '{"plugins":[]}')
 
           EXISTING=$(echo "$REGISTRY" | jq -r '.plugins[].name' 2>/dev/null)
 
