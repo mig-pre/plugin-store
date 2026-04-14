@@ -1,0 +1,23 @@
+schema_version: 1
+name: ci-test-plugin
+version: "0.1.0"
+description: "CI pipeline test plugin — validates Phase 1-5 workflow"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: utility
+tags:
+  - test
+  - ci
+
+components:
+  skill:
+    dir: .
+
+build:
+  lang: rust
+  binary_name: ci-test-plugin
+
+api_calls: []
+type: community-developer
