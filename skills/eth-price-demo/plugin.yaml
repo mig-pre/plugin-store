@@ -1,0 +1,25 @@
+schema_version: 1
+name: eth-price-demo
+version: "0.1.0"
+description: "Query ETH price via OnchainOS — a simple demo plugin for CI testing"
+author:
+  name: "yz06276"
+  github: "yz06276"
+category: analytics
+tags:
+  - eth
+  - price
+  - demo
+  - ethereum
+license: MIT
+
+components:
+  skill:
+    dir: .
+
+build:
+  lang: rust
+  binary_name: eth-price-demo
+
+api_calls:
+  - "https://www.okx.com/api/v5/market/ticker"
