@@ -304,7 +304,7 @@ jobs:
           for attempt in 1 2 3; do
             if git push; then echo "Push succeeded"; break; fi
             echo "Push failed (attempt $attempt/3), rebasing..."
-            git pull --rebase origin main
+            git pull --rebase origin ${{ github.ref_name }}
           done
 
   # ═══════════════════════════════════════════════════════════════
@@ -611,8 +611,8 @@ jobs:
                   TITLE="${NAME} v${FIXED_VERSION}"
 
                   # Also try: checkout latest main and check if Cargo.toml matches plugin.yaml now
-                  LATEST_CARGO_VER=$(git show origin/main:skills/${NAME}/Cargo.toml 2>/dev/null | grep '^version' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-                  LATEST_YAML_VER=$(git show origin/main:skills/${NAME}/plugin.yaml 2>/dev/null | grep '^version' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+                  LATEST_CARGO_VER=$(git show origin/${{ github.ref_name }}:skills/${NAME}/Cargo.toml 2>/dev/null | grep '^version' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+                  LATEST_YAML_VER=$(git show origin/${{ github.ref_name }}:skills/${NAME}/plugin.yaml 2>/dev/null | grep '^version' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
 
                   if [ -n "$LATEST_CARGO_VER" ] && [ -n "$LATEST_YAML_VER" ] && [ "$LATEST_CARGO_VER" = "$LATEST_YAML_VER" ] && [ "$LATEST_CARGO_VER" != "$BIN_VERSION" ]; then
                     # Check if this run was ALREADY triggered by an auto-rebuild.
@@ -626,13 +626,13 @@ jobs:
 
                     # First time: auto-trigger rebuild
                     echo "::warning::Binary ${BIN_VERSION} is stale. Latest main has ${LATEST_CARGO_VER}. Auto-triggering rebuild (one-time)..."
-                    git fetch origin main 2>/dev/null || true
-                    git checkout origin/main -- "skills/${NAME}/SKILL.md" 2>/dev/null || true
+                    git fetch origin ${{ github.ref_name }} 2>/dev/null || true
+                    git checkout origin/${{ github.ref_name }} -- "skills/${NAME}/SKILL.md" 2>/dev/null || true
                     echo "" >> "${REPO_ROOT}/skills/${NAME}/SKILL.md"
                     git -C "$REPO_ROOT" add "skills/${NAME}/SKILL.md"
                     git -C "$REPO_ROOT" -c user.name="plugin-store-bot" -c user.email="bot@plugin-store.local" \
                       commit -m "auto: trigger ${NAME} rebuild (binary v${BIN_VERSION} != plugin v${LATEST_YAML_VER})" 2>/dev/null || true
-                    git -C "$REPO_ROOT" push origin HEAD:main 2>/dev/null && \
+                    git -C "$REPO_ROOT" push origin HEAD:${{ github.ref_name }} 2>/dev/null && \
                       echo "  Auto-rebuild triggered for ${NAME}" || \
                       echo "::warning::Auto-rebuild push failed for ${NAME}. Manual rebuild needed."
 
@@ -880,7 +880,7 @@ jobs:
           # This eliminates concurrent push conflicts — every run produces the complete
           # registry, so the last push always wins and is always correct.
 
-          git pull origin main --rebase 2>/dev/null || true
+          git pull origin ${{ github.ref_name }} --rebase 2>/dev/null || true
 
           python3 << 'PYEOF'
           import json, os, yaml, glob
@@ -977,7 +977,7 @@ jobs:
             echo "Push conflict ($attempt/5) — pulling latest and regenerating..."
             git reset --soft HEAD~1
             git checkout -- registry.json
-            git pull origin main --rebase 2>/dev/null || git pull origin main
+            git pull origin ${{ github.ref_name }} --rebase 2>/dev/null || git pull origin ${{ github.ref_name }}
             # Re-run the full scan on latest main (just re-execute the python above)
             python3 -c "
           import json, os, yaml, glob
