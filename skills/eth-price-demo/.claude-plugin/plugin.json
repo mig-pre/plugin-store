@@ -1,0 +1,5 @@
+{
+  "name": "eth-price-demo",
+  "description": "Query ETH price via OnchainOS — a simple demo plugin for CI testing",
+  "version": "0.1.0"
+}
