@@ -43,6 +43,15 @@
       }
     },
     {
+      "name": "eth-price-demo",
+      "description": "Query ETH price via OnchainOS — a simple demo plugin for CI testing",
+      "source": "./skills/eth-price-demo",
+      "category": "utility",
+      "author": {
+        "name": "OKX"
+      }
+    },
+    {
       "name": "etherfi",
       "description": "Liquid restaking on Ethereum — deposit ETH to receive eETH, wrap eETH to weETH (ERC-4626), and check positions with APY",
       "source": "./skills/etherfi-plugin",
