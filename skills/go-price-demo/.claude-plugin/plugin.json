@@ -1,0 +1,5 @@
+{
+  "name": "go-price-demo",
+  "description": "Query ETH/BTC prices via OKX public API — a Go demo plugin for CI testing",
+  "version": "0.1.0"
+}

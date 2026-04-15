@@ -1,0 +1,26 @@
+schema_version: 1
+name: go-price-demo
+version: "0.1.0"
+description: "Query ETH/BTC prices via OKX public API — a Go demo plugin for CI testing"
+author:
+  name: "yz06276"
+  github: "yz06276"
+category: analytics
+tags:
+  - eth
+  - btc
+  - price
+  - demo
+  - go
+license: MIT
+
+components:
+  skill:
+    dir: .
+
+build:
+  lang: go
+  binary_name: go-price-demo
+
+api_calls:
+  - "https://www.okx.com/api/v5/market/ticker"
