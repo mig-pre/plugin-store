@@ -588,6 +588,50 @@
       }
     },
     {
+      "name": "one-click-token-launch",
+      "version": "1.0.0",
+      "description": "One-click multi-launchpad token creation with bundled buy, IPFS metadata, MEV protection across 6 launchpads on Solana and BSC",
+      "author": {
+        "name": "victorlee",
+        "github": "VibeCodeDaddy69"
+      },
+      "license": "MIT",
+      "category": "trading-strategy",
+      "tags": [
+        "solana",
+        "bsc",
+        "onchainos",
+        "one-click-token-launch",
+        "meme-coin"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "dir": "."
+        }
+      },
+      "api_calls": [
+        "https://pumpportal.fun",
+        "https://pump.fun",
+        "https://bags.fm",
+        "https://moon.it",
+        "https://mainnet.block-engine.jito.wtf",
+        "https://api.pinata.cloud",
+        "https://gateway.pinata.cloud",
+        "https://solscan.io",
+        "https://bscscan.com"
+      ],
+      "link": "https://github.com/okx/plugin-store",
+      "extra": {
+        "chains": [
+          "solana",
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "high"
+      }
+    },
+    {
       "name": "orca-plugin",
       "version": "0.6.2",
       "description": "Concentrated liquidity AMM on Solana — swap tokens and query pools via the Whirlpools CLMM program",
