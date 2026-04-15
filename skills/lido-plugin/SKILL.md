@@ -1,7 +1,7 @@
 ---
 name: lido-plugin
 description: Stake ETH with Lido liquid staking protocol to receive stETH, manage withdrawals, and track staking rewards. Supports staking, balance queries, withdrawal requests, withdrawal status, and claiming finalized withdrawals on Ethereum mainnet.
-version: "0.2.5"
+version: "0.2.6"
 author: GeoGu360
 ---
 
@@ -18,7 +18,7 @@ author: GeoGu360
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/lido-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.2.5"
+LOCAL_VER="0.2.6"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -91,7 +91,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/lido-plugin@0.2.5/lido-plugin-${TARGET}${EXT}" -o ~/.local/bin/.lido-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/lido-plugin@0.2.6/lido-plugin-${TARGET}${EXT}" -o ~/.local/bin/.lido-plugin-core${EXT}
 chmod +x ~/.local/bin/.lido-plugin-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -99,7 +99,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/lido-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.2.5" > "$HOME/.plugin-store/managed/lido-plugin"
+echo "0.2.6" > "$HOME/.plugin-store/managed/lido-plugin"
 ```
 
 ### Report install (auto-injected, runs once)
@@ -119,7 +119,7 @@ if [ ! -f "$REPORT_FLAG" ]; then
   # Report to Vercel stats
   curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
     -H "Content-Type: application/json" \
-    -d '{"name":"lido-plugin","version":"0.2.5"}' >/dev/null 2>&1 || true
+    -d '{"name":"lido-plugin","version":"0.2.6"}' >/dev/null 2>&1 || true
   # Report to OKX API (with HMAC-signed device token)
   curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
     -H "Content-Type: application/json" \
@@ -388,6 +388,62 @@ onchainos wallet contract-call --chain 1 --to 0x889edC2eDab5f40e902b864aD4d7AdE8
 
 ---
 
+### `wrap` — stETH → wstETH
+
+Wraps stETH into wstETH (Wrapped Staked ETH) via `wstETH.wrap(uint256)`.
+First approves wstETH contract to spend stETH if allowance is insufficient, then wraps.
+
+**Usage:**
+```
+lido wrap --amount-steth <AMOUNT> [--from <ADDR>] [--confirm] [--dry-run]
+```
+
+**Parameters:**
+| Parameter | Required | Description |
+|---|---|---|
+| `--amount-steth` | Yes | Amount of stETH to wrap (e.g. `1.5`) |
+| `--from` | No | Wallet address (resolved from onchainos if omitted) |
+| `--confirm` | No | Broadcast the transaction (preview only without this flag) |
+| `--dry-run` | No | Show calldata without broadcasting |
+
+**Output fields:** `ok`, `txHash`, `action`, `stETHWrapped`, `stETHWei`, `wstETHExpected`
+
+**Flow:**
+1. Parse stETH amount to wei (18 decimals)
+2. Fetch exchange rate via `wstETH.getStETHByWstETH(1e18)` — compute `wstETHExpected = stETH / rate`
+3. Check stETH balance is sufficient (pre-flight)
+4. Approve wstETH contract to spend stETH — **waits for on-chain confirmation** (polls receipt, up to 120s)
+5. Call `wstETH.wrap(uint256 _stETHAmount)` (selector `0xea598cb0`) — waits for confirmation
+
+---
+
+### `unwrap` — wstETH → stETH
+
+Unwraps wstETH back to stETH via `wstETH.unwrap(uint256)`. No approval needed — burns caller's wstETH directly.
+
+**Usage:**
+```
+lido unwrap --amount-wsteth <AMOUNT> [--from <ADDR>] [--confirm] [--dry-run]
+```
+
+**Parameters:**
+| Parameter | Required | Description |
+|---|---|---|
+| `--amount-wsteth` | Yes | Amount of wstETH to unwrap (e.g. `1.0`) |
+| `--from` | No | Wallet address (resolved from onchainos if omitted) |
+| `--confirm` | No | Broadcast the transaction (preview only without this flag) |
+| `--dry-run` | No | Show calldata without broadcasting |
+
+**Output fields:** `ok`, `txHash`, `action`, `wstETHUnwrapped`, `wstETHWei`, `stETHExpected`
+
+**Flow:**
+1. Parse wstETH amount to wei (18 decimals)
+2. Fetch exchange rate via `wstETH.getStETHByWstETH(amount)` — compute `stETHExpected`
+3. Check wstETH balance is sufficient (pre-flight)
+4. Call `wstETH.unwrap(uint256 _wstETHAmount)` (selector `0xde0e9a3e`) — no approve step
+
+---
+
 ## Error Handling
 
 | Error | Cause | Resolution |
@@ -409,6 +465,10 @@ After **request-withdrawal**: suggest monitoring status with `lido get-withdrawa
 After **get-withdrawals**: if any request shows "READY TO CLAIM", suggest `lido claim-withdrawal --ids <ID>`.
 
 After **claim-withdrawal**: suggest checking ETH balance via `onchainos wallet balance --chain 1`.
+
+After **wrap**: suggest checking wstETH balance with `lido balance` or unwrapping later with `lido unwrap`.
+
+After **unwrap**: suggest checking stETH balance with `lido balance`.
 
 ## Skill Routing
 

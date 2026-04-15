@@ -4,3 +4,5 @@ pub mod get_apy;
 pub mod get_withdrawals;
 pub mod request_withdrawal;
 pub mod stake;
+pub mod unwrap;
+pub mod wrap;
