@@ -316,8 +316,13 @@ pub async fn execute(args: &AddLiquidityArgs, dry_run: bool) -> anyhow::Result<(
             solana_rpc::find_token_account(&client, &wallet_str, &mint_y_str2, &ata_y_str),
             solana_rpc::account_exists(&client, &pos_str),
         )?;
-    // Reconcile: if we found an existing spanning position above, trust on-chain state
-    let position_exists = position_exists || position_exists_onchain;
+    // Use on-chain account_exists as the authoritative source.
+    // get_dlmm_positions_by_owner (getProgramAccounts) can return stale data — e.g. a
+    // recently-closed position may still appear in the index for a few seconds after
+    // close_position_if_empty confirms. If we trust stale data we skip ix_initialize_position_pda,
+    // then the DLMM instruction fails with "account owned by a different program" because the
+    // closed account reverts to System Program ownership.
+    let position_exists = position_exists_onchain;
     let user_token_x: Pubkey = token_x_acct.parse()?;
     let user_token_y: Pubkey = token_y_acct.parse()?;
 
@@ -398,14 +403,6 @@ pub async fn execute(args: &AddLiquidityArgs, dry_run: bool) -> anyhow::Result<(
                 &wallet, &user_token_y, &wallet, &token_y_mint,
             ));
         }
-        if token_x_mint == WSOL_MINT && amount_x_raw > 0 {
-            setup_ixs.push(meteora_ix::ix_sol_transfer(&wallet, &user_token_x, amount_x_raw));
-            setup_ixs.push(meteora_ix::ix_sync_native(&user_token_x));
-        }
-        if token_y_mint == WSOL_MINT && amount_y_raw > 0 {
-            setup_ixs.push(meteora_ix::ix_sol_transfer(&wallet, &user_token_y, amount_y_raw));
-            setup_ixs.push(meteora_ix::ix_sync_native(&user_token_y));
-        }
         if !ba_lower_exists {
             setup_ixs.push(meteora_ix::ix_initialize_bin_array(
                 &lb_pair, &bin_array_lower, &wallet, lower_idx,
@@ -452,7 +449,23 @@ pub async fn execute(args: &AddLiquidityArgs, dry_run: bool) -> anyhow::Result<(
     // one side of the active bin. addLiquidityByStrategy (two-sided) will silently
     // deposit 0 when one amount is zero (SpotBalanced) or reject the range
     // (SpotImBalanced), so it is only used when both amounts are non-zero.
+    // ── WSOL wrapping (always, not just on first deposit) ────────────────────
+    // Wrapping is placed in the liquidity TX (not setup TX) so it fires on EVERY
+    // deposit — including repeat deposits where needs_setup=false and all accounts
+    // already exist. The wSOL ATA is guaranteed to exist at this point:
+    //   - first deposit:  created in setup TX, confirmed after the 8s wait
+    //   - repeat deposit: pre-existing on-chain
     let blockhash = solana_rpc::get_latest_blockhash(&client).await?;
+    let mut liq_ixs = vec![meteora_ix::ix_set_compute_unit_limit(400_000)];
+    if token_x_mint == WSOL_MINT && amount_x_raw > 0 {
+        liq_ixs.push(meteora_ix::ix_sol_transfer(&wallet, &user_token_x, amount_x_raw));
+        liq_ixs.push(meteora_ix::ix_sync_native(&user_token_x));
+    }
+    if token_y_mint == WSOL_MINT && amount_y_raw > 0 {
+        liq_ixs.push(meteora_ix::ix_sol_transfer(&wallet, &user_token_y, amount_y_raw));
+        liq_ixs.push(meteora_ix::ix_sync_native(&user_token_y));
+    }
+
     let liquidity_ix = if amount_x_raw > 0 && amount_y_raw == 0 {
         meteora_ix::ix_add_liquidity_by_strategy_one_side(
             &position, &lb_pair,
@@ -488,7 +501,7 @@ pub async fn execute(args: &AddLiquidityArgs, dry_run: bool) -> anyhow::Result<(
             effective_liq_lower, effective_liq_upper,
         )
     };
-    let liq_ixs = vec![meteora_ix::ix_set_compute_unit_limit(400_000), liquidity_ix];
+    liq_ixs.push(liquidity_ix);
 
     let liq_b58 = meteora_ix::build_tx_b58(&liq_ixs, &wallet, blockhash)?;
     eprintln!("[liquidity] Submitting add_liquidity tx...");
