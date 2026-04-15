@@ -826,7 +826,7 @@
     },
     {
       "name": "polymarket-plugin",
-      "version": "0.4.3",
+      "version": "0.4.6",
       "description": "Trade prediction markets on Polymarket — buy and sell YES/NO outcome tokens on Polygon",
       "author": {
         "name": "skylavis-sky",
@@ -851,7 +851,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "polymarket-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/polymarket-plugin@0.4.3"
+          "release_tag": "plugins/polymarket-plugin@0.4.6"
         }
       },
       "api_calls": [
