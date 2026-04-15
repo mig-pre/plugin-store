@@ -64,6 +64,20 @@ pub async fn run(
         }
     };
 
+    // For explicit --amount: check wallet has enough before spending gas on approve
+    if amount.is_some() && wallet_balance < repay_amount {
+        anyhow::bail!(
+            "Insufficient wallet balance to repay: wallet has {:.6} {} but repay amount is {:.6} {}. \
+             Acquire {:.6} more {}, or omit --amount to repay as much as your wallet holds.",
+            wallet_balance as f64 / decimals_factor,
+            cfg.base_asset_symbol,
+            repay_amount as f64 / decimals_factor,
+            cfg.base_asset_symbol,
+            (repay_amount - wallet_balance) as f64 / decimals_factor,
+            cfg.base_asset_symbol
+        );
+    }
+
     // Repay uses Comet.supply(base_asset, repay_amount) — same method as supply
     // selector: 0xf2b9fdb8
     let base_padded = rpc::pad_address(cfg.base_asset);

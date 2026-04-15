@@ -1,7 +1,7 @@
 ---
 name: compound-v3-plugin
 description: "Compound V3 (Comet) lending plugin: supply collateral, borrow/repay the base asset, and claim COMP rewards. Trigger phrases: compound supply, compound borrow, compound repay, compound withdraw, compound rewards, compound position, compound market."
-version: "0.2.5"
+version: "0.2.6"
 author: "skylavis-sky"
 tags:
   - lending
@@ -24,7 +24,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/compound-v3-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.2.5"
+LOCAL_VER="0.2.6"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -99,7 +99,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/compound-v3-plugin@0.2.5/compound-v3-plugin-${TARGET}${EXT}" -o ~/.local/bin/.compound-v3-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/compound-v3-plugin@0.2.6/compound-v3-plugin-${TARGET}${EXT}" -o ~/.local/bin/.compound-v3-plugin-core${EXT}
 chmod +x ~/.local/bin/.compound-v3-plugin-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -107,7 +107,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/compound-v3-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.2.5" > "$HOME/.plugin-store/managed/compound-v3-plugin"
+echo "0.2.6" > "$HOME/.plugin-store/managed/compound-v3-plugin"
 ```
 
 ### Report install (auto-injected, runs once)
@@ -127,7 +127,7 @@ if [ ! -f "$REPORT_FLAG" ]; then
   # Report to Vercel stats
   curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
     -H "Content-Type: application/json" \
-    -d '{"name":"compound-v3-plugin","version":"0.2.5"}' >/dev/null 2>&1 || true
+    -d '{"name":"compound-v3-plugin","version":"0.2.6"}' >/dev/null 2>&1 || true
   # Report to OKX API (with HMAC-signed device token)
   curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
     -H "Content-Type: application/json" \
@@ -138,6 +138,128 @@ fi
 
 ---
 
+## Proactive Onboarding
+
+When a user signals they are **new or just installed** this plugin — e.g. "I just installed compound", "how do I get started with Compound", "what can I do with this", "help me use Compound" — **do not wait for them to ask specific questions.** Proactively walk them through the Quickstart in order, one step at a time, waiting for confirmation before proceeding to the next:
+
+1. **Check wallet** — run `onchainos wallet addresses --chain 8453`. If no address, direct them to connect via `onchainos wallet login`. Do not proceed to write operations until a wallet is confirmed.
+2. **Check balance** — run `onchainos wallet balance --chain 8453`. If zero, explain they need USDC or WETH on Base (or whichever chain they want to use) before supplying.
+3. **Pick a market** — run `compound-v3 --chain 8453 get-markets` to show current rates. Explain the two roles: **Lender** (supply to earn APR) and **Borrower** (supply collateral then borrow the base asset).
+4. **Preview first** — run the supply command without `--confirm` so they see the preview before any on-chain action. Confirm the market, asset, and amount with the user before proceeding.
+5. **Execute** — re-run with `--confirm`.
+
+Do not dump all steps at once. Guide conversationally — confirm each step before moving on.
+
+---
+
+## Quickstart
+
+New to Compound V3? Follow these steps to go from zero to earning yield or borrowing in minutes.
+
+### Step 1 — Connect your wallet
+
+```bash
+onchainos wallet login your@email.com
+onchainos wallet addresses --chain 8453
+```
+
+Your wallet address is used for all on-chain operations. All signing is done via `onchainos` — no private key export or manual transaction construction required.
+
+### Step 2 — Check your balance and pick a chain
+
+```bash
+# Base (default — lowest gas fees)
+onchainos wallet balance --chain 8453
+
+# Arbitrum
+onchainos wallet balance --chain 42161
+
+# Ethereum mainnet
+onchainos wallet balance --chain 1
+```
+
+Compound V3 is a single-asset lending market. Each market has one **base asset** (what you borrow or earn yield on) and supports several **collateral assets**:
+
+| Chain | Market | Base asset | Min supply for earning |
+|-------|--------|-----------|----------------------|
+| Base | usdc | USDC | any amount |
+| Base | weth | WETH | any amount |
+| Arbitrum | usdc | USDC | any amount |
+| Arbitrum | weth | WETH | any amount |
+| Arbitrum | usdc.e | USDC.e | any; min borrow ~100 USDC.e |
+| Ethereum | usdc | USDC | any amount |
+| Polygon | usdc | USDC | any amount |
+
+### Step 3 — Browse market rates
+
+```bash
+compound-v3 --chain 8453 get-markets
+```
+
+Shows supply APR (what lenders earn), borrow APR (what borrowers pay), utilization, and total supply/borrow. No wallet needed.
+
+### Step 4 — Earn yield (supply base asset)
+
+Supply USDC directly to earn the supply APR. No collateral needed.
+
+```bash
+# Preview first (safe — no tx sent):
+compound-v3 --chain 8453 --market usdc supply \
+  --asset 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913 \
+  --amount 10.0
+
+# Execute on-chain (add --confirm):
+compound-v3 --chain 8453 --market usdc --confirm supply \
+  --asset 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913 \
+  --amount 10.0
+```
+
+Expected output: `"ok": true`, `"supply_tx_hash": "0x..."`, `"new_supply_balance": "10.0"`.
+
+> **Note**: `new_supply_balance` may show `9.999999` instead of `10.000000`. This is normal Compound V3 interest-index rounding — no funds are lost.
+
+### Step 5 — Check your position
+
+```bash
+compound-v3 --chain 8453 --market usdc get-position
+```
+
+Shows your supply balance, borrow balance, and collateral health. Use this after any write operation to confirm the updated state.
+
+### Step 6 — Borrow against collateral (optional)
+
+To borrow USDC, you first need to supply a **collateral asset** (e.g. WETH, cbETH). Find the collateral asset address from `get-markets`, then:
+
+```bash
+# 1. Supply WETH as collateral (preview first)
+compound-v3 --chain 8453 --market usdc supply \
+  --asset 0x4200000000000000000000000000000000000006 \
+  --amount 0.005
+
+# 2. Borrow USDC (preview first — shows collateralization check result)
+compound-v3 --chain 8453 --market usdc borrow --amount 5.0
+
+# 3. Execute borrow (add --confirm after reviewing the preview)
+compound-v3 --chain 8453 --market usdc --confirm borrow --amount 5.0
+```
+
+The borrow preview runs a simulation on-chain and will catch `NotCollateralized` before spending gas if your collateral is insufficient.
+
+### Step 7 — Repay and withdraw
+
+```bash
+# Repay all borrowed USDC
+compound-v3 --chain 8453 --market usdc --confirm repay
+
+# Withdraw supplied collateral (requires zero debt first)
+compound-v3 --chain 8453 --market usdc --confirm withdraw \
+  --asset 0x4200000000000000000000000000000000000006 \
+  --amount 0.005
+```
+
+> **Tip**: Always run commands **without** `--confirm` first — this shows a safe preview with the exact transactions that will be submitted. Re-run with `--confirm` to execute.
+
+---
 
 ## Architecture
 
@@ -422,7 +544,8 @@ All commands return structured JSON. On error:
 | Error | Cause | Resolution |
 |-------|-------|------------|
 | `Unsupported chain_id=X market=Y` | The requested `--market` is not available on that chain | Check the Supported Chains and Markets table above; use `--market weth` or `--market usdc.e` only where listed |
-| `Insufficient wallet balance` | ERC-20 balance below the supply amount | Acquire the token before supplying; use `onchainos wallet balance` to check |
+| `Insufficient wallet balance` | ERC-20 balance below the supply or repay amount | The error includes your current balance and how much more is needed — acquire the shortfall before retrying |
+| `Withdrawal amount exceeds your current ...` | Requested withdrawal amount exceeds on-chain balance (common dust mismatch) | Error includes your actual balance with exact figure — use that value as `--amount` |
 | `Account has outstanding debt` | Withdraw blocked by non-zero borrow | Run `repay` (no `--amount`) to repay all debt first |
 | `Borrow would fail: not sufficiently collateralized` | Collateral value too low, or borrow below `baseBorrowMin` | Supply more collateral via `supply --asset <collateral> --amount <amount>`; check `min_borrow_amount` in borrow preview |
 | `No outstanding borrow balance to repay` | Repay called with zero debt | Nothing to do — position is already clean |

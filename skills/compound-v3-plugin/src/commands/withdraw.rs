@@ -36,6 +36,28 @@ pub async fn run(
         );
     }
 
+    // Pre-flight: check on-chain balance so dust/rounding mismatches surface before any gas is spent
+    let is_base = asset.eq_ignore_ascii_case(cfg.base_asset);
+    let on_chain_balance: u128 = if is_base {
+        rpc::get_balance_of(cfg.comet_proxy, &wallet, cfg.rpc_url).await.unwrap_or(0)
+    } else {
+        rpc::get_collateral_balance_of(cfg.comet_proxy, &wallet, asset, cfg.rpc_url).await.unwrap_or(0)
+    };
+    let balance_type = if is_base { "supply balance" } else { "collateral balance" };
+    let asset_factor = 10f64.powi(asset_decimals as i32);
+    if amount > on_chain_balance {
+        anyhow::bail!(
+            "Withdrawal amount {:.decimals$} exceeds your current {}: {:.decimals$} (raw: {}). \
+             Use --amount {:.decimals$} or less.",
+            amount as f64 / asset_factor,
+            balance_type,
+            on_chain_balance as f64 / asset_factor,
+            on_chain_balance,
+            on_chain_balance as f64 / asset_factor,
+            decimals = asset_decimals as usize
+        );
+    }
+
     // Build withdraw(address,uint256) calldata
     // selector: 0xf3fef3a3
     let asset_padded = rpc::pad_address(asset);
@@ -55,6 +77,9 @@ pub async fn run(
             "asset": asset,
             "amount": amount_human,
             "amount_raw": amount.to_string(),
+            "current_balance": format!("{:.decimals$}", on_chain_balance as f64 / asset_factor, decimals = asset_decimals as usize),
+            "current_balance_raw": on_chain_balance.to_string(),
+            "balance_type": balance_type,
             "comet": cfg.comet_proxy,
             "pending_transactions": 1,
             "transactions": [
