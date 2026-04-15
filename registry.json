@@ -4,7 +4,7 @@
   "plugins": [
     {
       "name": "aave-v3-plugin",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "description": "Lend and borrow crypto assets on Aave V3 — the leading decentralized liquidity protocol. Trigger phrases: supply to aave, deposit to aave, borrow from aave, repay aave loan, aave health factor, my aave positions, aave interest rates, enable emode, disable collateral, claim aave rewards.",
       "author": {
         "name": "skylavis-sky",
@@ -30,7 +30,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "aave-v3-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/aave-v3-plugin@0.2.4"
+          "release_tag": "plugins/aave-v3-plugin@0.2.5"
         }
       },
       "api_calls": [
@@ -633,7 +633,7 @@
     },
     {
       "name": "orca-plugin",
-      "version": "0.6.2",
+      "version": "0.6.3",
       "description": "Concentrated liquidity AMM on Solana — swap tokens and query pools via the Whirlpools CLMM program",
       "author": {
         "name": "skylavis-sky",
@@ -658,12 +658,13 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "orca-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/orca-plugin@0.6.2"
+          "release_tag": "plugins/orca-plugin@0.6.3"
         }
       },
       "api_calls": [
         "https://api.orca.so/v1/whirlpool/list",
-        "https://api.orca.so/v1"
+        "https://api.orca.so/v1",
+        "api.mainnet-beta.solana.com"
       ],
       "link": "https://github.com/okx/plugin-store",
       "extra": {
@@ -754,7 +755,7 @@
     },
     {
       "name": "pancakeswap-v3-plugin",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "description": "Swap tokens and manage concentrated liquidity on PancakeSwap V3 on BNB Chain, Base, and Arbitrum",
       "author": {
         "name": "GeoGu360",
@@ -780,7 +781,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "pancakeswap-v3-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/pancakeswap-v3-plugin@1.0.1"
+          "release_tag": "plugins/pancakeswap-v3-plugin@1.0.2"
         }
       },
       "api_calls": [
@@ -909,7 +910,7 @@
     },
     {
       "name": "raydium-plugin",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "description": "Raydium AMM plugin for token swaps, price queries, and pool info on Solana mainnet. Trigger phrases: swap on raydium, raydium swap, raydium price, raydium pool, get swap quote raydium, raydium dex, swap solana raydium.",
       "author": {
         "name": "skylavis-sky",
@@ -933,7 +934,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "raydium-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/raydium-plugin@0.1.4"
+          "release_tag": "plugins/raydium-plugin@0.1.5"
         }
       },
       "api_calls": [

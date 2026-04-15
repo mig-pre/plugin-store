@@ -59,12 +59,12 @@ pub async fn wallet_contract_call(
 
 /// Poll until a transaction is confirmed on-chain.
 /// Called after approve --force so the main op simulation sees the updated allowance.
-/// Uses chain-aware timeouts: Ethereum mainnet (~12s blocks) polls up to 40s; Base (~2s blocks) polls up to 16s.
-pub async fn wait_for_tx(tx_hash: &str, rpc_url: &str, chain_id: u64) -> anyhow::Result<()> {
+/// Uses 20 attempts × 2s = 40s for all chains (Base ~2s blocks still needs headroom for RPC lag).
+pub async fn wait_for_tx(tx_hash: &str, rpc_url: &str, _chain_id: u64) -> anyhow::Result<()> {
     if tx_hash == "0x0000000000000000000000000000000000000000000000000000000000000000" {
         return Ok(()); // dry-run stub hash — nothing to wait for
     }
-    let max_attempts: u32 = if chain_id == 1 { 20 } else { 8 }; // 40s for ETH mainnet, 16s for Base
+    let max_attempts: u32 = 20; // 40s — same for all chains
     let client = reqwest::Client::new();
     for _ in 0..max_attempts {
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;

@@ -85,7 +85,7 @@ pub async fn run(
         chain_id,
         cfg.morpho_blue,
         &withdraw_calldata,
-        from,
+        Some(owner),
         None,
         dry_run,
         false,

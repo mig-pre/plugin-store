@@ -1512,8 +1512,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "morpho"
-version = "0.2.2"
+name = "morpho-plugin"
+version = "0.2.3"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",

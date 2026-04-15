@@ -65,7 +65,7 @@ pub async fn run(
         chain_id,
         cfg.merkl_distributor,
         &claim_calldata,
-        from,
+        Some(user),
         None,
         dry_run,
         false,
