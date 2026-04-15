@@ -382,6 +382,71 @@
       ]
     },
     {
+      "name": "macro-intelligence",
+      "version": "1.0.0",
+      "description": "Unified macro intelligence feed — reads 7 sources, classifies events, scores sentiment, generates AI insights, exposes signals via HTTP API",
+      "author": {
+        "name": "victorlee",
+        "github": "VibeCodeDaddy69"
+      },
+      "license": "MIT",
+      "category": "trading-strategy",
+      "tags": [
+        "macro",
+        "news-aggregator",
+        "sentiment",
+        "signals",
+        "fred",
+        "finnhub"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "dir": "."
+        }
+      },
+      "link": "https://github.com/okx/plugin-store"
+    },
+    {
+      "name": "mainstream-spot-order",
+      "version": "1.0.0",
+      "description": "Multi-chain DEX spot trading system with 6-signal ensemble, auto-research strategy optimization, and per-pair backtesting across SOL, ETH, BTC, BNB, AVAX, DOGE",
+      "author": {
+        "name": "victorlee",
+        "github": "VibeCodeDaddy69"
+      },
+      "license": "MIT",
+      "category": "trading-strategy",
+      "tags": [
+        "solana",
+        "ethereum",
+        "bsc",
+        "avalanche",
+        "onchainos",
+        "spot-trading",
+        "auto-research"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "dir": "."
+        }
+      },
+      "api_calls": [
+        "https://www.okx.com",
+        "http://localhost:3250"
+      ],
+      "link": "https://github.com/okx/plugin-store",
+      "extra": {
+        "chains": [
+          "solana",
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "high"
+      }
+    },
+    {
       "name": "meme-trench-scanner",
       "version": "1.0.0",
       "description": "Meme Trench Scanner v1.0 — Solana Meme automated trading bot with 11 Launchpad coverage, 7-layer exit system, TraderSoul AI observation",
@@ -1246,6 +1311,42 @@
       "api_calls": [
         "optimism-rpc.publicnode.com"
       ]
+    },
+    {
+      "name": "wallet-tracker-mcap",
+      "version": "1.0.0",
+      "description": "Wallet copy-trade bot -- monitors target Solana wallets and auto-mirrors meme token buys/sells with MC target gating, tiered TP, trailing stop, and 4-tier risk grading",
+      "author": {
+        "name": "victorlee",
+        "github": "VibeCodeDaddy69"
+      },
+      "license": "MIT",
+      "category": "trading-strategy",
+      "tags": [
+        "solana",
+        "onchainos",
+        "wallet-tracker-mcap",
+        "copy-trade",
+        "meme-coin"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "dir": "."
+        }
+      },
+      "api_calls": [
+        "https://www.okx.com"
+      ],
+      "link": "https://github.com/okx/plugin-store",
+      "extra": {
+        "chains": [
+          "solana",
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "high"
+      }
     }
   ]
 }
