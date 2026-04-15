@@ -26,6 +26,10 @@ enum Commands {
     GetWithdrawals(commands::get_withdrawals::GetWithdrawalsArgs),
     /// Claim finalized withdrawal(s)
     ClaimWithdrawal(commands::claim_withdrawal::ClaimWithdrawalArgs),
+    /// Wrap stETH into wstETH (ERC-20 yield-bearing token)
+    Wrap(commands::wrap::WrapArgs),
+    /// Unwrap wstETH back to stETH
+    Unwrap(commands::unwrap::UnwrapArgs),
 }
 
 #[tokio::main]
@@ -38,5 +42,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::RequestWithdrawal(args) => commands::request_withdrawal::run(args).await,
         Commands::GetWithdrawals(args) => commands::get_withdrawals::run(args).await,
         Commands::ClaimWithdrawal(args) => commands::claim_withdrawal::run(args).await,
+        Commands::Wrap(args) => commands::wrap::run(args).await,
+        Commands::Unwrap(args) => commands::unwrap::run(args).await,
     }
 }

@@ -125,7 +125,7 @@
     },
     {
       "name": "curve-plugin",
-      "version": "0.2.6",
+      "version": "0.2.7",
       "description": "Curve DEX plugin — swap stablecoins, add/remove liquidity, query pools and APY across Ethereum, Arbitrum, Base, Polygon, and BSC.",
       "author": {
         "name": "GeoGu360",
@@ -149,7 +149,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "curve-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/curve-plugin@0.2.6"
+          "release_tag": "plugins/curve-plugin@0.2.7"
         }
       },
       "api_calls": [
@@ -165,7 +165,7 @@
     },
     {
       "name": "etherfi-plugin",
-      "version": "0.2.6",
+      "version": "0.2.7",
       "description": "Liquid restaking on Ethereum — deposit ETH to receive eETH, wrap/unwrap eETH/weETH (ERC-4626), unstake eETH back to ETH, and check positions with APY",
       "author": {
         "name": "GeoGu360",
@@ -191,7 +191,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "etherfi-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/etherfi-plugin@0.2.6"
+          "release_tag": "plugins/etherfi-plugin@0.2.7"
         }
       },
       "api_calls": [
@@ -348,7 +348,7 @@
     },
     {
       "name": "lido-plugin",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "description": "Stake ETH with Lido liquid staking protocol — stake, manage withdrawals, and track staking rewards on Ethereum mainnet",
       "author": {
         "name": "GeoGu360",
@@ -372,7 +372,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "lido-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/lido-plugin@0.2.5"
+          "release_tag": "plugins/lido-plugin@0.2.6"
         }
       },
       "api_calls": [
@@ -479,7 +479,7 @@
     },
     {
       "name": "meteora-plugin",
-      "version": "0.3.6",
+      "version": "0.3.7",
       "description": "Meteora DLMM plugin for searching pools, getting swap quotes, checking positions, executing swaps, and adding liquidity on Solana",
       "author": {
         "name": "skylavis-sky",
@@ -503,7 +503,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "meteora-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/meteora-plugin@0.3.6"
+          "release_tag": "plugins/meteora-plugin@0.3.7"
         }
       },
       "api_calls": [
