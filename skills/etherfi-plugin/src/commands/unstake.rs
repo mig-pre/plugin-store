@@ -62,14 +62,11 @@ async fn run_request(args: UnstakeArgs) -> anyhow::Result<()> {
     // Resolve wallet address
     let wallet = resolve_wallet(CHAIN_ID)?;
 
-    println!(
-        "Requesting withdrawal of {} eETH ({} wei) via LiquidityPool.requestWithdraw()",
-        amount_str, eeth_wei
-    );
-    println!("  eETH contract:  {}", eeth);
-    println!("  LiquidityPool:  {}", pool);
-    println!("  Recipient:      {}", wallet);
-    println!("  Run with --confirm to broadcast.");
+    eprintln!("Requesting withdrawal of {} eETH ({} wei) via LiquidityPool.requestWithdraw()", amount_str, eeth_wei);
+    eprintln!("  eETH contract:  {}", eeth);
+    eprintln!("  LiquidityPool:  {}", pool);
+    eprintln!("  Recipient:      {}", wallet);
+    eprintln!("  Run with --confirm to broadcast.");
 
     // Step 1: Check eETH balance
     if !args.dry_run {
@@ -89,10 +86,7 @@ async fn run_request(args: UnstakeArgs) -> anyhow::Result<()> {
     if !args.dry_run {
         let allowance = get_allowance(eeth, &wallet, pool, rpc).await?;
         if allowance < eeth_wei {
-            println!(
-                "WARNING: Approving LiquidityPool to spend eETH (unlimited allowance, u128::MAX). \
-                To revoke later, call approve(LiquidityPool, 0)."
-            );
+            eprintln!("WARNING: Approving LiquidityPool to spend eETH (unlimited allowance, u128::MAX). To revoke later, call approve(LiquidityPool, 0).");
             let approve_data = build_approve_calldata(pool, u128::MAX);
             let approve_result = wallet_contract_call(
                 CHAIN_ID,
@@ -105,16 +99,16 @@ async fn run_request(args: UnstakeArgs) -> anyhow::Result<()> {
             .await?;
 
             if approve_result["preview"].as_bool() == Some(true) {
-                println!("Preview (approve): {}", serde_json::to_string_pretty(&approve_result)?);
-                println!("Re-run with --confirm to execute approve + requestWithdraw.");
+                println!("{}", serde_json::to_string_pretty(&approve_result)?);
+                eprintln!("Re-run with --confirm to execute approve + requestWithdraw.");
                 return Ok(());
             }
 
             let approve_tx = extract_tx_hash(&approve_result).to_string();
-            println!("Approve tx: {} — waiting for confirmation...", approve_tx);
+            eprintln!("Approve tx: {} — waiting for confirmation...", approve_tx);
             wait_for_tx(approve_tx, wallet.clone()).await
                 .map_err(|e| anyhow::anyhow!("Approve tx did not confirm: {}", e))?;
-            println!("Approve confirmed.");
+            eprintln!("Approve confirmed.");
         }
     }
 
@@ -193,14 +187,11 @@ async fn run_claim(args: UnstakeArgs) -> anyhow::Result<()> {
         }
     }
 
-    println!(
-        "Claiming withdrawal for WithdrawRequestNFT #{} via WithdrawRequestNFT.claimWithdraw()",
-        token_id
-    );
-    println!("  WithdrawRequestNFT: {}", nft);
-    println!("  Wallet: {}", wallet);
-    println!("  Finalized: {}", finalized);
-    println!("  Run with --confirm to broadcast.");
+    eprintln!("Claiming withdrawal for WithdrawRequestNFT #{} via WithdrawRequestNFT.claimWithdraw()", token_id);
+    eprintln!("  WithdrawRequestNFT: {}", nft);
+    eprintln!("  Wallet: {}", wallet);
+    eprintln!("  Finalized: {}", finalized);
+    eprintln!("  Run with --confirm to broadcast.");
 
     let calldata = build_claim_withdraw_calldata(token_id);
 

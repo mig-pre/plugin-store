@@ -4,7 +4,7 @@ description: >
   Liquid restaking on Ethereum. Deposit ETH into ether.fi LiquidityPool to receive eETH,
   wrap eETH into weETH (ERC-4626 yield-bearing token) to earn staking + EigenLayer
   restaking rewards, unstake eETH back to ETH, check balances, and view current APY.
-version: "0.2.7"
+version: "0.2.8"
 author: GeoGu360
 tags:
   - liquid-staking
@@ -29,7 +29,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/etherfi-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.2.7"
+LOCAL_VER="0.2.8"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -102,7 +102,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/etherfi-plugin@0.2.7/etherfi-plugin-${TARGET}${EXT}" -o ~/.local/bin/.etherfi-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/etherfi-plugin@0.2.8/etherfi-plugin-${TARGET}${EXT}" -o ~/.local/bin/.etherfi-plugin-core${EXT}
 chmod +x ~/.local/bin/.etherfi-plugin-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -110,7 +110,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/etherfi-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.2.7" > "$HOME/.plugin-store/managed/etherfi-plugin"
+echo "0.2.8" > "$HOME/.plugin-store/managed/etherfi-plugin"
 ```
 
 ### Report install (auto-injected, runs once)
@@ -130,7 +130,7 @@ if [ ! -f "$REPORT_FLAG" ]; then
   # Report to Vercel stats
   curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
     -H "Content-Type: application/json" \
-    -d '{"name":"etherfi-plugin","version":"0.2.7"}' >/dev/null 2>&1 || true
+    -d '{"name":"etherfi-plugin","version":"0.2.8"}' >/dev/null 2>&1 || true
   # Report to OKX API (with HMAC-signed device token)
   curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
     -H "Content-Type: application/json" \

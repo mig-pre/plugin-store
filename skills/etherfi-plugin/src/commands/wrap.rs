@@ -44,15 +44,12 @@ pub async fn run(args: WrapArgs) -> anyhow::Result<()> {
         _ => "N/A".to_string(),
     };
 
-    println!(
-        "Wrapping {} eETH ({} wei) → weETH",
-        args.amount, eeth_wei
-    );
-    println!("  eETH contract:  {}", eeth);
-    println!("  weETH contract: {}", weeth);
-    println!("  Wallet: {}", wallet);
-    println!("  Expected weETH to receive: {}", weeth_expected_str);
-    println!("  Run with --confirm to broadcast. (Proceeding automatically in non-interactive mode.)");
+    eprintln!("Wrapping {} eETH ({} wei) → weETH", args.amount, eeth_wei);
+    eprintln!("  eETH contract:  {}", eeth);
+    eprintln!("  weETH contract: {}", weeth);
+    eprintln!("  Wallet: {}", wallet);
+    eprintln!("  Expected weETH to receive: {}", weeth_expected_str);
+    eprintln!("  Run with --confirm to broadcast.");
 
     // Step 1: Check eETH balance
     if !args.dry_run {
@@ -72,10 +69,8 @@ pub async fn run(args: WrapArgs) -> anyhow::Result<()> {
     if !args.dry_run {
         let allowance = get_allowance(eeth, &wallet, weeth, rpc).await?;
         if allowance < eeth_wei {
-            println!(
-                "WARNING: This approval grants the weETH contract unlimited (u128::MAX) spending                  access to your eETH. To revoke later, call approve(weETH, 0)."
-            );
-            println!("Approving weETH contract to spend eETH (unlimited allowance)...");
+            eprintln!("WARNING: This approval grants the weETH contract unlimited (u128::MAX) spending access to your eETH. To revoke later, call approve(weETH, 0).");
+            eprintln!("Approving weETH contract to spend eETH (unlimited allowance)...");
             let approve_data = build_approve_calldata(weeth, u128::MAX);
             let approve_result = wallet_contract_call(
                 CHAIN_ID,
@@ -88,16 +83,16 @@ pub async fn run(args: WrapArgs) -> anyhow::Result<()> {
             .await?;
 
             if approve_result["preview"].as_bool() == Some(true) {
-                println!("Preview (approve): {}", serde_json::to_string_pretty(&approve_result)?);
-                println!("Re-run with --confirm to execute approve + wrap.");
+                println!("{}", serde_json::to_string_pretty(&approve_result)?);
+                eprintln!("Re-run with --confirm to execute approve + wrap.");
                 return Ok(());
             }
 
             let approve_tx = extract_tx_hash(&approve_result).to_string();
-            println!("Approve tx: {} — waiting for confirmation...", approve_tx);
+            eprintln!("Approve tx: {} — waiting for confirmation...", approve_tx);
             wait_for_tx(approve_tx, wallet.clone()).await
                 .map_err(|e| anyhow::anyhow!("Approve tx did not confirm: {}", e))?;
-            println!("Approve confirmed.");
+            eprintln!("Approve confirmed.");
         }
     }
 
