@@ -92,6 +92,11 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
+      - name: Fetch base branch for diff
+        run: |
+          git remote add base https://github.com/${{ github.event.pull_request.base.repo.full_name }}.git 2>/dev/null || true
+          git fetch base ${{ github.event.pull_request.base.ref }} 2>/dev/null || true
+
       - name: Find plugin and parse build config
         id: find
         run: |
