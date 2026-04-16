@@ -78,7 +78,7 @@ pub async fn run(
     } else {
         let allowance = rpc::get_allowance(&token_addr, &from_addr, &pool_addr, cfg.rpc_url)
             .await
-            .unwrap_or(0);
+            .context("Failed to fetch token allowance")?;
         allowance < amount_minimal
     };
 
@@ -95,17 +95,23 @@ pub async fn run(
             dry_run,
         )
         .context("ERC-20 approve failed")?;
-        // Wait for approve tx to be mined before submitting repay
+        // Wait for approve tx to be mined before submitting repay.
+        // Bail early if approve was not broadcast — proceeding with a "pending" hash
+        // would submit repay before allowance is on-chain, causing STF revert.
         if !dry_run {
             let approve_tx = approve_res["data"]["txHash"]
                 .as_str()
                 .or_else(|| approve_res["txHash"].as_str())
                 .unwrap_or("");
-            if !approve_tx.is_empty() && approve_tx.starts_with("0x") {
-                rpc::wait_for_tx(cfg.rpc_url, approve_tx)
-                    .await
-                    .context("Approve tx did not confirm in time")?;
+            if approve_tx.is_empty() || !approve_tx.starts_with("0x") {
+                anyhow::bail!(
+                    "Approve tx was not broadcast (tx hash: '{}'). Check wallet connection and retry.",
+                    approve_tx
+                );
             }
+            rpc::wait_for_tx(cfg.rpc_url, approve_tx)
+                .await
+                .context("Approve tx did not confirm in time")?;
         }
         approval_result = Some(approve_res);
     }

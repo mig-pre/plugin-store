@@ -90,6 +90,24 @@ pub fn defi_collect(
     run_cmd(cmd)
 }
 
+/// Get per-asset Aave V3 holdings (SUPPLY/BORROW) for a wallet via onchainos.
+/// platform_id 10 = Aave V3 across all supported chains.
+pub fn defi_position_detail(chain_id: u64, wallet_addr: &str) -> anyhow::Result<Value> {
+    let chain_name = chain_id_to_name(chain_id);
+    let mut cmd = base_cmd();
+    cmd.args([
+        "defi",
+        "position-detail",
+        "--address",
+        wallet_addr,
+        "--chain",
+        chain_name,
+        "--platform-id",
+        "10",
+    ]);
+    run_cmd(cmd)
+}
+
 /// Get DeFi positions for a wallet address on a given chain.
 /// Requires --address and --chains (comma-separated chain names).
 pub fn defi_positions(chain_id: u64, wallet_addr: &str) -> anyhow::Result<Value> {

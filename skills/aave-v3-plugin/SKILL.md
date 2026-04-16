@@ -1,7 +1,7 @@
 ---
 name: aave-v3-plugin
 description: "Aave V3 lending and borrowing. Trigger phrases: supply to aave, deposit to aave, borrow from aave, repay aave loan, aave health factor, my aave positions, aave interest rates, enable emode, disable collateral, claim aave rewards."
-version: "0.2.5"
+version: "0.2.6"
 author: "skylavis-sky"
 tags:
   - lending
@@ -324,7 +324,7 @@ aave-v3-plugin --chain 42161 --confirm borrow --asset 0x82aF49447D8a07e3bd95BD0d
 ```
 
 **Key parameters:**
-- `--asset` — ERC-20 contract address (checksummed). Borrow and repay require the address, not symbol.
+- `--asset` — token symbol (e.g. USDC, WETH) or ERC-20 contract address
 - `--amount` — human-readable amount in token units (0.5 WETH = `0.5`)
 
 **Notes:**
@@ -459,7 +459,9 @@ aave-v3-plugin --chain 8453 reserves --asset 0x833589fCD6eDb6E08f4c7C32D4f71b54b
 
 **Trigger phrases:** "my aave positions", "aave portfolio", "我的Aave仓位", "Aave持仓"
 
-**Data source:** On-chain only — calls `Pool.getUserAccountData(address)` directly via public RPC. Returns aggregate totals. Per-asset supply/borrow breakdown is not included; use `aave-v3-plugin reserves` to see available markets.
+**Data source:** Two sources combined:
+- On-chain `Pool.getUserAccountData`: aggregate health factor, LTV, liquidation threshold
+- `onchainos defi position-detail` (Aave V3 platform 10): per-asset SUPPLY / BORROW breakdown
 
 **Usage:**
 ```bash
@@ -483,8 +485,14 @@ aave-v3-plugin --chain 1 positions --from 0xSomeAddress
   "availableBorrowsUSD": "2000.00",
   "currentLiquidationThreshold": "82.50%",
   "loanToValue": "75.00%",
-  "dataSource": "on-chain — Pool.getUserAccountData (aggregate totals only)",
-  "note": "Per-asset supply/borrow breakdown requires querying Pool.getUserReserveData for each reserve. Use `aave-v3-plugin reserves` to see available markets."
+  "positions": {
+    "supply": [
+      { "asset": "USDC", "tokenAddress": "0x833589...", "amount": "1000.00", "valueUSD": "1000.00", "marketId": "0xa238dd..." }
+    ],
+    "borrow": [
+      { "asset": "WETH", "tokenAddress": "0x4200000...", "amount": "0.25", "valueUSD": "500.00", "marketId": "0xa238dd..." }
+    ]
+  }
 }
 ```
 </external-content>
@@ -544,7 +552,7 @@ aave-v3-plugin --chain 8453 --confirm claim-rewards
 
 ## Asset Address Reference
 
-For borrow and repay, you need ERC-20 contract addresses. Common addresses:
+Symbols (e.g. USDC, WETH) are accepted for all commands. Common addresses for reference:
 
 ### Base (8453)
 | Symbol | Address |

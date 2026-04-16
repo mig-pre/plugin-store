@@ -8,6 +8,7 @@ pub async fn run(
     market: &str,
     from: Option<String>,
     dry_run: bool,
+    confirm: bool,
 ) -> Result<()> {
     let cfg = get_market_config(chain_id, market)?;
 
@@ -49,6 +50,28 @@ pub async fn run(
         "0x4ff85d94{}{}{}{}",
         comet_padded, wallet_padded, wallet_padded, bool_true
     );
+
+    // Confirm gate: show preview and exit if --confirm not given (and not dry-run)
+    if !dry_run && !confirm {
+        let result = serde_json::json!({
+            "ok": true,
+            "preview": true,
+            "operation": "claim-rewards",
+            "chain_id": chain_id,
+            "market": market,
+            "wallet": wallet,
+            "reward_owed_raw": reward_owed.to_string(),
+            "rewards_contract": cfg.rewards_contract,
+            "comet": cfg.comet_proxy,
+            "pending_transactions": 1,
+            "transactions": [
+                {"step": 1, "action": "CometRewards.claimTo", "rewards_contract": cfg.rewards_contract, "comet": cfg.comet_proxy, "src": wallet.clone(), "to": wallet.clone(), "calldata": claim_calldata}
+            ],
+            "note": "Re-run with --confirm to execute this transaction on-chain."
+        });
+        println!("{}", serde_json::to_string_pretty(&result)?);
+        return Ok(());
+    }
 
     if dry_run {
         let result = serde_json::json!({

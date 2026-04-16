@@ -4,7 +4,7 @@
   "plugins": [
     {
       "name": "aave-v3-plugin",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "description": "Lend and borrow crypto assets on Aave V3 — the leading decentralized liquidity protocol. Trigger phrases: supply to aave, deposit to aave, borrow from aave, repay aave loan, aave health factor, my aave positions, aave interest rates, enable emode, disable collateral, claim aave rewards.",
       "author": {
         "name": "skylavis-sky",
@@ -30,7 +30,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "aave-v3-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/aave-v3-plugin@0.2.5"
+          "release_tag": "plugins/aave-v3-plugin@0.2.6"
         }
       },
       "api_calls": [
@@ -87,7 +87,7 @@
     },
     {
       "name": "compound-v3-plugin",
-      "version": "0.2.4",
+      "version": "0.2.6",
       "description": "Compound V3 (Comet) lending plugin: supply collateral, borrow/repay the base asset, and claim COMP rewards",
       "author": {
         "name": "skylavis-sky",
@@ -111,7 +111,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "compound-v3-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/compound-v3-plugin@0.2.4"
+          "release_tag": "plugins/compound-v3-plugin@0.2.6"
         }
       },
       "api_calls": [
@@ -165,7 +165,7 @@
     },
     {
       "name": "etherfi-plugin",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "description": "Liquid restaking on Ethereum — deposit ETH to receive eETH, wrap/unwrap eETH/weETH (ERC-4626), unstake eETH back to ETH, and check positions with APY",
       "author": {
         "name": "GeoGu360",
@@ -191,7 +191,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "etherfi-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/etherfi-plugin@0.2.7"
+          "release_tag": "plugins/etherfi-plugin@0.2.8"
         }
       },
       "api_calls": [
@@ -241,7 +241,7 @@
     },
     {
       "name": "hyperliquid-plugin",
-      "version": "0.3.4",
+      "version": "0.3.5",
       "description": "Trade perpetuals on Hyperliquid — check positions, get prices, place market/limit orders with TP/SL brackets, close positions, deposit USDC",
       "author": {
         "name": "GeoGu360",
@@ -264,7 +264,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "hyperliquid-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/hyperliquid-plugin@0.3.4"
+          "release_tag": "plugins/hyperliquid-plugin@0.3.5"
         }
       },
       "api_calls": [
@@ -348,7 +348,7 @@
     },
     {
       "name": "lido-plugin",
-      "version": "0.2.6",
+      "version": "0.2.7",
       "description": "Stake ETH with Lido liquid staking protocol — stake, manage withdrawals, and track staking rewards on Ethereum mainnet",
       "author": {
         "name": "GeoGu360",
@@ -372,7 +372,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "lido-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/lido-plugin@0.2.6"
+          "release_tag": "plugins/lido-plugin@0.2.7"
         }
       },
       "api_calls": [
@@ -514,7 +514,7 @@
     },
     {
       "name": "morpho-plugin",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "description": "Supply, borrow and earn yield on Morpho — a permissionless lending protocol",
       "author": {
         "name": "GeoGu360",
@@ -539,7 +539,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "morpho-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/morpho-plugin@0.2.4"
+          "release_tag": "plugins/morpho-plugin@0.2.5"
         }
       },
       "api_calls": [
@@ -755,7 +755,7 @@
     },
     {
       "name": "pancakeswap-v3-plugin",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "description": "Swap tokens and manage concentrated liquidity on PancakeSwap V3 on BNB Chain, Base, and Arbitrum",
       "author": {
         "name": "GeoGu360",
@@ -781,7 +781,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "pancakeswap-v3-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/pancakeswap-v3-plugin@1.0.2"
+          "release_tag": "plugins/pancakeswap-v3-plugin@1.0.3"
         }
       },
       "api_calls": [
@@ -794,7 +794,7 @@
     },
     {
       "name": "pendle-plugin",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "description": "Pendle Finance yield tokenization plugin — buy/sell PT & YT, add/remove liquidity, mint/redeem PT+YT pairs across Ethereum, Arbitrum, BSC, and Base",
       "author": {
         "name": "skylavis-sky",
@@ -818,7 +818,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "pendle-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/pendle-plugin@0.2.2"
+          "release_tag": "plugins/pendle-plugin@0.2.3"
         }
       },
       "api_calls": [
@@ -827,7 +827,7 @@
     },
     {
       "name": "polymarket-plugin",
-      "version": "0.4.6",
+      "version": "0.4.7",
       "description": "Trade prediction markets on Polymarket — buy and sell YES/NO outcome tokens on Polygon",
       "author": {
         "name": "skylavis-sky",
@@ -852,7 +852,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "polymarket-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/polymarket-plugin@0.4.6"
+          "release_tag": "plugins/polymarket-plugin@0.4.7"
         }
       },
       "api_calls": [
@@ -876,7 +876,7 @@
     },
     {
       "name": "pump-fun-plugin",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "description": "Buy and sell tokens on pump.fun bonding curves on Solana mainnet",
       "author": {
         "name": "skylavis-sky",
@@ -900,7 +900,7 @@
           "repo": "mig-pre/plugin-store",
           "asset_pattern": "pump-fun-plugin-{target}",
           "checksums_asset": "checksums.txt",
-          "release_tag": "plugins/pump-fun-plugin@0.1.3"
+          "release_tag": "plugins/pump-fun-plugin@0.1.4"
         }
       },
       "api_calls": [

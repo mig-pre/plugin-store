@@ -7,11 +7,9 @@ use crate::rpc;
 
 /// View current Aave V3 positions.
 ///
-/// Data source: on-chain only via Pool.getUserAccountData (eth_call to public RPC).
-/// Returns aggregate totals (totalCollateralUSD, totalDebtUSD, healthFactor).
-/// Per-asset supply/borrow breakdown is NOT included — that would require iterating
-/// all reserve addresses and calling getUserReserveData for each, which is
-/// available via the Aave V3 UI or PoolDataProvider contract directly.
+/// Data sources:
+/// - on-chain Pool.getUserAccountData: aggregate health factor, LTV, liquidation threshold
+/// - onchainos defi position-detail (platform 10): per-asset SUPPLY / BORROW breakdown
 pub async fn run(chain_id: u64, from: Option<&str>) -> anyhow::Result<Value> {
     let cfg = get_chain_config(chain_id)?;
 
@@ -34,6 +32,9 @@ pub async fn run(chain_id: u64, from: Option<&str>) -> anyhow::Result<Value> {
         .await
         .context("Failed to fetch user account data from on-chain Aave Pool")?;
 
+    // Fetch per-asset SUPPLY / BORROW breakdown via onchainos
+    let per_asset = fetch_per_asset_positions(chain_id, &user_addr);
+
     Ok(json!({
         "ok": true,
         "chain": cfg.name,
@@ -47,7 +48,87 @@ pub async fn run(chain_id: u64, from: Option<&str>) -> anyhow::Result<Value> {
         "availableBorrowsUSD": format!("{:.2}", account_data.available_borrows_usd()),
         "currentLiquidationThreshold": format!("{:.2}%", account_data.current_liquidation_threshold as f64 / 100.0),
         "loanToValue": format!("{:.2}%", account_data.ltv as f64 / 100.0),
-        "dataSource": "on-chain — Pool.getUserAccountData (aggregate totals only)",
-        "note": "Per-asset supply/borrow breakdown requires querying Pool.getUserReserveData for each reserve. Use `aave-v3-plugin reserves` to see available markets."
+        "positions": per_asset
     }))
+}
+
+/// Parse onchainos defi position-detail response into clean SUPPLY/BORROW lists.
+/// Returns null if no Aave positions found or onchainos call fails.
+fn fetch_per_asset_positions(chain_id: u64, user_addr: &str) -> Value {
+    let raw = match onchainos::defi_position_detail(chain_id, user_addr) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("[positions] onchainos position-detail failed: {}", e);
+            return json!(null);
+        }
+    };
+
+    let chain_idx = chain_id.to_string();
+    let empty = vec![];
+
+    // Navigate: data[0].walletIdPlatformDetailList[0].networkHoldVoList
+    let networks = raw["data"]
+        .as_array()
+        .and_then(|a| a.first())
+        .and_then(|p| p["walletIdPlatformDetailList"].as_array())
+        .and_then(|a| a.first())
+        .and_then(|w| w["networkHoldVoList"].as_array())
+        .unwrap_or(&empty);
+
+    // Find the network entry matching this chain
+    let network = networks.iter().find(|n| {
+        n["chainIndex"].as_str() == Some(&chain_idx)
+    });
+
+    let Some(network) = network else {
+        return json!({"supply": [], "borrow": []});
+    };
+
+    let markets = network["investMarketTokenBalanceVoList"]
+        .as_array()
+        .unwrap_or(&empty);
+
+    let mut supply: Vec<Value> = Vec::new();
+    let mut borrow: Vec<Value> = Vec::new();
+
+    for market in markets {
+        let asset_map = &market["assetMap"];
+
+        if let Some(supply_list) = asset_map["SUPPLY"].as_array() {
+            for item in supply_list {
+                let token = item["assetsTokenList"].as_array()
+                    .and_then(|a| a.first())
+                    .cloned()
+                    .unwrap_or(json!({}));
+                supply.push(json!({
+                    "asset": item["investmentName"].as_str().unwrap_or("?"),
+                    "tokenAddress": token["tokenAddress"].as_str().unwrap_or("?"),
+                    "amount": token["coinAmount"].as_str().unwrap_or("0"),
+                    "valueUSD": item["totalValue"].as_str().unwrap_or("0"),
+                    "marketId": item["marketId"].as_str().unwrap_or("?")
+                }));
+            }
+        }
+
+        if let Some(borrow_list) = asset_map["BORROW"].as_array() {
+            for item in borrow_list {
+                let token = item["assetsTokenList"].as_array()
+                    .and_then(|a| a.first())
+                    .cloned()
+                    .unwrap_or(json!({}));
+                // totalValue is negative for borrows; strip the sign for amount display
+                let value_str = item["totalValue"].as_str().unwrap_or("0");
+                let value_abs = value_str.trim_start_matches('-');
+                borrow.push(json!({
+                    "asset": item["investmentName"].as_str().unwrap_or("?"),
+                    "tokenAddress": token["tokenAddress"].as_str().unwrap_or("?"),
+                    "amount": token["coinAmount"].as_str().unwrap_or("0"),
+                    "valueUSD": value_abs,
+                    "marketId": item["marketId"].as_str().unwrap_or("?")
+                }));
+            }
+        }
+    }
+
+    json!({"supply": supply, "borrow": borrow})
 }

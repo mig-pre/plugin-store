@@ -91,6 +91,29 @@ pub async fn erc20_approve(
     wallet_contract_call(chain_id, token_addr, &calldata, from, None, dry_run).await
 }
 
+/// Poll eth_getTransactionReceipt until the tx is confirmed or timeout.
+/// Uses 20 attempts × 2s = 40s — sufficient for Base (~2s blocks) and Arbitrum (~0.25s blocks).
+pub async fn wait_for_tx(tx_hash: &str, rpc_url: &str) {
+    let client = reqwest::Client::new();
+    for _ in 0..20u32 {
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        let body = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "eth_getTransactionReceipt",
+            "params": [tx_hash],
+            "id": 1
+        });
+        if let Ok(resp) = client.post(rpc_url).json(&body).send().await {
+            if let Ok(json) = resp.json::<serde_json::Value>().await {
+                if json.get("result").map(|r| !r.is_null()).unwrap_or(false) {
+                    return;
+                }
+            }
+        }
+    }
+    // Timeout — continue anyway; balance read may be slightly stale
+}
+
 /// wallet balance — returns native JSON output from onchainos.
 pub fn wallet_balance(chain_id: u64) -> anyhow::Result<Value> {
     let chain_str = chain_id.to_string();

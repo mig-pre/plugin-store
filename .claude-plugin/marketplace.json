@@ -28,7 +28,7 @@
       "name": "compound-v3",
       "description": "Compound V3 (Comet) lending plugin: supply collateral, borrow/repay the base asset, and claim COMP rewards",
       "source": "./skills/compound-v3-plugin",
-      "category": "defi-protocol",
+      "category": "trading-strategy",
       "author": {
         "name": "skylavis-sky"
       }

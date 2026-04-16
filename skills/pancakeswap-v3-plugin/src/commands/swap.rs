@@ -131,7 +131,11 @@ pub async fn run(args: SwapArgs) -> Result<()> {
 
     // Check existing allowance to avoid unnecessary approve (prevents nonce conflicts)
     let allowance = crate::rpc::get_allowance(&from_addr, &wallet_addr, cfg.smart_router, cfg.rpc_url)
-        .await.unwrap_or(0);
+        .await
+        .unwrap_or_else(|e| {
+            eprintln!("  [warn] allowance check failed ({}), proceeding with approve.", e);
+            0
+        });
     if allowance >= amount_in {
         println!("  Allowance already sufficient ({}), skipping approve.", allowance);
     } else {

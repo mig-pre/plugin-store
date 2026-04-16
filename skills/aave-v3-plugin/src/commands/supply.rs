@@ -44,12 +44,12 @@ pub async fn run(
     if is_weth {
         let weth_balance = rpc::get_erc20_balance(&token_addr, &from_addr, cfg.rpc_url)
             .await
-            .unwrap_or(0);
+            .context("Failed to fetch WETH balance")?;
         if weth_balance < amount_minimal {
             let needed = amount_minimal - weth_balance;
             let eth_balance = rpc::get_eth_balance(&from_addr, cfg.rpc_url)
                 .await
-                .unwrap_or(0);
+                .context("Failed to fetch ETH balance")?;
             if eth_balance < needed {
                 anyhow::bail!(
                     "Insufficient balance: need {:.6} WETH to supply, have {:.6} WETH and {:.6} ETH. \
@@ -82,11 +82,15 @@ pub async fn run(
                     .or_else(|| wrap_result["hash"].as_str())
                     .unwrap_or("pending")
                     .to_string();
-                if tx != "pending" && tx.starts_with("0x") {
-                    rpc::wait_for_tx(cfg.rpc_url, &tx)
-                        .await
-                        .context("WETH wrap tx did not confirm in time")?;
+                if tx == "pending" || !tx.starts_with("0x") {
+                    anyhow::bail!(
+                        "WETH wrap tx was not broadcast (tx hash: '{}'). Check wallet connection and retry.",
+                        tx
+                    );
                 }
+                rpc::wait_for_tx(cfg.rpc_url, &tx)
+                    .await
+                    .context("WETH wrap tx did not confirm in time")?;
                 wrap_tx = Some(tx);
             }
         }
@@ -94,7 +98,7 @@ pub async fn run(
         // Non-WETH: check ERC-20 balance before attempting supply
         let token_balance = rpc::get_erc20_balance(&token_addr, &from_addr, cfg.rpc_url)
             .await
-            .unwrap_or(0);
+            .context("Failed to fetch token balance")?;
         if token_balance < amount_minimal && !dry_run {
             anyhow::bail!(
                 "Insufficient {} balance: need {:.6}, have {:.6}. Add funds to your wallet before supplying.",
@@ -154,12 +158,18 @@ pub async fn run(
         .unwrap_or("pending")
         .to_string();
 
-    // Wait for approve tx to be mined before submitting supply
-    if approve_tx != "pending" && approve_tx.starts_with("0x") {
-        rpc::wait_for_tx(cfg.rpc_url, &approve_tx)
-            .await
-            .context("Approve tx did not confirm in time")?;
+    // Wait for approve tx to be mined before submitting supply.
+    // Bail early if approve was not broadcast — proceeding with a "pending" hash
+    // would submit supply before allowance is on-chain, causing STF revert.
+    if approve_tx == "pending" || !approve_tx.starts_with("0x") {
+        anyhow::bail!(
+            "Approve tx was not broadcast (tx hash: '{}'). Check wallet connection and retry.",
+            approve_tx
+        );
     }
+    rpc::wait_for_tx(cfg.rpc_url, &approve_tx)
+        .await
+        .context("Approve tx did not confirm in time")?;
 
     // Step 2: supply
     let supply_calldata = calldata::encode_supply(&token_addr, amount_minimal, &from_addr)
