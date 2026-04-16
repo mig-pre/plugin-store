@@ -9,326 +9,182 @@
     {
       "name": "aave-v3-plugin",
       "description": "-",
-      "source": "./skills/aave-v3-plugin",
-      "category": "defi-protocol",
-      "author": {
-        "name": "OKX"
-      }
+      "source": "./skills/aave-v3-plugin"
     },
     {
-      "name": "clanker",
+      "name": "clanker-plugin",
       "description": "-",
-      "source": "./skills/clanker-plugin",
-      "category": "trading-strategy",
-      "author": {
-        "name": "GeoGu360"
-      }
+      "source": "./skills/clanker-plugin"
     },
     {
-      "name": "compound-v3",
+      "name": "compound-v3-plugin",
       "description": "-",
-      "source": "./skills/compound-v3-plugin",
-      "category": "defi-protocol",
-      "author": {
-        "name": "skylavis-sky"
-      }
+      "source": "./skills/compound-v3-plugin"
     },
     {
-      "name": "curve",
+      "name": "curve-plugin",
       "description": "-",
-      "source": "./skills/curve-plugin",
-      "category": "utility",
-      "author": {
-        "name": "GeoGu360"
-      }
+      "source": "./skills/curve-plugin"
     },
     {
       "name": "eth-price-demo",
       "description": "-",
-      "source": "./skills/eth-price-demo",
-      "category": "utility",
-      "author": {
-        "name": "OKX"
-      }
+      "source": "./skills/eth-price-demo"
     },
     {
-      "name": "etherfi",
+      "name": "etherfi-plugin",
       "description": "-",
-      "source": "./skills/etherfi-plugin",
-      "category": "defi-protocol",
-      "author": {
-        "name": "GeoGu360"
-      }
+      "source": "./skills/etherfi-plugin"
     },
     {
-      "name": "gmx-v2",
+      "name": "gmx-v2-plugin",
       "description": "-",
-      "source": "./skills/gmx-v2-plugin",
-      "category": "trading-strategy",
-      "author": {
-        "name": "GeoGu360"
-      }
+      "source": "./skills/gmx-v2-plugin"
     },
     {
-      "name": "hyperliquid",
+      "name": "hyperliquid-plugin",
       "description": "-",
-      "source": "./skills/hyperliquid-plugin",
-      "category": "trading-strategy",
-      "author": {
-        "name": "GeoGu360"
-      }
+      "source": "./skills/hyperliquid-plugin"
     },
     {
-      "name": "kamino-lend",
+      "name": "kamino-lend-plugin",
       "description": "-",
-      "source": "./skills/kamino-lend-plugin",
-      "category": "utility",
-      "author": {
-        "name": "GeoGu360"
-      }
+      "source": "./skills/kamino-lend-plugin"
     },
     {
-      "name": "kamino-liquidity",
+      "name": "kamino-liquidity-plugin",
       "description": "-",
-      "source": "./skills/kamino-liquidity-plugin",
-      "category": "utility",
-      "author": {
-        "name": "GeoGu360"
-      }
+      "source": "./skills/kamino-liquidity-plugin"
     },
     {
-      "name": "lido",
+      "name": "lido-plugin",
       "description": "-",
-      "source": "./skills/lido-plugin",
-      "category": "defi-protocol",
-      "author": {
-        "name": "GeoGu360"
-      }
+      "source": "./skills/lido-plugin"
     },
     {
       "name": "meme-trench-scanner",
       "description": "-",
-      "source": "./skills/meme-trench-scanner",
-      "category": "trading-strategy",
-      "author": {
-        "name": "yz06276"
-      }
+      "source": "./skills/meme-trench-scanner"
     },
     {
-      "name": "meteora",
+      "name": "meteora-plugin",
       "description": "-",
-      "source": "./skills/meteora-plugin",
-      "category": "utility",
-      "author": {
-        "name": "OKX"
-      }
+      "source": "./skills/meteora-plugin"
     },
     {
-      "name": "morpho",
+      "name": "morpho-plugin",
       "description": "-",
-      "source": "./skills/morpho-plugin",
-      "category": "trading-strategy",
-      "author": {
-        "name": "GeoGu360"
-      }
+      "source": "./skills/morpho-plugin"
     },
     {
       "name": "okx-buildx-hackathon-agent-track",
       "description": "-",
-      "source": "./skills/okx-buildx-hackathon-agent-track",
-      "category": "trading-strategy",
-      "author": {
-        "name": "OKX"
-      }
+      "source": "./skills/okx-buildx-hackathon-agent-track"
     },
     {
       "name": "orca-plugin",
       "description": "-",
-      "source": "./skills/orca-plugin",
-      "category": "utility",
-      "author": {
-        "name": "skylavis-sky"
-      }
+      "source": "./skills/orca-plugin"
     },
     {
-      "name": "pancakeswap-clmm",
+      "name": "pancakeswap-clmm-plugin",
       "description": "-",
-      "source": "./skills/pancakeswap-clmm-plugin",
-      "category": "utility",
-      "author": {
-        "name": "OKX"
-      }
+      "source": "./skills/pancakeswap-clmm-plugin"
     },
     {
-      "name": "pancakeswap-v2",
+      "name": "pancakeswap-v2-plugin",
       "description": "-",
-      "source": "./skills/pancakeswap-v2-plugin",
-      "category": "utility",
-      "author": {
-        "name": "skylavis-sky"
-      }
+      "source": "./skills/pancakeswap-v2-plugin"
     },
     {
-      "name": "pancakeswap-v3",
+      "name": "pancakeswap-v3-plugin",
       "description": "-",
-      "source": "./skills/pancakeswap-v3-plugin",
-      "category": "defi-protocol",
-      "author": {
-        "name": "GeoGu360"
-      }
+      "source": "./skills/pancakeswap-v3-plugin"
     },
     {
-      "name": "pendle",
+      "name": "pendle-plugin",
       "description": "-",
-      "source": "./skills/pendle-plugin",
-      "category": "trading-strategy",
-      "author": {
-        "name": "OKX"
-      }
+      "source": "./skills/pendle-plugin"
     },
     {
       "name": "plugin-store",
       "description": "-",
-      "source": "./skills/plugin-store",
-      "category": "trading-strategy",
-      "author": {
-        "name": "OKX"
-      }
+      "source": "./skills/plugin-store"
     },
     {
       "name": "polymarket-plugin",
       "description": "-",
-      "source": "./skills/polymarket-plugin",
-      "category": "trading-strategy",
-      "author": {
-        "name": "skylavis-sky"
-      }
+      "source": "./skills/polymarket-plugin"
     },
     {
-      "name": "pump-fun",
+      "name": "pump-fun-plugin",
       "description": "-",
-      "source": "./skills/pump-fun-plugin",
-      "category": "utility",
-      "author": {
-        "name": "skylavis-sky"
-      }
+      "source": "./skills/pump-fun-plugin"
     },
     {
-      "name": "raydium",
+      "name": "raydium-plugin",
       "description": "-",
-      "source": "./skills/raydium-plugin",
-      "category": "utility",
-      "author": {
-        "name": "OKX"
-      }
+      "source": "./skills/raydium-plugin"
     },
     {
       "name": "smart-money-signal-copy-trade",
       "description": "-",
-      "source": "./skills/smart-money-signal-copy-trade",
-      "category": "trading-strategy",
-      "author": {
-        "name": "yz06276"
-      }
+      "source": "./skills/smart-money-signal-copy-trade"
     },
     {
       "name": "top-rank-tokens-sniper",
       "description": "-",
-      "source": "./skills/top-rank-tokens-sniper",
-      "category": "trading-strategy",
-      "author": {
-        "name": "yz06276"
-      }
+      "source": "./skills/top-rank-tokens-sniper"
     },
     {
       "name": "uniswap-ai",
       "description": "-",
-      "source": "./skills/uniswap-ai",
-      "category": "trading-strategy",
-      "author": {
-        "name": "Uniswap"
-      }
+      "source": "./skills/uniswap-ai"
     },
     {
       "name": "uniswap-cca-configurator",
       "description": "-",
-      "source": "./skills/uniswap-cca-configurator",
-      "category": "defi-protocol",
-      "author": {
-        "name": "Uniswap Labs"
-      }
+      "source": "./skills/uniswap-cca-configurator"
     },
     {
       "name": "uniswap-cca-deployer",
       "description": "-",
-      "source": "./skills/uniswap-cca-deployer",
-      "category": "defi-protocol",
-      "author": {
-        "name": "Uniswap Labs"
-      }
+      "source": "./skills/uniswap-cca-deployer"
     },
     {
       "name": "uniswap-liquidity-planner",
       "description": "-",
-      "source": "./skills/uniswap-liquidity-planner",
-      "category": "defi-protocol",
-      "author": {
-        "name": "Uniswap Labs"
-      }
+      "source": "./skills/uniswap-liquidity-planner"
     },
     {
       "name": "uniswap-pay-with-any-token",
       "description": "-",
-      "source": "./skills/uniswap-pay-with-any-token",
-      "category": "trading-strategy",
-      "author": {
-        "name": "Uniswap Labs"
-      }
+      "source": "./skills/uniswap-pay-with-any-token"
     },
     {
       "name": "uniswap-swap-integration",
       "description": "-",
-      "source": "./skills/uniswap-swap-integration",
-      "category": "trading-strategy",
-      "author": {
-        "name": "Uniswap Labs"
-      }
+      "source": "./skills/uniswap-swap-integration"
     },
     {
       "name": "uniswap-swap-planner",
       "description": "-",
-      "source": "./skills/uniswap-swap-planner",
-      "category": "defi-protocol",
-      "author": {
-        "name": "Uniswap Labs"
-      }
+      "source": "./skills/uniswap-swap-planner"
     },
     {
       "name": "uniswap-v4-security-foundations",
       "description": "-",
-      "source": "./skills/uniswap-v4-security-foundations",
-      "category": "defi-protocol",
-      "author": {
-        "name": "Uniswap Labs"
-      }
+      "source": "./skills/uniswap-v4-security-foundations"
     },
     {
       "name": "uniswap-viem-integration",
       "description": "-",
-      "source": "./skills/uniswap-viem-integration",
-      "category": "defi-protocol",
-      "author": {
-        "name": "Uniswap Labs"
-      }
+      "source": "./skills/uniswap-viem-integration"
     },
     {
-      "name": "velodrome-v2",
+      "name": "velodrome-v2-plugin",
       "description": "-",
-      "source": "./skills/velodrome-v2-plugin",
-      "category": "defi-protocol",
-      "author": {
-        "name": "GeoGu360"
-      }
+      "source": "./skills/velodrome-v2-plugin"
     }
   ]
 }
