@@ -263,7 +263,7 @@ normal for newly deployed tokens.
 ### Step 6 — Preview a token deployment (safe — no tx sent)
 
 All write commands require `--dry-run` for preview or `--confirm` to execute. Without either flag,
-the command returns an error explaining what to do next.
+the command returns a safe preview (`ok: true, preview: true`) showing the deployer address and parameters — no transaction is sent.
 
 ```bash
 # Preview (safe — no tx sent):
