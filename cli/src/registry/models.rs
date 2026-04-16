@@ -32,6 +32,12 @@ pub struct Plugin {
     pub summary_url: Option<String>,
     #[serde(default)]
     pub skill_summary_url: Option<String>,
+    /// Raw GitHub URL to SKILL.md for backend consumption.
+    #[serde(default)]
+    pub skill_md_link: Option<String>,
+    /// Raw GitHub URL to SUMMARY.md for backend consumption.
+    #[serde(default)]
+    pub summary_md_link: Option<String>,
     /// Unix timestamp (as string) of the plugin's last update.
     #[serde(default)]
     pub modify_date: Option<String>,

@@ -782,6 +782,8 @@ jobs:
               "skill_url": f"{BASE}/{skill_md_path}" if skill_md_path else "",
               "summary_url": f"{BASE}/skills/{name}/SUMMARY.md",
               "skill_summary_url": f"{BASE}/skills/{name}/SKILL_SUMMARY.md",
+              "skill_md_link": f"{BASE}/{skill_dir}/SKILL.md",
+              "summary_md_link": f"{BASE}/{skill_dir}/SUMMARY.md",
               "modify_date": str(int(time.time())),
           }
 
@@ -938,6 +940,15 @@ jobs:
               if api_calls:
                   entry["api_calls"] = api_calls
 
+              # Raw content links for backend
+              skill_dir_path = skill.get("dir", ".")
+              if skill_dir_path == ".":
+                  skill_dir_path = f"skills/{name}"
+              elif not skill_dir_path.startswith("skills/"):
+                  skill_dir_path = f"skills/{name}/{skill_dir_path}"
+              entry["skill_md_link"] = f"https://raw.githubusercontent.com/mig-pre/plugin-store/main/{skill_dir_path}/SKILL.md"
+              entry["summary_md_link"] = f"https://raw.githubusercontent.com/mig-pre/plugin-store/main/{skill_dir_path}/SUMMARY.md"
+
               # Preserve link/extra from existing registry
               existing = existing_by_name.get(name, {})
               if "github_link" in existing:
@@ -992,6 +1003,9 @@ jobs:
                   e['components'] = {'skill': {'dir': comp.get('dir','.')}}
               ac = data.get('api_calls', [])
               if ac: e['api_calls'] = ac
+              sd = comp.get('dir','.'); sd = f'skills/{name}' if sd == '.' else (sd if sd.startswith('skills/') else f'skills/{name}/{sd}')
+              e['skill_md_link'] = f'https://raw.githubusercontent.com/mig-pre/plugin-store/main/{sd}/SKILL.md'
+              e['summary_md_link'] = f'https://raw.githubusercontent.com/mig-pre/plugin-store/main/{sd}/SUMMARY.md'
               old = existing.get(name, {})
               if 'github_link' in old: e['github_link'] = old['github_link']
               if 'extra' in old: e['extra'] = old['extra']

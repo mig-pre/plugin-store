@@ -30,7 +30,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/aave-v3-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/aave-v3-plugin/SUMMARY.md"
     },
     {
       "name": "clanker",
@@ -58,7 +60,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/clanker-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/clanker-plugin/SUMMARY.md"
     },
     {
       "name": "compound-v3",
@@ -88,7 +92,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/compound-v3-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/compound-v3-plugin/SUMMARY.md"
     },
     {
       "name": "curve",
@@ -117,7 +123,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/curve-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/curve-plugin/SUMMARY.md"
     },
     {
       "name": "eth-price-demo",
@@ -145,7 +153,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/eth-price-demo/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/eth-price-demo/SUMMARY.md"
     },
     {
       "name": "etherfi",
@@ -175,7 +185,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/etherfi-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/etherfi-plugin/SUMMARY.md"
     },
     {
       "name": "gmx-v2",
@@ -203,7 +215,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/gmx-v2-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/gmx-v2-plugin/SUMMARY.md"
     },
     {
       "name": "hyperliquid",
@@ -236,7 +250,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/hyperliquid-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/hyperliquid-plugin/SUMMARY.md"
     },
     {
       "name": "kamino-lend",
@@ -265,7 +281,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/kamino-lend-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/kamino-lend-plugin/SUMMARY.md"
     },
     {
       "name": "kamino-liquidity",
@@ -294,7 +312,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/kamino-liquidity-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/kamino-liquidity-plugin/SUMMARY.md"
     },
     {
       "name": "lido",
@@ -324,7 +344,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/lido-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/lido-plugin/SUMMARY.md"
     },
     {
       "name": "meme-trench-scanner",
@@ -359,7 +381,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/meme-trench-scanner/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/meme-trench-scanner/SUMMARY.md"
     },
     {
       "name": "meteora",
@@ -388,7 +412,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/meteora-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/meteora-plugin/SUMMARY.md"
     },
     {
       "name": "morpho",
@@ -419,7 +445,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/morpho-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/morpho-plugin/SUMMARY.md"
     },
     {
       "name": "okx-buildx-hackathon-agent-track",
@@ -451,7 +479,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/okx-buildx-hackathon-agent-track/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/okx-buildx-hackathon-agent-track/SUMMARY.md"
     },
     {
       "name": "orca-plugin",
@@ -480,7 +510,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/orca-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/orca-plugin/SUMMARY.md"
     },
     {
       "name": "pancakeswap-clmm",
@@ -509,7 +541,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/pancakeswap-clmm-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/pancakeswap-clmm-plugin/SUMMARY.md"
     },
     {
       "name": "pancakeswap-v2",
@@ -535,7 +569,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/pancakeswap-v2-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/pancakeswap-v2-plugin/SUMMARY.md"
     },
     {
       "name": "pancakeswap-v3",
@@ -565,7 +601,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/pancakeswap-v3-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/pancakeswap-v3-plugin/SUMMARY.md"
     },
     {
       "name": "pendle",
@@ -595,7 +633,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/pendle-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/pendle-plugin/SUMMARY.md"
     },
     {
       "name": "plugin-store",
@@ -625,7 +665,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/plugin-store/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/plugin-store/SUMMARY.md"
     },
     {
       "name": "polymarket-plugin",
@@ -657,7 +699,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/polymarket-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/polymarket-plugin/SUMMARY.md"
     },
     {
       "name": "pump-fun",
@@ -686,7 +730,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/pump-fun-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/pump-fun-plugin/SUMMARY.md"
     },
     {
       "name": "raydium",
@@ -715,7 +761,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/raydium-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/raydium-plugin/SUMMARY.md"
     },
     {
       "name": "smart-money-signal-copy-trade",
@@ -748,7 +796,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/smart-money-signal-copy-trade/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/smart-money-signal-copy-trade/SUMMARY.md"
     },
     {
       "name": "top-rank-tokens-sniper",
@@ -783,7 +833,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/top-rank-tokens-sniper/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/top-rank-tokens-sniper/SUMMARY.md"
     },
     {
       "name": "uniswap-ai",
@@ -812,7 +864,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-ai/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-ai/SUMMARY.md"
     },
     {
       "name": "uniswap-cca-configurator",
@@ -840,7 +894,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-cca-configurator/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-cca-configurator/SUMMARY.md"
     },
     {
       "name": "uniswap-cca-deployer",
@@ -868,7 +924,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-cca-deployer/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-cca-deployer/SUMMARY.md"
     },
     {
       "name": "uniswap-liquidity-planner",
@@ -896,7 +954,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-liquidity-planner/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-liquidity-planner/SUMMARY.md"
     },
     {
       "name": "uniswap-pay-with-any-token",
@@ -925,7 +985,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-pay-with-any-token/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-pay-with-any-token/SUMMARY.md"
     },
     {
       "name": "uniswap-swap-integration",
@@ -954,7 +1016,9 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-swap-integration/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-swap-integration/SUMMARY.md"
     },
     {
       "name": "uniswap-swap-planner",
@@ -982,7 +1046,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-swap-planner/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-swap-planner/SUMMARY.md"
     },
     {
       "name": "uniswap-v4-security-foundations",
@@ -1010,7 +1076,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-v4-security-foundations/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-v4-security-foundations/SUMMARY.md"
     },
     {
       "name": "uniswap-viem-integration",
@@ -1038,7 +1106,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-viem-integration/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/uniswap-viem-integration/SUMMARY.md"
     },
     {
       "name": "velodrome-v2",
@@ -1066,7 +1136,9 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/velodrome-v2-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/velodrome-v2-plugin/SUMMARY.md"
     }
   ]
 }
