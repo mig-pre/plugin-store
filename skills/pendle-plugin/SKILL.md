@@ -731,6 +731,7 @@ pendle --chain 42161 --confirm sell-pt \
 | HTTP 403 from `mint-py` or `redeem-py` | Pendle SDK may not support multi-token operations for this market | Try `mint-py` on Arbitrum (chainId 42161); if 403 persists, this market does not support SDK minting |
 | "Pendle SDK convert returned HTTP 403" | API rate limit, geographic restriction, or unsupported market | Wait and retry; verify market addresses are correct for the target chain |
 | `get-asset-price` returns empty priceMap | IDs not chain-prefixed | Use format `42161-0x...` not bare `0x...` |
+| Approval or main tx times out after ~40 seconds | Network congestion; the binary polls for confirmation every 2s for up to 20 retries (40s hard limit) | The tx may still confirm on-chain. Check the returned `tx_hash` on a block explorer; if confirmed, safe to proceed. If still pending, wait for the next block and retry the command (the approval is idempotent). |
 
 
 
