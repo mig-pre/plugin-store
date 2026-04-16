@@ -13,14 +13,15 @@
 3. [Quick Start (7 Steps)](#3-quick-start-7-steps)
 4. [Plugin Structure](#4-plugin-structure)
 5. [Writing SKILL.md](#5-writing-skillmd)
-6. [Submitting Plugins with Source Code (Binary)](#6-submitting-plugins-with-source-code-binary)
-7. [Three Submission Modes](#7-three-submission-modes)
-8. [Onchain OS Integration](#8-onchainos-integration)
-9. [Review Process](#9-review-process)
-10. [Risk Levels](#10-risk-levels)
-11. [Rules & Restrictions](#11-rules--restrictions)
-12. [FAQ](#12-faq)
-13. [Getting Help](#13-getting-help)
+6. [Writing SUMMARY.md](#writing-summarymd)
+7. [Submitting Plugins with Source Code (Binary)](#6-submitting-plugins-with-source-code-binary)
+8. [Three Submission Modes](#7-three-submission-modes)
+9. [Onchain OS Integration](#8-onchainos-integration)
+10. [Review Process](#9-review-process)
+11. [Risk Levels](#10-risk-levels)
+12. [Rules & Restrictions](#11-rules--restrictions)
+13. [FAQ](#12-faq)
+14. [Getting Help](#13-getting-help)
 
 ---
 
@@ -282,6 +283,7 @@ skills/my-plugin/
 │   └── plugin.json      # Required -- Claude Skill registration metadata
 ├── plugin.yaml          # Required -- plugin metadata and manifest
 ├── SKILL.md             # Required -- skill definition for the AI agent
+├── SUMMARY.md           # Required -- English summary (Overview, Prerequisites, Quick Start)
 ├── src/                 # Optional -- source code for binary plugins
 │   └── main.rs          #   Rust example (or main.go, main.ts, main.py)
 ├── Cargo.toml           # Optional -- build config (or go.mod, package.json, pyproject.toml)
@@ -296,7 +298,7 @@ skills/my-plugin/
 └── LICENSE              # Recommended -- SPDX-compatible license file
 ```
 
-`.claude-plugin/plugin.json`, `plugin.yaml`, and `SKILL.md` are all **required**. Everything else is optional.
+`.claude-plugin/plugin.json`, `plugin.yaml`, `SKILL.md`, and `SUMMARY.md` are all **required**. Everything else is optional.
 
 ### .claude-plugin/plugin.json
 
@@ -410,6 +412,7 @@ Your source code stays in your own GitHub repo, pinned to a specific commit. CI 
 |------|:--------:|-------|
 | `plugin.yaml` | Yes | Must include `build.source_repo`, `build.source_commit`, `build.source_dir` |
 | `SKILL.md` | **Yes** | Must contain full command documentation. CI cannot fetch SKILL.md from your remote repo — it must be in the PR. CI will inject pre-flight blocks automatically. |
+| `SUMMARY.md` | **Yes** | English summary with Overview, Prerequisites, and Quick Start sections. See [Writing SUMMARY.md](#writing-summarymd). |
 | `LICENSE` | Yes | SPDX-compatible license file |
 | `.claude-plugin/plugin.json` | Yes | Standard Claude skill metadata |
 
@@ -421,6 +424,7 @@ skills/defi-yield-optimizer/
 │   └── plugin.json
 ├── plugin.yaml
 ├── SKILL.md              ← Full command docs (required in PR)
+├── SUMMARY.md            ← English summary (required in PR)
 └── LICENSE
 ```
 
@@ -472,7 +476,7 @@ This creates the plugin.yaml automatically — see [Mode C details](#mode-c----m
 | `schema_version` | Yes | Schema version | Always `1` |
 | `name` | Yes | Plugin name | Lowercase `[a-z0-9-]`, 2-40 chars, no consecutive hyphens |
 | `version` | Yes | Plugin version | Semantic versioning `x.y.z` (quoted string) |
-| `description` | Yes | One-line summary | Under 200 characters |
+| `description` | No | One-line summary (deprecated) | Optional, no longer validated by CI |
 | `author.name` | Yes | Author display name | Your name or organization |
 | `author.github` | Yes | GitHub username | Must match PR author |
 | `author.email` | No | Contact email | Used for security notifications |
@@ -480,7 +484,7 @@ This creates the plugin.yaml automatically — see [Mode C details](#mode-c----m
 | `category` | Yes | Plugin category | One of: `trading-strategy`, `defi-protocol`, `analytics`, `utility`, `security`, `wallet`, `nft` |
 | `tags` | No | Search keywords | Array of strings |
 | `type` | No | Author type | `"official"`, `"dapp-official"`, `"community-developer"` |
-| `link` | No | Project homepage | URL, displayed in the marketplace |
+| `github_link` | No | Project GitHub URL | URL, displayed in the marketplace |
 | `components.skill.dir` | Mode A | Skill directory path | Relative path within the plugin directory (use `"."` for the plugin root) |
 | `components.skill.repo` | Mode B | External repository | Format: `owner/repo` |
 | `components.skill.commit` | Mode B | Pinned commit | Full 40-character hex SHA |
@@ -725,6 +729,110 @@ onchainos market price --address <TOKEN_ADDRESS> --chain solana
 **Output**: Current price in USD, 24h change percentage, 24h volume.
 **If the token is not found**: Ask the user to verify the contract address or try `onchainos token search --query <NAME> --chain solana` first.
 ```
+
+---
+
+## Writing SUMMARY.md
+
+Every plugin **must** include a `SUMMARY.md` file in the same directory as `SKILL.md`. This file is an **English-language** user-facing summary with a fixed 3-section structure. CI lint will reject submissions without it (error `E150`) or with missing sections (error `E151`).
+
+### Required Structure
+
+```markdown
+# <plugin-name>
+
+## 1. Overview
+
+<One sentence describing what this platform/protocol is.>
+
+Core operations:
+
+- <Core operation 1, e.g., "Swap tokens across 500+ DEX sources">
+- <Core operation 2, e.g., "Query real-time portfolio balances">
+- <Core operation 3, e.g., "Place limit orders with slippage protection">
+
+Tags: `defi` `ethereum` `swap` `lending`
+
+## 2. Prerequisites
+
+- <IP/region restrictions, e.g., "No IP restrictions" or "US users excluded">
+- <Supported chains, e.g., "Ethereum, Base, Arbitrum, Polygon">
+- <Supported tokens, e.g., "All ERC-20 tokens" or "USDC, WETH, DAI">
+- <Required tools, e.g., "onchainos CLI installed and authenticated">
+- <Any other setup steps>
+
+## 3. Quick Start
+
+<Walk users through the basic workflow in plain language. Describe the key steps,
+modes, or options. Use numbered lists or bold headings for each step.>
+
+1. **Step 1 title**: Description of what to do and why.
+2. **Step 2 title**: Description of the next action.
+3. **Step 3 title**: How to verify everything works.
+```
+
+### Example: Polymarket Plugin
+
+```markdown
+# polymarket-plugin
+
+## 1. Overview
+
+Polymarket is a decentralized prediction market platform on Polygon where users trade
+outcome shares on real-world events.
+
+Core operations:
+
+- Browse and search prediction markets by topic
+- Buy and sell YES/NO outcome shares (market orders and limit orders)
+- Check portfolio positions and P&L
+- Manage open orders (cancel, modify)
+- Claim winnings after market settlement
+
+Tags: `prediction-market` `polygon` `trading` `polymarket`
+
+## 2. Prerequisites
+
+- US users are restricted from trading on Polymarket
+- Supported chain: Polygon (MATIC)
+- Supported tokens: USDC.e for trading, POL for gas fees
+- onchainos CLI installed and authenticated
+- A funded wallet with USDC.e on Polygon
+
+## 3. Quick Start
+
+1. **Choose a trading mode**
+   - Direct mode: trade directly from your wallet. The agent handles token approvals
+     automatically. Requires a small amount of POL for gas.
+   - Proxy mode: the agent creates a dedicated proxy wallet for you. Polymarket covers
+     gas fees. First-time setup requires depositing USDC.e to the proxy address.
+     You can switch between modes at any time.
+
+2. **Check balances**
+   Ask "check my balance" to see POL and USDC.e across all wallets. If your proxy
+   wallet is low, transfer USDC.e to the proxy address like a normal transfer.
+
+3. **Find a market**
+   Tell the agent what interests you (e.g., "find BTC price prediction markets").
+   It will search for matching markets and show prices, volume, and expiry dates.
+
+4. **Place a trade**
+   - Market order: buy or sell at the current best price, fills immediately or cancels.
+   - Limit order: set your desired price and wait for a fill. You can set an expiry
+     or choose maker-only.
+   - Examples: "Buy 10 USDC.e of Yes" / "Place a limit buy for 100 No shares at 0.35"
+
+5. **Manage positions**
+   Ask the agent to show your current holdings and P&L, cancel pending orders,
+   or withdraw winnings after a market settles.
+```
+
+### Key Rules
+
+- **Language**: SUMMARY.md must be written in English.
+- **Sections**: All three sections (`## 1. Overview`, `## 2. Prerequisites`, `## 3. Quick Start`) are required.
+- **Tags**: Display tags using inline code blocks (`` `tag-name` ``), placed at the end of the Overview section.
+- **Placement**: SUMMARY.md must be in the same directory as SKILL.md.
 
 ---
 

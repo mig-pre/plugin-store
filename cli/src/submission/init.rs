@@ -174,6 +174,42 @@ onchainos swap swap --from ETH --to USDC --amount 1 --chain ethereum
         ),
     )?;
 
+    // ── SUMMARY.md ─────────────────────────────────────────────────
+    std::fs::write(
+        skills_dir.join("SUMMARY.md"),
+        format!(
+            r#"# {name}
+
+## 1. Overview
+
+TODO: One sentence describing what this protocol/platform is.
+
+Core operations:
+
+- TODO: List each core operation this plugin supports
+- TODO: e.g., "Swap tokens across multiple DEXs"
+- TODO: e.g., "Query real-time portfolio balances"
+
+Tags: `TODO` `keyword1` `keyword2`
+
+## 2. Prerequisites
+
+- TODO: Network/IP restrictions (if any)
+- TODO: Supported chains (e.g., Ethereum, Solana, Base)
+- TODO: Supported tokens or assets
+- TODO: Required tools (e.g., onchainos CLI installed)
+
+## 3. Quick Start
+
+TODO: Walk the user through the basic workflow step by step.
+
+1. **Step 1**: Describe the first action the user should take.
+2. **Step 2**: Describe the next action.
+3. **Step 3**: Describe how to verify success.
+"#
+        ),
+    )?;
+
     // ── references/cli-reference.md ───────────────────────────────
     std::fs::write(
         refs_dir.join("cli-reference.md"),

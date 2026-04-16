@@ -155,6 +155,9 @@ pub fn lint_submission(submission_dir: &Path) -> Result<LintReport> {
     // ── 14. SKILL.md content validation ───────────────────────────
     check_skill_md(&plugin, submission_dir, &mut diags);
 
+    // ── 14b. SUMMARY.md validation ──────────────────────────────
+    check_summary_md(&plugin, submission_dir, &mut diags);
+
     // ── 15. PR scope: directory name matches plugin name ──────────
     check_dir_name_match(&plugin.name, submission_dir, &mut diags);
 
@@ -992,6 +995,61 @@ fn check_external_urls(content: &str, plugin: &PluginYaml, diags: &mut Vec<LintD
                 display.join(", ")
             ),
         });
+    }
+}
+
+/// Validate SUMMARY.md exists alongside SKILL.md and has the required 3-section structure.
+fn check_summary_md(plugin: &PluginYaml, dir: &Path, diags: &mut Vec<LintDiag>) {
+    let skill_paths = find_all_skill_mds(plugin, dir);
+
+    for skill_path in &skill_paths {
+        let summary_path = skill_path.with_file_name("SUMMARY.md");
+        if !summary_path.exists() {
+            diags.push(LintDiag {
+                level: DiagLevel::Error,
+                code: "E150",
+                message: format!(
+                    "SUMMARY.md not found alongside {}. \
+                     Every plugin must include a SUMMARY.md with Overview, Prerequisites, and Quick Start sections.",
+                    skill_path.strip_prefix(dir).unwrap_or(skill_path).display()
+                ),
+            });
+            continue;
+        }
+
+        let content = match std::fs::read_to_string(&summary_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+
+        let lower = content.to_lowercase();
+
+        // Check required sections
+        let required_sections: &[(&str, &str)] = &[
+            ("overview", "## 1. Overview"),
+            ("prerequisites", "## 2. Prerequisites"),
+            ("quick start", "## 3. Quick Start"),
+        ];
+
+        for (keyword, expected) in required_sections {
+            // Match "## 1. Overview", "## Overview", "## 1. overview" etc.
+            let has_section = lower.contains(&format!("## {}", keyword))
+                || lower.contains(&format!("## 1. {}", keyword))
+                || lower.contains(&format!("## 2. {}", keyword))
+                || lower.contains(&format!("## 3. {}", keyword));
+
+            if !has_section {
+                diags.push(LintDiag {
+                    level: DiagLevel::Error,
+                    code: "E151",
+                    message: format!(
+                        "SUMMARY.md missing required section: '{}'. \
+                         See docs/FOR-DEVELOPERS.md for the expected format.",
+                        expected
+                    ),
+                });
+            }
+        }
     }
 }
 
