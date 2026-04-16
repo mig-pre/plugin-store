@@ -54,7 +54,7 @@ pub async fn run(args: SwapArgs) -> Result<serde_json::Value> {
 
     // Resolve wallet
     let wallet = if args.dry_run {
-        "0x0000000000000000000000000000000000000000".to_string()
+        args.from.clone().unwrap_or_else(|| "0xDRYRUN0000000000000000000000000000000000".to_string())
     } else {
         let w = args.from.clone()
             .unwrap_or_else(|| onchainos::resolve_wallet(args.chain_id).unwrap_or_default());
