@@ -340,11 +340,26 @@ pub fn extract_sdk_calldata(response: &Value) -> anyhow::Result<(String, String)
 }
 
 /// Extract the expected output amount from SDK convert response.
-/// Tries Pendle-specific field names (netPtOut, netYtOut, netLpOut, netTokenOut)
-/// then falls back to generic names (amountOut, outputAmount).
-/// Returns the value as a decimal string, or None if not present.
+///
+/// Pendle SDK v3 response layout:
+///   routes[0].outputs[0].amount  ← primary (confirmed via live API)
+///   routes[0].data.*             ← fallback for older SDK shapes
 pub fn extract_amount_out(response: &Value) -> Option<String> {
     let route = response["routes"].as_array()?.first()?;
+
+    // Primary: Pendle SDK v3 places output amount at routes[0].outputs[0].amount
+    if let Some(outputs) = route["outputs"].as_array() {
+        if let Some(first) = outputs.first() {
+            if let Some(s) = first["amount"].as_str() {
+                return Some(s.to_string());
+            }
+            if let Some(n) = first["amount"].as_u64() {
+                return Some(n.to_string());
+            }
+        }
+    }
+
+    // Fallback: older SDK field names under routes[0].data
     let data = &route["data"];
     for field in &["netPtOut", "netYtOut", "netLpOut", "netTokenOut", "amountOut", "outputAmount"] {
         if let Some(s) = data[field].as_str() {

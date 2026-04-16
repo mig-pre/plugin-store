@@ -61,7 +61,7 @@ pub async fn run(
     let approvals = api::extract_required_approvals(&sdk_resp);
     let expected_token_out = api::extract_amount_out(&sdk_resp);
     let price_impact_pct = api::extract_price_impact(&sdk_resp);
-    let high_impact = price_impact_pct.map_or(false, |p| p > 1.0);
+    let high_impact = price_impact_pct.map_or(false, |p| p > 5.0);
 
     // Preview gate: show SDK quote without executing
     if !confirm && !dry_run {
@@ -83,7 +83,9 @@ pub async fn run(
         });
         if high_impact {
             preview["warning"] = serde_json::json!(format!(
-                "High price impact: {:.2}% — consider reducing position size or choosing a more liquid pool.",
+                "High price impact: {:.2}% — this is a relative deviation vs the pool's theoretical rate. \
+                 For cross-asset routes it may appear elevated on small amounts. \
+                 Verify expected_token_out before confirming, or choose a more liquid pool.",
                 price_impact_pct.unwrap_or(0.0)
             ));
         }
@@ -139,7 +141,9 @@ pub async fn run(
     });
     if high_impact {
         result["warning"] = serde_json::json!(format!(
-            "High price impact: {:.2}% — consider reducing position size or choosing a more liquid pool.",
+            "High price impact: {:.2}% — this is a relative deviation vs the pool's theoretical rate. \
+             For cross-asset routes it may appear elevated on small amounts. \
+             Verify expected_token_out before confirming, or choose a more liquid pool.",
             price_impact_pct.unwrap_or(0.0)
         ));
     }
