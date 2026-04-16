@@ -776,7 +776,7 @@ jobs:
                       "commit": os.environ["COMMIT_SHA"]
                   }
               },
-              "github_link": yq(f'.link // "{GUI}/skills/{name}"'),
+              "github_link": yq(f'.github_link // "{GUI}/skills/{name}"'),
               "homepage": f"{GUI}/skills/{name}",
               "readme_url": f"{BASE}/skills/{name}/README.md",
               "skill_url": f"{BASE}/{skill_md_path}" if skill_md_path else "",
