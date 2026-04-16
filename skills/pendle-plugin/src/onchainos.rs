@@ -168,6 +168,41 @@ pub fn extract_tx_hash(result: &Value) -> anyhow::Result<String> {
         ))
 }
 
+/// Query ERC-20 balanceOf(wallet) for a given token via a direct JSON-RPC eth_call.
+/// Used as a pre-flight balance check before calling the Pendle SDK — surfaces
+/// insufficient-balance errors locally rather than spending a round-trip to the SDK.
+/// Returns 0 on any RPC error (non-fatal: on-chain will revert if truly underfunded).
+pub async fn erc20_balance_of(chain_id: u64, token_addr: &str, wallet: &str) -> anyhow::Result<u128> {
+    let rpc_url = default_rpc_url(chain_id);
+    let wallet_clean = wallet.strip_prefix("0x").unwrap_or(wallet);
+    // balanceOf(address) selector = 0x70a08231; wallet padded to 32 bytes
+    let data = format!("0x70a08231{:0>64}", wallet_clean);
+    let client = reqwest::Client::new();
+    let body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "eth_call",
+        "params": [{"to": token_addr, "data": data}, "latest"],
+        "id": 1
+    });
+    let resp: Value = client
+        .post(rpc_url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| anyhow::anyhow!("eth_call for balanceOf failed: {}", e))?
+        .json()
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to parse balanceOf response: {}", e))?;
+    let hex = resp["result"].as_str().unwrap_or("0x0");
+    let clean = hex.trim_start_matches("0x");
+    if clean.is_empty() {
+        return Ok(0);
+    }
+    // ABI result is a 32-byte (64 hex char) padded uint256; u128 fits in the last 32 hex chars
+    let truncated = if clean.len() > 32 { &clean[clean.len() - 32..] } else { clean };
+    Ok(u128::from_str_radix(truncated, 16).unwrap_or(0))
+}
+
 /// Build ERC-20 approve calldata and submit via wallet contract-call.
 /// approve(address,uint256) selector = 0x095ea7b3
 pub async fn erc20_approve(

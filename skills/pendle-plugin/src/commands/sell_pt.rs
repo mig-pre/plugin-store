@@ -28,6 +28,19 @@ pub async fn run(
         anyhow::bail!("Cannot resolve wallet address. Pass --from or ensure onchainos is logged in.");
     }
 
+    // Pre-flight balance check: verify wallet holds enough PT before calling the SDK
+    if !dry_run {
+        let balance = onchainos::erc20_balance_of(chain_id, pt_address, &wallet).await.unwrap_or(0);
+        let required: u128 = amount_in.parse().unwrap_or(0);
+        if balance < required {
+            anyhow::bail!(
+                "Insufficient PT balance: wallet {} holds {} wei of PT {} but {} wei is required. \
+                 Acquire more before retrying.",
+                wallet, balance, pt_address, required
+            );
+        }
+    }
+
     let sdk_resp = api::sdk_convert(
         chain_id,
         &wallet,

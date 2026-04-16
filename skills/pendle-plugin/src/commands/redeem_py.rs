@@ -31,6 +31,28 @@ pub async fn run(
         anyhow::bail!("Cannot resolve wallet address. Pass --from or ensure onchainos is logged in.");
     }
 
+    // Pre-flight balance checks: verify wallet holds enough PT and YT before calling the SDK
+    if !dry_run {
+        let pt_required: u128 = pt_amount.parse().unwrap_or(0);
+        let pt_balance = onchainos::erc20_balance_of(chain_id, pt_address, &wallet).await.unwrap_or(0);
+        if pt_balance < pt_required {
+            anyhow::bail!(
+                "Insufficient PT balance: wallet {} holds {} wei of PT {} but {} wei is required. \
+                 Acquire more before retrying.",
+                wallet, pt_balance, pt_address, pt_required
+            );
+        }
+        let yt_required: u128 = yt_amount.parse().unwrap_or(0);
+        let yt_balance = onchainos::erc20_balance_of(chain_id, yt_address, &wallet).await.unwrap_or(0);
+        if yt_balance < yt_required {
+            anyhow::bail!(
+                "Insufficient YT balance: wallet {} holds {} wei of YT {} but {} wei is required. \
+                 Acquire more before retrying.",
+                wallet, yt_balance, yt_address, yt_required
+            );
+        }
+    }
+
     // Both PT and YT as inputs; Hosted SDK routes to redeemPyToToken
     let sdk_resp = api::sdk_convert(
         chain_id,

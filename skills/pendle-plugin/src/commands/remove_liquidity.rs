@@ -28,6 +28,19 @@ pub async fn run(
         anyhow::bail!("Cannot resolve wallet address. Pass --from or ensure onchainos is logged in.");
     }
 
+    // Pre-flight balance check: verify wallet holds enough LP tokens before calling the SDK
+    if !dry_run {
+        let balance = onchainos::erc20_balance_of(chain_id, lp_address, &wallet).await.unwrap_or(0);
+        let required: u128 = lp_amount_in.parse().unwrap_or(0);
+        if balance < required {
+            anyhow::bail!(
+                "Insufficient LP balance: wallet {} holds {} wei of LP token {} but {} wei is required. \
+                 Acquire more before retrying.",
+                wallet, balance, lp_address, required
+            );
+        }
+    }
+
     // Hosted SDK routes automatically to removeLiquiditySingleToken
     let sdk_resp = api::sdk_convert(
         chain_id,
