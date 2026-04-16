@@ -167,9 +167,10 @@ pub async fn run(args: AddLiquidityArgs) -> Result<()> {
         println!("  [dry-run] onchainos wallet contract-call --chain {} --to {} --input-data {}", args.chain, token0, approve0_calldata);
     } else {
         let r = crate::onchainos::wallet_contract_call(args.chain, token0, &approve0_calldata, None, None, args.dry_run, args.confirm).await?;
-        println!("  Approve tx: {}", crate::onchainos::extract_tx_hash(&r));
-        // Wait for nonce to settle before next sequential transaction
-        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        let approve0_hash = crate::onchainos::extract_tx_hash(&r).to_string();
+        eprintln!("  Approve {} tx: {} — waiting for confirmation...", sym0, approve0_hash);
+        crate::onchainos::wait_and_check_receipt(&approve0_hash, cfg.rpc_url).await
+            .map_err(|e| anyhow::anyhow!("{} approve did not confirm: {}", sym0, e))?;
     }
 
     // Step 2: Approve token1 for NPM
@@ -181,9 +182,10 @@ pub async fn run(args: AddLiquidityArgs) -> Result<()> {
         println!("  [dry-run] onchainos wallet contract-call --chain {} --to {} --input-data {}", args.chain, token1, approve1_calldata);
     } else {
         let r = crate::onchainos::wallet_contract_call(args.chain, token1, &approve1_calldata, None, None, args.dry_run, args.confirm).await?;
-        println!("  Approve tx: {}", crate::onchainos::extract_tx_hash(&r));
-        // Wait for nonce to settle before mint
-        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        let approve1_hash = crate::onchainos::extract_tx_hash(&r).to_string();
+        eprintln!("  Approve {} tx: {} — waiting for confirmation...", sym1, approve1_hash);
+        crate::onchainos::wait_and_check_receipt(&approve1_hash, cfg.rpc_url).await
+            .map_err(|e| anyhow::anyhow!("{} approve did not confirm: {}", sym1, e))?;
     }
 
     // Step 3: Mint position

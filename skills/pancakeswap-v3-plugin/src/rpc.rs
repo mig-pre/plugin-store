@@ -179,7 +179,7 @@ pub async fn get_slot0(pool: &str, rpc_url: &str) -> Result<(u128, i32)> {
     let sqrt_price_hex = &raw[0..64];
     let tick_hex = &raw[64..128];
 
-    let sqrt_price = u128::from_str_radix(sqrt_price_hex, 16).unwrap_or(0);
+    let sqrt_price = decode_u256_from_hex(sqrt_price_hex);
 
     // tick is int24, ABI-padded to 32 bytes (64 hex chars) as int256.
     // Negative ticks have all high bytes set to 0xFF — u128::from_str_radix
@@ -220,7 +220,7 @@ pub async fn quote_exact_input_single(
         anyhow::bail!("QuoterV2 returned empty/short result — pool may not exist or fee tier mismatch");
     }
     // amountOut is the first 32 bytes of the return
-    let amount_out = u128::from_str_radix(&raw[0..64], 16).unwrap_or(0);
+    let amount_out = decode_u256_from_hex(&raw[0..64]);
     Ok(amount_out)
 }
 

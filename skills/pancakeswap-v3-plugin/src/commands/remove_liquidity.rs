@@ -109,9 +109,10 @@ pub async fn run(args: RemoveLiquidityArgs) -> Result<()> {
         println!("  [dry-run] onchainos wallet contract-call --chain {} --to {} --input-data {}", args.chain, cfg.npm, decrease_calldata);
     } else {
         let r = crate::onchainos::wallet_contract_call(args.chain, cfg.npm, &decrease_calldata, None, None, args.dry_run, args.confirm).await?;
-        println!("  decreaseLiquidity tx: {}", crate::onchainos::extract_tx_hash(&r));
-        // Wait for nonce to settle before collect
-        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        let decrease_hash = crate::onchainos::extract_tx_hash(&r).to_string();
+        eprintln!("  decreaseLiquidity tx: {} — waiting for confirmation...", decrease_hash);
+        crate::onchainos::wait_and_check_receipt(&decrease_hash, cfg.rpc_url).await
+            .map_err(|e| anyhow::anyhow!("decreaseLiquidity did not confirm: {}", e))?;
     }
 
     // Step 2: collect — MUST always follow decreaseLiquidity
