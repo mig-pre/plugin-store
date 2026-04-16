@@ -590,6 +590,79 @@ pendle --chain <CHAIN_ID> [--dry-run] [--confirm] redeem-py \
 
 ---
 
+## Quickstart
+
+New to pendle-plugin? Follow these steps from zero to your first fixed-yield PT purchase.
+
+### Step 1 — Connect your wallet
+
+```bash
+onchainos wallet login your@email.com
+onchainos wallet addresses --chain 42161
+onchainos wallet balance --chain 42161
+```
+
+Minimum to test: a few dollars of USDC or WETH on Arbitrum.
+
+### Step 2 — Browse markets
+
+```bash
+# Active Arbitrum markets (global --chain auto-applies to list-markets)
+pendle --chain 42161 list-markets --active-only --limit 10
+
+# Search by asset — ETH-derivative pools (weETH, wstETH, rETH, etc.)
+pendle --chain 42161 list-markets --search weETH --active-only
+
+# Search for stablecoin markets
+pendle --chain 42161 list-markets --search USDC --active-only
+```
+
+Note the `pt` address and `address` (= LP address) for your chosen market. Look for high `impliedApy` and `liquidity.usd > 1M`.
+
+### Step 3 — Preview, then buy PT
+
+```bash
+# Preview (no --confirm — calls Pendle SDK, returns real quote, no on-chain action):
+pendle --chain 42161 buy-pt \
+  --token-in 0xaf88d065e77c8cc2239327c5edb3a432268e5831 \
+  --amount-in 5000000 \
+  --pt-address <PT_ADDRESS>
+
+# Execute after reviewing expected_pt_out in the preview:
+pendle --chain 42161 --confirm buy-pt \
+  --token-in 0xaf88d065e77c8cc2239327c5edb3a432268e5831 \
+  --amount-in 5000000 \
+  --pt-address <PT_ADDRESS>
+```
+
+### Step 4 — Check your positions
+
+```bash
+pendle --chain 42161 get-positions
+```
+
+Allow 15–30 seconds for the Pendle indexer to reflect the new position.
+
+### Step 5 — Sell PT (exit before expiry)
+
+```bash
+# Preview (note price_impact_pct — warning fires if > 5%)
+pendle --chain 42161 sell-pt \
+  --pt-address <PT_ADDRESS> \
+  --amount-in <YOUR_PT_WEI> \
+  --token-out 0xaf88d065e77c8cc2239327c5edb3a432268e5831
+
+# Execute after reviewing expected_token_out and price_impact_pct:
+pendle --chain 42161 --confirm sell-pt \
+  --pt-address <PT_ADDRESS> \
+  --amount-in <YOUR_PT_WEI> \
+  --token-out 0xaf88d065e77c8cc2239327c5edb3a432268e5831
+```
+
+> **Price impact note**: `price_impact_pct` is a relative metric vs the pool's theoretical rate. For cross-asset routes it may appear elevated on small amounts even when the trade is profitable — always verify `expected_token_out` before confirming.
+
+---
+
 ## Key Concepts
 
 | Term | Meaning |
