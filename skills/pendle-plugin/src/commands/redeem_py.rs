@@ -94,19 +94,23 @@ pub async fn run(
 
     let pt_wei: u128 = pt_amount.parse().map_err(|_| anyhow::anyhow!("Failed to parse pt-amount: '{}'", pt_amount))?;
     let yt_wei: u128 = yt_amount.parse().map_err(|_| anyhow::anyhow!("Failed to parse yt-amount: '{}'", yt_amount))?;
-    let mut token_amounts = std::collections::HashMap::new();
-    token_amounts.insert(pt_address.to_lowercase(), pt_wei);
-    token_amounts.insert(yt_address.to_lowercase(), yt_wei);
+
+    // redeemPyToToken always requires approval for both PT and YT.
+    // The Pendle SDK v2 requiredApprovals field only lists PT (incomplete); we always approve
+    // both explicitly. The spender is taken from the SDK response when present, otherwise
+    // falls back to PENDLE_ROUTER.
+    let spender = approvals.first()
+        .map(|(_, s)| s.as_str())
+        .unwrap_or(crate::config::PENDLE_ROUTER);
+    let tokens_to_approve = [(pt_address, pt_wei), (yt_address, yt_wei)];
 
     let mut approve_hashes: Vec<String> = Vec::new();
-    for (token_addr, spender) in &approvals {
-        let approve_amount = *token_amounts.get(&token_addr.to_lowercase())
-            .ok_or_else(|| anyhow::anyhow!("Unexpected approval requested for token '{}' — not PT or YT", token_addr))?;
+    for (token_addr, approve_amount) in &tokens_to_approve {
         let approve_result = onchainos::erc20_approve(
             chain_id,
             token_addr,
             spender,
-            approve_amount,
+            *approve_amount,
             Some(&wallet),
             dry_run,
         )

@@ -430,6 +430,34 @@ pub fn extract_price_impact(response: &Value) -> Option<f64> {
     Some(impact.abs() * 100.0)
 }
 
+/// Client-side minimum-output guard.
+///
+/// After getting a quote from the SDK, compare the expected output against the
+/// user-supplied minimum.  Values of "0" or "" are treated as "no minimum" and
+/// always pass.  If the quote is below the minimum the command aborts before any
+/// approval or on-chain call, saving gas and preventing a worse-than-expected fill.
+///
+/// `label` is the human-readable token name used in the error message ("pt", "yt",
+/// "lp", "token").
+pub fn check_min_out(expected: &Option<String>, min_out: &str, label: &str) -> anyhow::Result<()> {
+    let min: u128 = min_out.parse().unwrap_or(0);
+    if min == 0 {
+        return Ok(());
+    }
+    if let Some(expected_str) = expected {
+        let got: u128 = expected_str.parse().unwrap_or(0);
+        if got < min {
+            anyhow::bail!(
+                "SDK quote {} wei {} is below your --min-{}-out {} wei. \
+                 Slippage may be too tight or the market moved. \
+                 Lower --min-{}-out or increase --slippage before retrying.",
+                got, label, label, min, label
+            );
+        }
+    }
+    Ok(())
+}
+
 /// Extract required approvals from SDK convert response
 pub fn extract_required_approvals(response: &Value) -> Vec<(String, String)> {
     // Returns list of (token_address, spender_address) pairs
