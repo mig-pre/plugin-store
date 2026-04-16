@@ -1,5 +1,13 @@
 use anyhow::Context;
 use serde_json::json;
+use std::time::Duration;
+
+fn rpc_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()
+        .expect("failed to build HTTP client")
+}
 
 fn serialize_u128_as_string<S: serde::Serializer>(v: &u128, s: S) -> Result<S::Ok, S::Error> {
     s.serialize_str(&v.to_string())
@@ -7,7 +15,7 @@ fn serialize_u128_as_string<S: serde::Serializer>(v: &u128, s: S) -> Result<S::O
 
 /// Low-level eth_call via JSON-RPC. Returns the raw hex result string (may include "0x" prefix).
 pub async fn eth_call(to: &str, data: &str, rpc_url: &str) -> anyhow::Result<String> {
-    let client = reqwest::Client::new();
+    let client = rpc_client();
     let body = json!({
         "jsonrpc": "2.0",
         "method": "eth_call",
@@ -444,7 +452,7 @@ fn is_pruned_error(err: &anyhow::Error) -> bool {
 }
 
 pub async fn eth_block_number(rpc_url: &str) -> anyhow::Result<u64> {
-    let client = reqwest::Client::new();
+    let client = rpc_client();
     let body = json!({
         "jsonrpc": "2.0",
         "method": "eth_blockNumber",
@@ -530,7 +538,7 @@ async fn get_transfer_logs(
     to_block: &str,
     rpc_url: &str,
 ) -> anyhow::Result<Vec<u64>> {
-    let client = reqwest::Client::new();
+    let client = rpc_client();
     let body = json!({
         "jsonrpc": "2.0",
         "method": "eth_getLogs",
