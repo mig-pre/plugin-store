@@ -781,7 +781,6 @@ jobs:
               "readme_url": f"{BASE}/skills/{name}/README.md",
               "skill_url": f"{BASE}/{skill_md_path}" if skill_md_path else "",
               "summary_url": f"{BASE}/skills/{name}/SUMMARY.md",
-              "skill_summary_url": f"{BASE}/skills/{name}/SKILL_SUMMARY.md",
               "skill_md_link": f"{BASE}/{skill_dir}/SKILL.md",
               "summary_md_link": f"{BASE}/{skill_dir}/SUMMARY.md",
               "modify_date": str(int(time.time())),

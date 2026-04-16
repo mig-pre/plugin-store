@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the Claude API prompt for SUMMARY.md + SKILL_SUMMARY.md."""
+"""Generate the Claude API prompt for SUMMARY.md."""
 import sys, os
 
 name = sys.argv[1]
@@ -16,28 +16,17 @@ if os.path.exists("/tmp/skill_content.txt"):
 
 prompt = f"""You are generating documentation for plugin "{name}".
 
-Given the SKILL.md, README.md, and plugin.yaml below, generate TWO markdown files.
+Given the SKILL.md, README.md, and plugin.yaml below, generate a SUMMARY.md file.
 
-Output exactly two sections separated by the line: ---SEPARATOR---
+Output the markdown content directly (no separators needed).
 
-FIRST section is SUMMARY.md:
+SUMMARY.md format:
 # {name}
 <one sentence description>
 ## Highlights
 - <feature 1>
 - <feature 2>
 ...up to 8 highlights
-
-SECOND section is SKILL_SUMMARY.md:
-# {name} -- Skill Summary
-## Overview
-<one paragraph functional overview>
-## Usage
-<how to use/start, 1-3 sentences>
-## Commands
-<table or list of CLI commands. Write "This is a reference skill with no CLI commands." if none>
-## Triggers
-<when an AI agent should activate this skill, 1-2 sentences>
 
 === INPUT ===
 

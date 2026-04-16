@@ -214,9 +214,7 @@ jobs:
           if [ "$HTTP_CODE" = "200" ]; then
             RESPONSE=$(jq -r '.content[0].text // ""' /tmp/resp.json)
             echo "$RESPONSE" | sed -n '1,/---SEPARATOR---/p' | sed '/---SEPARATOR---/d' > "${PLUGIN_DIR}/SUMMARY.md"
-            echo "$RESPONSE" | sed -n '/---SEPARATOR---/,$p' | sed '1d' > "${PLUGIN_DIR}/SKILL_SUMMARY.md"
             cp "${PLUGIN_DIR}/SUMMARY.md" /tmp/summary_md.txt
-            cp "${PLUGIN_DIR}/SKILL_SUMMARY.md" /tmp/skill_summary_md.txt
             echo "done=true" >> "$GITHUB_OUTPUT"
           else
             echo "Summary generation failed: HTTP $HTTP_CODE"
@@ -255,9 +253,8 @@ jobs:
             const fs = require('fs');
             const pluginName = process.env.PLUGIN_NAME;
 
-            let summaryMd = '', skillSummaryMd = '', preflightMd = '';
+            let summaryMd = '', preflightMd = '';
             try { summaryMd = fs.readFileSync('/tmp/summary_md.txt', 'utf8'); } catch(e) {}
-            try { skillSummaryMd = fs.readFileSync('/tmp/skill_summary_md.txt', 'utf8'); } catch(e) {}
             try { preflightMd = fs.readFileSync('/tmp/preflight_injected.txt', 'utf8'); } catch(e) {}
 
             const sections = [];
@@ -265,9 +262,6 @@ jobs:
             sections.push('', '> Review below. AI Code Review is in a separate check.', '', '---', '');
             if (summaryMd) {
               sections.push('<details>', '<summary><strong>SUMMARY.md</strong></summary>', '', summaryMd, '', '</details>', '');
-            }
-            if (skillSummaryMd) {
-              sections.push('<details>', '<summary><strong>SKILL_SUMMARY.md</strong></summary>', '', skillSummaryMd, '', '</details>', '');
             }
             if (preflightMd) {
               sections.push('<details open>', '<summary><strong>Auto-injected Pre-flight</strong></summary>', '', '```markdown', preflightMd, '```', '', '</details>', '');

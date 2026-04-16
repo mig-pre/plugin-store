@@ -30,8 +30,6 @@ pub struct Plugin {
     pub components: Components,
     #[serde(default)]
     pub summary_url: Option<String>,
-    #[serde(default)]
-    pub skill_summary_url: Option<String>,
     /// Raw GitHub URL to SKILL.md for backend consumption.
     #[serde(default)]
     pub skill_md_link: Option<String>,
