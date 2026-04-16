@@ -32,7 +32,7 @@ jobs:
         run: |
           # Scan all skills/*/plugin.json and SKILL.md to build registry entries
           python3 << 'PYEOF'
-          import json, os, re
+          import json, os, re, time
 
           # ── Read current registry (preserve community entries) ──
           with open("registry.json") as f:
@@ -77,16 +77,14 @@ jobs:
                   pjson = {
                       "name": pyaml_data.get("name", skill_name),
                       "version": str(pyaml_data.get("version", "1.0.0")),
-                      "description": pyaml_data.get("description", ""),
+                      "description": "-",
                       "author": pyaml_data.get("author", {}),
                       "category": pyaml_data.get("category", "utility"),
                       "tags": pyaml_data.get("tags", []),
                   }
 
-              # Read SKILL.md frontmatter
-              description = pjson.get("description", "")
+              # Read SKILL.md frontmatter (version only — description deprecated)
               version = pjson.get("version", "1.0.0")
-              skill_desc = ""
               with open(skill_path) as f:
                   content = f.read()
                   # Extract frontmatter
@@ -98,11 +96,9 @@ jobs:
                               v = line.split(':', 1)[1].strip().strip('"').strip("'")
                               if v:
                                   version = v
-                          if line.startswith('description:'):
-                              skill_desc = line.split(':', 1)[1].strip().strip('"')
 
               name = pjson.get("name", skill_name)
-              desc = description or skill_desc or f"Official OKX plugin: {name}"
+              desc = "-"
 
               # Detect tags from SKILL.md content
               tags = []
@@ -153,7 +149,7 @@ jobs:
               reg_entry = {
                   "name": name,
                   "version": version,
-                  "description": desc,
+                  "description": "-",
                   "author": {"name": pjson.get("author", {}).get("name", "OKX")},
                   "category": existing.get("category") or category,
                   "tags": tags[:10],
@@ -164,7 +160,8 @@ jobs:
                           "dir": f"skills/{skill_name}"
                       }
                   },
-                  "link": "https://github.com/mig-pre/plugin-store"
+                  "link": "https://github.com/mig-pre/plugin-store",
+                  "modify_date": str(int(time.time())),
               }
 
               if trust_source:
@@ -189,7 +186,7 @@ jobs:
               # Build marketplace entry
               mp_entry = {
                   "name": name,
-                  "description": desc,
+                  "description": "-",
                   "source": f"./skills/{skill_name}",
                   "category": category,
                   "author": {"name": pjson.get("author", {}).get("name", "OKX")}

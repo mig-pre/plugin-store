@@ -266,17 +266,9 @@ jobs:
                   continue
               desc = ''
               # In merged repo, plugin.yaml lives in skills/<name>/
-              yaml_path = os.path.join('skills', name, 'plugin.yaml')
-              if os.path.exists(yaml_path):
-                  with open(yaml_path) as f:
-                      for line in f:
-                          m = re.match(r'^description:\s*["\'](.+)["\']\s*$', line)
-                          if m:
-                              desc = m.group(1)
-                              break
               plugins.append({
                   'name': name,
-                  'description': desc or f'Plugin: {name}',
+                  'description': '-',
                   'source': f'./skills/{name}'
               })
 
@@ -577,7 +569,7 @@ jobs:
               SRC_COMMIT=$(echo "$PLUGIN" | jq -r '.source_commit // empty')
               AUTHOR=$(yq '.author.name // "Community"' "$YAML_FILE" 2>/dev/null || echo "Community")
               AUTHOR_GH=$(yq '.author.github // ""' "$YAML_FILE" 2>/dev/null || echo "")
-              DESC=$(yq '.description // ""' "$YAML_FILE" 2>/dev/null || echo "")
+              DESC="-"
               LANG=$(echo "$PLUGIN" | jq -r '.lang // "unknown"')
               PLATFORM_COUNT=$(ls ${BIN}-* 2>/dev/null | wc -l | tr -d ' ')
 
@@ -749,7 +741,7 @@ jobs:
               BUILD_LANG="$BUILD_LANG" BUILD_BINARY_NAME="$BUILD_BINARY_NAME" \
               VERSION="$VERSION" SKILL_DIR="$SKILL_DIR" NAME="$NAME" \
               python3 << 'PYEOF'
-          import json, os
+          import json, os, time
 
           yf = os.environ["YAML_FILE"]
           def yq(expr):
@@ -772,7 +764,7 @@ jobs:
           entry = {
               "name": name,
               "version": os.environ["VERSION"],
-              "description": yq(".description"),
+              "description": "-",
               "author": {"name": yq(".author.name")},
               "category": yq(".category"),
               "tags": json.loads(yq(".tags | @json")),
@@ -790,6 +782,7 @@ jobs:
               "skill_url": f"{BASE}/{skill_md_path}" if skill_md_path else "",
               "summary_url": f"{BASE}/skills/{name}/SUMMARY.md",
               "skill_summary_url": f"{BASE}/skills/{name}/SKILL_SUMMARY.md",
+              "modify_date": str(int(time.time())),
           }
 
 
@@ -883,7 +876,7 @@ jobs:
           git pull origin ${{ github.ref_name }} --rebase 2>/dev/null || true
 
           python3 << 'PYEOF'
-          import json, os, yaml, glob
+          import json, os, yaml, glob, time
 
           # Read current registry to preserve link/extra fields
           with open("registry.json") as f:
@@ -903,11 +896,12 @@ jobs:
               entry = {
                   "name": name,
                   "version": str(data.get("version", "0.1.0")),
-                  "description": data.get("description", ""),
+                  "description": "-",
                   "author": data.get("author", {}),
                   "license": data.get("license", "MIT"),
                   "category": data.get("category", ""),
                   "tags": data.get("tags", []),
+                  "modify_date": str(int(time.time())),
               }
 
               # Detect plugin type
@@ -980,7 +974,7 @@ jobs:
             git pull origin ${{ github.ref_name }} --rebase 2>/dev/null || git pull origin ${{ github.ref_name }}
             # Re-run the full scan on latest main (just re-execute the python above)
             python3 -c "
-          import json, os, yaml, glob
+          import json, os, yaml, glob, time
           with open('registry.json') as f: current = json.load(f)
           existing = {p['name']: p for p in current.get('plugins', [])}
           plugins = []
@@ -990,7 +984,7 @@ jobs:
               with open(yp) as f: data = yaml.safe_load(f) or {}
               build = data.get('build', {}) or {}
               comp = data.get('components', {}).get('skill', {}) or {}
-              e = {'name': name, 'version': str(data.get('version','0.1.0')), 'description': data.get('description',''), 'author': data.get('author',{}), 'license': data.get('license','MIT'), 'category': data.get('category',''), 'tags': data.get('tags',[]), 'type': 'community-developer' if build.get('lang') else data.get('type','community')}
+              e = {'name': name, 'version': str(data.get('version','0.1.0')), 'description': '-', 'author': data.get('author',{}), 'license': data.get('license','MIT'), 'category': data.get('category',''), 'tags': data.get('tags',[]), 'type': 'community-developer' if build.get('lang') else data.get('type','community'), 'modify_date': str(int(time.time()))}
               if build.get('lang') in ('rust','go'):
                   bn = build.get('binary_name', name)
                   e['components'] = {'skill': {'dir': comp.get('dir','.')}, 'binary': {'repo':'mig-pre/plugin-store','asset_pattern':f'{bn}-{{target}}','checksums_asset':'checksums.txt','release_tag':f'plugins/{name}@{e[\"version\"]}'}}

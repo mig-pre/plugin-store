@@ -6,7 +6,8 @@ pub struct PluginYaml {
     pub schema_version: u32,
     pub name: String,
     pub version: String,
-    pub description: String,
+    #[serde(default)]
+    pub description: Option<String>,
     pub author: AuthorInfo,
     pub license: String,
     pub category: String,

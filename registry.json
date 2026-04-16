@@ -29,7 +29,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "clanker",
@@ -56,7 +57,8 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "compound-v3",
@@ -85,7 +87,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "curve",
@@ -113,7 +116,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "eth-price-demo",
@@ -140,7 +144,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776223957"
     },
     {
       "name": "etherfi",
@@ -169,7 +174,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "gmx-v2",
@@ -196,7 +202,8 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "hyperliquid",
@@ -228,7 +235,8 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "kamino-lend",
@@ -256,7 +264,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "kamino-liquidity",
@@ -284,7 +293,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "lido",
@@ -313,7 +323,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "meme-trench-scanner",
@@ -347,7 +358,8 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "meteora",
@@ -375,7 +387,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "morpho",
@@ -405,7 +418,8 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "okx-buildx-hackathon-agent-track",
@@ -436,7 +450,8 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "orca-plugin",
@@ -464,7 +479,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "pancakeswap-clmm",
@@ -492,7 +508,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "pancakeswap-v2",
@@ -517,7 +534,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "pancakeswap-v3",
@@ -546,7 +564,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "pendle",
@@ -575,7 +594,8 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "plugin-store",
@@ -604,7 +624,8 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "polymarket-plugin",
@@ -635,7 +656,8 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "pump-fun",
@@ -663,7 +685,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "raydium",
@@ -691,7 +714,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "smart-money-signal-copy-trade",
@@ -723,7 +747,8 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "top-rank-tokens-sniper",
@@ -757,7 +782,8 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "uniswap-ai",
@@ -785,7 +811,8 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "uniswap-cca-configurator",
@@ -812,7 +839,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "uniswap-cca-deployer",
@@ -839,7 +867,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "uniswap-liquidity-planner",
@@ -866,7 +895,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "uniswap-pay-with-any-token",
@@ -894,7 +924,8 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "uniswap-swap-integration",
@@ -922,7 +953,8 @@
         ],
         "protocols": [],
         "risk_level": "high"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "uniswap-swap-planner",
@@ -949,7 +981,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "uniswap-v4-security-foundations",
@@ -976,7 +1009,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "uniswap-viem-integration",
@@ -1003,7 +1037,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     },
     {
       "name": "velodrome-v2",
@@ -1030,7 +1065,8 @@
         ],
         "protocols": [],
         "risk_level": "medium"
-      }
+      },
+      "modify_date": "1776161809"
     }
   ]
 }

@@ -12,6 +12,7 @@ pub struct Registry {
 pub struct Plugin {
     pub name: String,
     pub version: String,
+    #[serde(default)]
     pub description: String,
     pub author: Author,
     #[serde(default)]
@@ -31,6 +32,9 @@ pub struct Plugin {
     pub summary_url: Option<String>,
     #[serde(default)]
     pub skill_summary_url: Option<String>,
+    /// Unix timestamp (as string) of the plugin's last update.
+    #[serde(default)]
+    pub modify_date: Option<String>,
     pub extra: Option<DefiInfo>,
 }
 

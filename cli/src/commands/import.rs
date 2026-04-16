@@ -80,7 +80,6 @@ pub async fn execute(repo: &str, yes: bool) -> Result<()> {
         r#"schema_version: 1
 name: {name}
 version: "{version}"
-description: "{description}"
 author:
   name: "{author}"
   github: "{github_user}"
