@@ -63,7 +63,21 @@ pub async fn run(
         slippage,
         api_key,
     )
-    .await?;
+    .await
+    .map_err(|e| {
+        let msg = e.to_string();
+        if msg.contains("400") || msg.contains("Unable to classify") || msg.contains("convert action") {
+            anyhow::anyhow!(
+                "{}. \
+                 Hint: The Pendle SDK may not support minting from this input token on this market. \
+                 Try using the SY token address as --token-in (find it with: pendle --chain {} get-market-info --market {}). \
+                 If the market is expired, minting is no longer possible.",
+                msg, chain_id, pt_address
+            )
+        } else {
+            e
+        }
+    })?;
 
     let (calldata, router_to) = api::extract_sdk_calldata(&sdk_resp)?;
     let approvals = api::extract_required_approvals(&sdk_resp);
