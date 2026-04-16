@@ -26,8 +26,11 @@ pub async fn run(chain_id: u64, market: &str, wallet: Option<String>, collateral
     let mut collateral_info = serde_json::json!(null);
     if let Some(asset) = &collateral_asset {
         let col_bal = rpc::get_collateral_balance_of(cfg.comet_proxy, &wallet_addr, asset, cfg.rpc_url).await?;
+        let col_decimals = rpc::get_erc20_decimals(asset, cfg.rpc_url).await.unwrap_or(18);
+        let col_factor = 10u128.pow(col_decimals as u32) as f64;
         collateral_info = serde_json::json!({
             "asset": asset,
+            "balance": format!("{:.decimals$}", col_bal as f64 / col_factor, decimals = col_decimals as usize),
             "balance_raw": col_bal.to_string(),
         });
     }
