@@ -413,6 +413,14 @@ jobs:
               echo '```'
             fi
             echo ""
+            SUMMARY_FILE=$(dirname "${SKILL_FILE:-${PLUGIN_DIR}/SKILL.md}")/SUMMARY.md
+            if [ -f "$SUMMARY_FILE" ]; then
+              echo "## SUMMARY.md"
+              echo '```markdown'
+              cat "$SUMMARY_FILE"
+              echo '```'
+              echo ""
+            fi
 
             # Include references from local submissions or external repo
             for search_dir in "${PLUGIN_DIR}" "${EXTERNAL_DIR}"; do

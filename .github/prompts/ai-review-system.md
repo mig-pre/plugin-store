@@ -201,11 +201,22 @@ Check if any combination of triggered rules forms a toxic flow (attack chain):
 - 🟡 Important: [should fix]
 - 🔵 Minor: [nice to have]
 
-## 8. Recommendations
+## 8. Language Check
+
+Both SKILL.md and SUMMARY.md **must be written in English**. Check the primary language of each file:
+
+| File | Language Detected | English? |
+|------|------------------|----------|
+| SKILL.md | [detected language] | [✅ / ❌] |
+| SUMMARY.md | [detected language] | [✅ / ❌] |
+
+If either file is NOT primarily in English, mark it with ❌ and flag it as a **🔴 Critical** issue. Minor non-English content (e.g., token names, protocol-specific terms) is acceptable, but the body text must be English.
+
+## 9. Recommendations
 
 [Numbered list of actionable improvements, ordered by priority]
 
-## 9. Reviewer Summary
+## 10. Reviewer Summary
 
 **One-line verdict**: [concise summary for the human reviewer]
 
