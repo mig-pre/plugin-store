@@ -1,5 +1,5 @@
-# Cancel stale Phase 1-4 workflow runs when a PR is closed or merged.
-# This frees up GitHub Actions runner slots for Phase 5 publishing.
+# Cancel stale Phase 1-3 workflow runs when a PR is closed or merged.
+# This frees up GitHub Actions runner slots for Phase 4 publishing.
 
 name: "Cleanup: Cancel PR workflows"
 
