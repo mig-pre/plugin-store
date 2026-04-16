@@ -43,7 +43,8 @@ struct GetPriceOutput {
     amount_out: u64,
     amount_out_ui: f64,
     price_sol_per_token: f64,
-    market_cap_sol: u64,
+    /// SOL (not lamports). Divide the raw on-chain lamport value by 1e9.
+    market_cap_sol: f64,
     bonding_complete: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     graduated_warning: Option<String>,
@@ -131,7 +132,7 @@ pub async fn execute(args: &GetPriceArgs) -> Result<()> {
         amount_out,
         amount_out_ui,
         price_sol_per_token,
-        market_cap_sol: curve.get_market_cap_sol(),
+        market_cap_sol: curve.get_market_cap_sol() as f64 / 1_000_000_000.0,
         bonding_complete: curve.complete,
         graduated_warning,
     };

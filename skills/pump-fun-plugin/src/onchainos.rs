@@ -5,7 +5,7 @@ use serde_json::Value;
 pub const SOL_MINT: &str = "11111111111111111111111111111111";
 
 /// Resolve the current Solana wallet address (base58) via onchainos.
-fn resolve_wallet_solana() -> anyhow::Result<String> {
+pub fn resolve_wallet_solana() -> anyhow::Result<String> {
     let output = Command::new("onchainos")
         .args(["wallet", "addresses", "--chain", "501"])
         .output()?;
@@ -87,9 +87,11 @@ pub fn get_token_balance(mint: &str) -> anyhow::Result<Option<String>> {
     for detail in details {
         if let Some(assets) = detail["tokenAssets"].as_array() {
             for asset in assets {
-                // onchainos returns "address" for the token mint on Solana (not "tokenAddress")
-                let addr = asset["address"].as_str()
-                    .or_else(|| asset["tokenAddress"].as_str())
+                // onchainos wallet balance --chain 501 structure:
+                //   asset["address"]      = wallet address (always present — do NOT use for mint matching)
+                //   asset["tokenAddress"] = token mint address (correct field to match against)
+                //   asset["mint"]         = fallback for alternative response shapes
+                let addr = asset["tokenAddress"].as_str()
                     .or_else(|| asset["mint"].as_str())
                     .unwrap_or("");
                 if addr.eq_ignore_ascii_case(mint) {

@@ -204,6 +204,15 @@ pump-fun get-price --mint <MINT_ADDRESS> --direction sell --amount 5000000
 - `--fee-bps` (optional): Fee basis points for sell calculation (default: 100)
 - `--rpc-url` (optional): Solana RPC URL
 
+**Output fields:**
+- `amount_in` — input amount (lamports for buy; token units for sell)
+- `amount_out` — raw output amount (token atoms for buy; lamports for sell)
+- `amount_out_ui` — human-readable: tokens received (buy) or SOL received (sell)
+- `price_sol_per_token` — raw bonding curve price ratio (lamports / token atom)
+- `market_cap_sol` — current market cap in **SOL** (converted from lamports)
+- `bonding_complete` — `true` if graduated to PumpSwap/Raydium; check `graduated_warning`
+- `graduated_warning` — present when `bonding_complete: true`; directs to onchainos DEX swap
+
 ---
 
 ### buy — Buy tokens on bonding curve
@@ -246,9 +255,62 @@ pump-fun sell --mint <MINT> --confirm
 
 **Parameters:**
 - `--mint` (required): Token mint address (base58)
-- `--token-amount` (optional): Readable token amount to sell (e.g. `1000000`); omit to sell entire balance
+- `--token-amount` (optional): Token amount to sell in readable units, decimals accepted (e.g. `1000000` or `153450.77`); omit to sell entire balance
 - `--slippage-bps` (optional): Slippage tolerance in bps (default: 100)
 - `--confirm` (required to execute): Without this flag, returns preview with no on-chain action
+
+---
+
+## Quickstart
+
+New to pump-fun-plugin? Follow these steps for your first buy and sell.
+
+### Step 1 — Connect your wallet
+
+```bash
+onchainos wallet login your@email.com
+onchainos wallet addresses --chain 501
+onchainos wallet balance --chain 501
+```
+
+You need a Solana wallet with at least 0.01 SOL (covers a small buy plus fees).
+
+### Step 2 — Research a token
+
+```bash
+# Check bonding curve state (reserves, graduation progress, price)
+pump-fun get-token-info --mint <MINT_ADDRESS>
+
+# Estimate tokens you'd receive for 0.005 SOL (5000000 lamports)
+pump-fun get-price --mint <MINT_ADDRESS> --direction buy --amount 5000000
+```
+
+Key fields: `graduation_progress_pct` (0–100%), `amount_out_ui` (tokens you'd receive), `market_cap_sol` (in SOL).
+
+### Step 3 — Preview, then buy
+
+```bash
+# Preview (no --confirm — safe, no tx):
+pump-fun buy --mint <MINT_ADDRESS> --sol-amount 0.005
+
+# Execute after confirming the preview:
+pump-fun buy --mint <MINT_ADDRESS> --sol-amount 0.005 --confirm
+```
+
+Success output includes `wallet` (address that executed), `tx_hash`, and `explorer_url` (Solscan link).
+
+### Step 4 — Sell tokens
+
+```bash
+# Check balance first:
+onchainos wallet balance --chain 501
+
+# Preview sell:
+pump-fun sell --mint <MINT_ADDRESS> --token-amount 153450.77
+
+# Execute sell:
+pump-fun sell --mint <MINT_ADDRESS> --token-amount 153450.77 --confirm
+```
 
 ---
 
