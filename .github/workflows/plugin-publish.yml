@@ -776,7 +776,7 @@ jobs:
                       "commit": os.environ["COMMIT_SHA"]
                   }
               },
-              "link": yq(f'.link // "{GUI}/skills/{name}"'),
+              "github_link": yq(f'.link // "{GUI}/skills/{name}"'),
               "homepage": f"{GUI}/skills/{name}",
               "readme_url": f"{BASE}/skills/{name}/README.md",
               "skill_url": f"{BASE}/{skill_md_path}" if skill_md_path else "",
@@ -940,8 +940,8 @@ jobs:
 
               # Preserve link/extra from existing registry
               existing = existing_by_name.get(name, {})
-              if "link" in existing:
-                  entry["link"] = existing["link"]
+              if "github_link" in existing:
+                  entry["github_link"] = existing["github_link"]
               if "extra" in existing:
                   entry["extra"] = existing["extra"]
 
@@ -993,7 +993,7 @@ jobs:
               ac = data.get('api_calls', [])
               if ac: e['api_calls'] = ac
               old = existing.get(name, {})
-              if 'link' in old: e['link'] = old['link']
+              if 'github_link' in old: e['github_link'] = old['github_link']
               if 'extra' in old: e['extra'] = old['extra']
               plugins.append(e)
           with open('registry.json','w') as f: json.dump({'schema_version':1,'stats_url':current.get('stats_url',''),'plugins':plugins},f,indent=2,ensure_ascii=False); f.write('\n')

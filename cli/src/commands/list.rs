@@ -440,7 +440,7 @@ fn render_detail_popup(f: &mut Frame, plugin: &Plugin, downloads: u64, area: Rec
 
     lines.push(Line::from(vec![
         Span::styled("Author:      ", Style::default().fg(Color::Yellow)),
-        Span::raw(match &plugin.link {
+        Span::raw(match &plugin.github_link {
             Some(link) => format!("{} ({})", plugin.author.name, link),
             None => plugin.author.name.clone(),
         }),

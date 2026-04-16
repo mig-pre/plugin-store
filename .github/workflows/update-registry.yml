@@ -160,7 +160,7 @@ jobs:
                           "dir": f"skills/{skill_name}"
                       }
                   },
-                  "link": "https://github.com/mig-pre/plugin-store",
+                  "github_link": "https://github.com/mig-pre/plugin-store",
                   "modify_date": str(int(time.time())),
               }
 

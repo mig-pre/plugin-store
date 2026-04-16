@@ -16,7 +16,7 @@ pub async fn execute(name: &str) -> Result<()> {
         Some(p) => {
             println!("{}: {}", "Name".bold(), p.name);
             println!("{}: {}", "Version".bold(), p.version);
-            if let Some(ref link) = p.link {
+            if let Some(ref link) = p.github_link {
                 println!("{}: {} ({})", "Author".bold(), p.author.name, link);
             } else {
                 println!("{}: {}", "Author".bold(), p.author.name);

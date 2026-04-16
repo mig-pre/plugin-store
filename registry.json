@@ -21,7 +21,6 @@
           "dir": "skills/aave-v3-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "ethereum",
@@ -30,7 +29,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "clanker",
@@ -50,7 +50,6 @@
           "dir": "skills/clanker-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -58,7 +57,8 @@
         "protocols": [],
         "risk_level": "high"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "compound-v3",
@@ -79,7 +79,6 @@
           "dir": "skills/compound-v3-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "ethereum",
@@ -88,7 +87,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "curve",
@@ -108,7 +108,6 @@
           "dir": "skills/curve-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "ethereum",
@@ -117,7 +116,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "eth-price-demo",
@@ -137,7 +137,6 @@
           "dir": "skills/eth-price-demo"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "ethereum"
@@ -145,7 +144,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776223957"
+      "modify_date": "1776223957",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "etherfi",
@@ -166,7 +166,6 @@
           "dir": "skills/etherfi-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "ethereum",
@@ -175,7 +174,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "gmx-v2",
@@ -195,7 +195,6 @@
           "dir": "skills/gmx-v2-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -203,7 +202,8 @@
         "protocols": [],
         "risk_level": "high"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "hyperliquid",
@@ -226,7 +226,6 @@
           "dir": "skills/hyperliquid-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "solana",
@@ -236,7 +235,8 @@
         "protocols": [],
         "risk_level": "high"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "kamino-lend",
@@ -256,7 +256,6 @@
           "dir": "skills/kamino-lend-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "solana",
@@ -265,7 +264,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "kamino-liquidity",
@@ -285,7 +285,6 @@
           "dir": "skills/kamino-liquidity-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "solana",
@@ -294,7 +293,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "lido",
@@ -315,7 +315,6 @@
           "dir": "skills/lido-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "ethereum",
@@ -324,7 +323,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "meme-trench-scanner",
@@ -350,7 +350,6 @@
           "dir": "skills/meme-trench-scanner"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "solana",
@@ -359,7 +358,8 @@
         "protocols": [],
         "risk_level": "high"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "meteora",
@@ -379,7 +379,6 @@
           "dir": "skills/meteora-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "solana",
@@ -388,7 +387,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "morpho",
@@ -410,7 +410,6 @@
           "dir": "skills/morpho-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "ethereum",
@@ -419,7 +418,8 @@
         "protocols": [],
         "risk_level": "high"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "okx-buildx-hackathon-agent-track",
@@ -442,7 +442,6 @@
           "dir": "skills/okx-buildx-hackathon-agent-track"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base",
@@ -451,7 +450,8 @@
         "protocols": [],
         "risk_level": "high"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "orca-plugin",
@@ -471,7 +471,6 @@
           "dir": "skills/orca-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "solana",
@@ -480,7 +479,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "pancakeswap-clmm",
@@ -500,7 +500,6 @@
           "dir": "skills/pancakeswap-clmm-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "ethereum",
@@ -509,7 +508,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "pancakeswap-v2",
@@ -527,7 +527,6 @@
           "dir": "skills/pancakeswap-v2-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -535,7 +534,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "pancakeswap-v3",
@@ -556,7 +556,6 @@
           "dir": "skills/pancakeswap-v3-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "ethereum",
@@ -565,7 +564,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "pendle",
@@ -586,7 +586,6 @@
           "dir": "skills/pendle-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "ethereum",
@@ -595,7 +594,8 @@
         "protocols": [],
         "risk_level": "high"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "plugin-store",
@@ -617,7 +617,6 @@
           "dir": "skills/plugin-store"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -625,7 +624,8 @@
         "protocols": [],
         "risk_level": "high"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "polymarket-plugin",
@@ -648,7 +648,6 @@
           "dir": "skills/polymarket-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "ethereum",
@@ -657,7 +656,8 @@
         "protocols": [],
         "risk_level": "high"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "pump-fun",
@@ -677,7 +677,6 @@
           "dir": "skills/pump-fun-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "solana",
@@ -686,7 +685,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "raydium",
@@ -706,7 +706,6 @@
           "dir": "skills/raydium-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "solana",
@@ -715,7 +714,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "smart-money-signal-copy-trade",
@@ -739,7 +739,6 @@
           "dir": "skills/smart-money-signal-copy-trade"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "solana",
@@ -748,7 +747,8 @@
         "protocols": [],
         "risk_level": "high"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "top-rank-tokens-sniper",
@@ -774,7 +774,6 @@
           "dir": "skills/top-rank-tokens-sniper"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "solana",
@@ -783,7 +782,8 @@
         "protocols": [],
         "risk_level": "high"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "uniswap-ai",
@@ -804,7 +804,6 @@
           "dir": "skills/uniswap-ai"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -812,7 +811,8 @@
         "protocols": [],
         "risk_level": "high"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "uniswap-cca-configurator",
@@ -832,7 +832,6 @@
           "dir": "skills/uniswap-cca-configurator"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -840,7 +839,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "uniswap-cca-deployer",
@@ -860,7 +860,6 @@
           "dir": "skills/uniswap-cca-deployer"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -868,7 +867,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "uniswap-liquidity-planner",
@@ -888,7 +888,6 @@
           "dir": "skills/uniswap-liquidity-planner"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -896,7 +895,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "uniswap-pay-with-any-token",
@@ -917,7 +917,6 @@
           "dir": "skills/uniswap-pay-with-any-token"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -925,7 +924,8 @@
         "protocols": [],
         "risk_level": "high"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "uniswap-swap-integration",
@@ -946,7 +946,6 @@
           "dir": "skills/uniswap-swap-integration"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -954,7 +953,8 @@
         "protocols": [],
         "risk_level": "high"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "uniswap-swap-planner",
@@ -974,7 +974,6 @@
           "dir": "skills/uniswap-swap-planner"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -982,7 +981,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "uniswap-v4-security-foundations",
@@ -1002,7 +1002,6 @@
           "dir": "skills/uniswap-v4-security-foundations"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -1010,7 +1009,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "uniswap-viem-integration",
@@ -1030,7 +1030,6 @@
           "dir": "skills/uniswap-viem-integration"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -1038,7 +1037,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     },
     {
       "name": "velodrome-v2",
@@ -1058,7 +1058,6 @@
           "dir": "skills/velodrome-v2-plugin"
         }
       },
-      "link": "https://github.com/mig-pre/plugin-store",
       "extra": {
         "chains": [
           "base"
@@ -1066,7 +1065,8 @@
         "protocols": [],
         "risk_level": "medium"
       },
-      "modify_date": "1776161809"
+      "modify_date": "1776161809",
+      "github_link": "https://github.com/mig-pre/plugin-store"
     }
   ]
 }

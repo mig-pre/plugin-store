@@ -16,7 +16,7 @@ pub struct Plugin {
     pub description: String,
     pub author: Author,
     #[serde(default)]
-    pub link: Option<String>,
+    pub github_link: Option<String>,
     #[serde(default)]
     pub homepage: Option<String>,
     #[serde(default)]
