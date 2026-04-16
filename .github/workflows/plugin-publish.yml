@@ -1,12 +1,13 @@
 # Phase 4: Auto-publish
 #
-# After a PR is merged to main, this workflow:
-# 1. Detects changed plugins
+# Triggered when a PR is approved. All work happens on the feature branch:
+# 1. Detects changed plugins (from PR diff against base)
 # 2. For external repo plugins: copies SKILL + scripts + assets into community repo
-# 3. For compiled plugins (Rust/Go): builds on 9 platforms, uploads Release to THIS repo
+# 3. For compiled plugins (Rust/Go): builds on 9 platforms, uploads Release
 # 4. Injects pre-flight dependencies into SKILL.md
-# 5. Generates registry.json and pushes to plugin-store repo
-# 6. Creates git tags
+# 5. Generates registry.json
+# 6. Commits all CI-generated changes atomically to feature branch
+# 7. Merges feature branch to main via gh pr merge --admin
 #
 # Supports three submission modes:
 #   Mode A: Direct upload (SKILL.md in skills/)
@@ -16,10 +17,8 @@
 name: "Phase 4: Publish"
 
 on:
-  push:
-    branches: [main, test]
-    paths:
-      - 'skills/**'
+  pull_request_review:
+    types: [submitted]
   workflow_dispatch:
     inputs:
       rebuild_all:
@@ -30,6 +29,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 # Concurrency removed — Phase 4 runs in parallel.
 # Registry conflicts are handled by rebase retry (5 attempts) + auto-issue on failure.
@@ -42,6 +42,11 @@ jobs:
   detect:
     name: Detect changes
     runs-on: ubuntu-latest
+    # Only run on approved reviews targeting skills/, or on workflow_dispatch
+    if: >-
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.review.state == 'approved' &&
+       github.event.pull_request.base.ref == 'main')
     outputs:
       has_changes: ${{ steps.detect.outputs.has_changes }}
       changed_plugins: ${{ steps.detect.outputs.changed_plugins }}
@@ -49,9 +54,13 @@ jobs:
       has_builds: ${{ steps.build_info.outputs.has_builds }}
       has_external: ${{ steps.external.outputs.has_external }}
       external_plugins_json: ${{ steps.external.outputs.external_plugins_json }}
+      pr_number: ${{ steps.detect.outputs.pr_number }}
+      pr_head_ref: ${{ steps.detect.outputs.pr_head_ref }}
     steps:
       - uses: actions/checkout@v4
         with:
+          # For PR reviews: checkout the PR head branch so we can push back to it
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
           fetch-depth: 0
 
       - name: Detect changed plugins
@@ -70,7 +79,15 @@ jobs:
             exit 0
           fi
 
-          CHANGED=$(git diff --name-only HEAD~1...HEAD -- 'skills/' || true)
+          # PR review: diff against base branch
+          PR_NUM="${{ github.event.pull_request.number }}"
+          PR_HEAD="${{ github.event.pull_request.head.ref }}"
+          echo "pr_number=${PR_NUM}" >> "$GITHUB_OUTPUT"
+          echo "pr_head_ref=${PR_HEAD}" >> "$GITHUB_OUTPUT"
+
+          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          git fetch origin "${BASE_REF}" 2>/dev/null || true
+          CHANGED=$(git diff --name-only "origin/${BASE_REF}...HEAD" -- 'skills/' || true)
           if [ -z "$CHANGED" ]; then
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -712,8 +729,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # Re-checkout to get the latest commit (after copy-external may have pushed)
-          ref: main
+          # Checkout the PR feature branch to apply all CI changes there
+          ref: ${{ needs.detect.outputs.pr_head_ref || github.ref }}
 
       - name: Install yq
         run: |
@@ -869,34 +886,14 @@ jobs:
         run: |
           pip install pyyaml 2>/dev/null || pip3 install pyyaml 2>/dev/null || true
 
-          git pull origin ${{ github.ref_name }} --rebase 2>/dev/null || true
-
-          CHANGED_PLUGINS="${{ steps.detect.outputs.plugins }}"
-          if [ -z "$CHANGED_PLUGINS" ]; then
-            echo "No changed plugins detected, skipping pre-flight injection"
-            exit 0
-          fi
-
-          INJECTED=0
-          for PLUGIN_JSON in $(echo "$CHANGED_PLUGINS" | jq -c '.[]'); do
-            NAME=$(echo "$PLUGIN_JSON" | jq -r '.name')
-            PLUGIN_DIR="skills/${NAME}"
+          CHANGED_PLUGINS="${{ needs.detect.outputs.changed_plugins }}"
+          for PLUGIN_NAME in $CHANGED_PLUGINS; do
+            PLUGIN_DIR="skills/${PLUGIN_NAME}"
             if [ -d "$PLUGIN_DIR" ]; then
-              echo "Injecting pre-flight for ${NAME}..."
-              python3 .github/scripts/inject-preflight.py "$NAME" "$PLUGIN_DIR" || true
-              INJECTED=$((INJECTED + 1))
+              echo "Injecting pre-flight for ${PLUGIN_NAME}..."
+              python3 .github/scripts/inject-preflight.py "$PLUGIN_NAME" "$PLUGIN_DIR" || true
             fi
           done
-
-          if [ "$INJECTED" -gt 0 ]; then
-            git config user.name "plugin-store-bot"
-            git config user.email "bot@plugin-store.local"
-            git add skills/
-            git diff --staged --quiet && echo "No pre-flight changes" || {
-              git commit -m "auto: inject pre-flight dependencies"
-              git push || true
-            }
-          fi
 
       - name: Update registry in this repo
         env:
@@ -905,8 +902,6 @@ jobs:
           # Full-scan approach: regenerate registry.json from ALL skills/ directories.
           # This eliminates concurrent push conflicts — every run produces the complete
           # registry, so the last push always wins and is always correct.
-
-          git pull origin ${{ github.ref_name }} --rebase 2>/dev/null || true
 
           python3 << 'PYEOF'
           import json, os, yaml, glob, time
@@ -1002,54 +997,15 @@ jobs:
           print(f"Registry regenerated: {len(plugins)} plugins from skills/ scan")
           PYEOF
 
+          # ── Atomic commit: pre-flight + registry + marketplace ──
           git config user.name "plugin-store-bot"
           git config user.email "bot@plugin-store.local"
-          git add registry.json
-          git diff --staged --quiet && echo "No registry changes" && exit 0
-
-          git commit -m "Update registry.json (full scan of skills/)"
-          for attempt in 1 2 3 4 5; do
-            if git push; then echo "Registry updated"; exit 0; fi
-            echo "Push conflict ($attempt/5) — pulling latest and regenerating..."
-            git reset --soft HEAD~1
-            git checkout -- registry.json
-            git pull origin ${{ github.ref_name }} --rebase 2>/dev/null || git pull origin ${{ github.ref_name }}
-            # Re-run the full scan on latest main (just re-execute the python above)
-            python3 -c "
-          import json, os, yaml, glob, time
-          with open('registry.json') as f: current = json.load(f)
-          existing = {p['name']: p for p in current.get('plugins', [])}
-          plugins = []
-          for yp in sorted(glob.glob('skills/*/plugin.yaml')):
-              d = os.path.dirname(yp); name = os.path.basename(d)
-              if name.startswith('_'): continue
-              with open(yp) as f: data = yaml.safe_load(f) or {}
-              build = data.get('build', {}) or {}
-              comp = data.get('components', {}).get('skill', {}) or {}
-              e = {'name': name, 'version': str(data.get('version','0.1.0')), 'description': '-', 'author': data.get('author',{}), 'license': data.get('license','MIT'), 'category': data.get('category',''), 'tags': data.get('tags',[]), 'type': 'community-developer' if build.get('lang') else data.get('type','community'), 'modify_date': str(int(time.time()))}
-              if build.get('lang') in ('rust','go'):
-                  bn = build.get('binary_name', name)
-                  e['components'] = {'skill': {'dir': comp.get('dir','.')}, 'binary': {'repo':'mig-pre/plugin-store','asset_pattern':f'{bn}-{{target}}','checksums_asset':'checksums.txt','release_tag':f'plugins/{name}@{e[\"version\"]}'}}
-              else:
-                  e['components'] = {'skill': {'dir': comp.get('dir','.')}}
-              ac = data.get('api_calls', [])
-              if ac: e['api_calls'] = ac
-              sd = comp.get('dir','.'); sd = f'skills/{name}' if sd == '.' else (sd if sd.startswith('skills/') else f'skills/{name}/{sd}')
-              e['skill_md_link'] = f'https://raw.githubusercontent.com/mig-pre/plugin-store/main/{sd}/SKILL.md'
-              e['summary_md_link'] = f'https://raw.githubusercontent.com/mig-pre/plugin-store/main/{sd}/SUMMARY.md'
-              old = existing.get(name, {})
-              if 'github_link' in old: e['github_link'] = old['github_link']
-              if 'extra' in old: e['extra'] = old['extra']
-              plugins.append(e)
-          with open('registry.json','w') as f: json.dump({'schema_version':1,'stats_url':current.get('stats_url',''),'plugins':plugins},f,indent=2,ensure_ascii=False); f.write('\n')
-          print(f'Regenerated: {len(plugins)} plugins')
-          "
-            git add registry.json
-            git diff --staged --quiet && { echo "No changes after regeneration"; exit 0; }
-            git commit -m "Update registry.json (full scan, retry $attempt)"
-          done
-          echo "::error::Failed to push registry after 5 attempts"
-          exit 1
+          git add skills/ registry.json
+          git diff --staged --quiet && echo "No CI changes to commit" || {
+            CHANGED="${{ needs.detect.outputs.changed_plugins }}"
+            git commit -m "auto: publish ${CHANGED} (pre-flight + registry)"
+            git push
+          }
 
       - name: Un-draft all releases
         env:
@@ -1066,3 +1022,20 @@ jobs:
             gh release edit "$TAG" --repo "${{ github.repository }}" --draft=false 2>&1 || true
           done
           echo "Done. All releases published."
+
+      # ── Final step: merge feature branch to main ──────────
+      - name: Merge PR to main
+        if: github.event_name == 'pull_request_review'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUM="${{ needs.detect.outputs.pr_number }}"
+          echo "All CI work complete. Merging PR #${PR_NUM} to main..."
+          gh pr merge "${PR_NUM}" --merge --admin \
+            --repo "${{ github.repository }}" \
+            --subject "Merge PR #${PR_NUM}: publish ${{ needs.detect.outputs.changed_plugins }}" \
+            || {
+              echo "::error::Failed to merge PR #${PR_NUM}. Check branch protection settings."
+              exit 1
+            }
+          echo "PR #${PR_NUM} merged to main successfully."
