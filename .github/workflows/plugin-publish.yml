@@ -79,6 +79,8 @@ jobs:
 
       - name: Detect changed plugins
         id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # workflow_dispatch with rebuild_all: treat ALL plugins as changed
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.rebuild_all }}" = "true" ]; then
@@ -96,10 +98,11 @@ jobs:
           # Resolve PR info from event or workflow_dispatch input
           PR_NUM="${{ github.event.pull_request.number || inputs.pr_number }}"
           if [ -n "$PR_NUM" ]; then
-            # Get PR head ref from API (works for both event types)
-            PR_HEAD=$(gh pr view "$PR_NUM" --json headRefName --jq '.headRefName' 2>/dev/null || echo "")
+            # Get PR head ref via API (needs GH_TOKEN)
+            PR_HEAD=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefName --jq '.headRefName' || echo "")
             echo "pr_number=${PR_NUM}" >> "$GITHUB_OUTPUT"
             echo "pr_head_ref=${PR_HEAD}" >> "$GITHUB_OUTPUT"
+            echo "Resolved PR #${PR_NUM} head ref: ${PR_HEAD}"
           fi
 
           BASE_REF="${{ github.event.pull_request.base.ref || 'main' }}"
@@ -359,7 +362,7 @@ jobs:
           if [ -n "$PR_HEAD_REF" ]; then
             git push origin HEAD:refs/heads/$PR_HEAD_REF
           else
-            git push
+            git push origin HEAD:main
           fi
 
   # ═══════════════════════════════════════════════════════════════
