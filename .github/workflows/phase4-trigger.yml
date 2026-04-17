@@ -1,11 +1,16 @@
-# Bridge: /publish comment → trigger Phase 4
+# Trigger Phase 4 on: label added OR /publish comment
 #
-# Reviewer comments "/publish" on an approved PR to trigger Phase 4.
-# Uses issue_comment event which has full secrets + write permissions.
+# Two trigger paths:
+# 1. pull_request_target: labeled → reviewer adds 'approved-for-publish' label
+# 2. issue_comment: /publish → reviewer comments "/publish" (fallback)
+#
+# Both have full secrets + write permissions.
 
-name: "Phase 4: Trigger on /publish"
+name: "Phase 4: Trigger"
 
 on:
+  pull_request_target:
+    types: [labeled]
   issue_comment:
     types: [created]
 
@@ -14,10 +19,37 @@ permissions:
   pull-requests: read
 
 jobs:
-  trigger:
-    name: Trigger Phase 4
-    # Only run on PR comments containing "/publish" from repo collaborators
+  trigger-on-label:
+    name: Trigger (label)
     if: >-
+      github.event_name == 'pull_request_target' &&
+      github.event.label.name == 'approved-for-publish' &&
+      github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Dispatch Phase 4
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          PR_NUM="${{ github.event.pull_request.number }}"
+          echo "Label trigger: dispatching Phase 4 for PR #${PR_NUM}..."
+          gh workflow run "Phase 4: Publish" \
+            --repo "${{ github.repository }}" \
+            --ref main \
+            -f pr_number="${PR_NUM}"
+          echo "✅ Phase 4 dispatched"
+
+  trigger-on-comment:
+    name: Trigger (/publish)
+    if: >-
+      github.event_name == 'issue_comment' &&
       github.event.issue.pull_request &&
       contains(github.event.comment.body, '/publish') &&
       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
@@ -50,12 +82,12 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           PR_NUM="${{ steps.check.outputs.pr_number }}"
-          echo "Dispatching Phase 4: Publish for PR #${PR_NUM}..."
+          echo "Comment trigger: dispatching Phase 4 for PR #${PR_NUM}..."
           gh workflow run "Phase 4: Publish" \
             --repo "${{ github.repository }}" \
             --ref main \
             -f pr_number="${PR_NUM}"
-          echo "✅ Phase 4 dispatched for PR #${PR_NUM}"
+          echo "✅ Phase 4 dispatched"
 
       - name: React to comment
         env:
