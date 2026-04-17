@@ -52,7 +52,7 @@ enum Commands {
     },
     /// Borrow an asset against posted collateral
     Borrow {
-        /// Asset ERC-20 address (must be checksummed address)
+        /// Asset ERC-20 address or symbol (e.g. USDC, WETH)
         #[arg(long)]
         asset: String,
         /// Human-readable amount (e.g. 0.5 for 0.5 WETH)
@@ -61,7 +61,7 @@ enum Commands {
     },
     /// Repay borrowed debt (partial or full)
     Repay {
-        /// Asset ERC-20 address (must be checksummed address)
+        /// Asset ERC-20 address or symbol (e.g. USDC, WETH)
         #[arg(long)]
         asset: String,
         /// Human-readable amount to repay (omit if using --all)

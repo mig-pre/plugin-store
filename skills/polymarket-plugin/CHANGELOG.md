@@ -1,5 +1,13 @@
 # Polymarket Plugin Changelog
 
+### v0.4.6 (2026-04-15)
+
+- **chore**: Version bump.
+
+### v0.4.5 (2026-04-15)
+
+- **fix**: Correct GCD divisibility step in `buy` and `sell` — minimum order is now 1 share (≈$1) instead of an inflated 10 shares (≈$9.87) for prices coprime with 10,000,000 (e.g. 0.987, 0.983, 0.991). The `tick_scale * 10_000` factor in the original GCD formula caused `gcd = 1` for such prices, making `step_raw = 10,000,000` (10 shares). New formula aligns to whole shares (1,000,000 raw) and computes the smallest valid share count from `gcd(price_ticks × SHARE_RAW, tick_scale)`.
+
 ### v0.4.2 (2026-04-14)
 
 - **feat**: `get-series` command — get current/next slot for 12 recurring Up/Down series markets (BTC/ETH/SOL/XRP × 5m/15m/4h). Returns `condition_id`, `up_token_id`, `down_token_id`, prices, and window times. NYSE trading hours enforced for 5m/15m series; 4h runs 24/7.

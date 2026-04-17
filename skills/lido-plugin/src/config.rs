@@ -5,7 +5,6 @@ pub const CHAIN_ID: u64 = 1;
 pub const STETH_ADDRESS: &str = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
 
 /// wstETH contract
-#[allow(dead_code)]
 pub const WSTETH_ADDRESS: &str = "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0";
 
 /// WithdrawalQueueERC721 proxy
@@ -25,6 +24,11 @@ pub const SEL_SUBMIT: &str = "a1903eab";
 pub const SEL_BALANCE_OF: &str = "70a08231";
 pub const SEL_SHARES_OF: &str = "f5eb42dc";
 pub const SEL_IS_STAKING_PAUSED: &str = "1ea7ca89";
+
+// Function selectors — wstETH
+pub const SEL_WSTETH_WRAP: &str = "ea598cb0";         // wrap(uint256)
+pub const SEL_WSTETH_UNWRAP: &str = "de0e9a3e";       // unwrap(uint256)
+pub const SEL_GET_STETH_BY_WSTETH: &str = "bb2952fc"; // getStETHByWstETH(uint256) — used for rate in both wrap preview and unwrap preview
 
 // Function selectors — WithdrawalQueueERC721
 pub const SEL_GET_LAST_CHECKPOINT_INDEX: &str = "526eae3e";

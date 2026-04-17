@@ -1,6 +1,6 @@
 schema_version: 1
 name: orca-plugin
-version: "0.6.2"
+version: "0.6.3"
 description: "Concentrated liquidity AMM on Solana — swap tokens and query pools via the Whirlpools CLMM program"
 author:
   name: "skylavis-sky"
@@ -26,4 +26,5 @@ build:
 api_calls:
   - "https://api.orca.so/v1/whirlpool/list"
   - "https://api.orca.so/v1"
+  - "api.mainnet-beta.solana.com"
 

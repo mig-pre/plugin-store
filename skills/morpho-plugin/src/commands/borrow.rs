@@ -64,7 +64,7 @@ pub async fn run(
         chain_id,
         cfg.morpho_blue,
         &borrow_calldata,
-        from,
+        Some(borrower),
         None,
         dry_run,
         false,

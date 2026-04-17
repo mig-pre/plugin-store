@@ -10,6 +10,7 @@ pub async fn run(
     amount_str: &str,   // human-readable amount (e.g. "0.5" for 0.5 WETH)
     from: Option<String>,
     dry_run: bool,
+    confirm: bool,
 ) -> Result<()> {
     let cfg = get_market_config(chain_id, market)?;
     let asset_decimals = rpc::get_erc20_decimals(asset, cfg.rpc_url).await.unwrap_or(18);
@@ -35,6 +36,35 @@ pub async fn run(
         );
     }
 
+    // Pre-flight: check on-chain balance so dust/rounding mismatches surface before any gas is spent
+    let is_base = asset.eq_ignore_ascii_case(cfg.base_asset);
+    let on_chain_balance: u128 = if is_base {
+        rpc::get_balance_of(cfg.comet_proxy, &wallet, cfg.rpc_url).await.unwrap_or(0)
+    } else {
+        rpc::get_collateral_balance_of(cfg.comet_proxy, &wallet, asset, cfg.rpc_url).await.unwrap_or(0)
+    };
+    let balance_type = if is_base { "supply balance" } else { "collateral balance" };
+    let asset_factor = 10f64.powi(asset_decimals as i32);
+    if on_chain_balance == 0 {
+        anyhow::bail!(
+            "No {} of asset {} in this market. Supply the asset first before attempting to withdraw.",
+            balance_type,
+            asset
+        );
+    }
+    if amount > on_chain_balance {
+        anyhow::bail!(
+            "Withdrawal amount {:.decimals$} exceeds your current {}: {:.decimals$} (raw: {}). \
+             Use --amount {:.decimals$} or less.",
+            amount as f64 / asset_factor,
+            balance_type,
+            on_chain_balance as f64 / asset_factor,
+            on_chain_balance,
+            on_chain_balance as f64 / asset_factor,
+            decimals = asset_decimals as usize
+        );
+    }
+
     // Build withdraw(address,uint256) calldata
     // selector: 0xf3fef3a3
     let asset_padded = rpc::pad_address(asset);
@@ -42,6 +72,31 @@ pub async fn run(
     let withdraw_calldata = format!("0xf3fef3a3{}{}", asset_padded, amount_hex);
 
     let amount_human = format!("{:.decimals$}", amount as f64 / 10f64.powi(asset_decimals as i32), decimals = asset_decimals as usize);
+
+    // Confirm gate: show preview and exit if --confirm not given (and not dry-run)
+    if !dry_run && !confirm {
+        let result = serde_json::json!({
+            "ok": true,
+            "preview": true,
+            "operation": "withdraw",
+            "chain_id": chain_id,
+            "market": market,
+            "asset": asset,
+            "amount": amount_human,
+            "amount_raw": amount.to_string(),
+            "current_balance": format!("{:.decimals$}", on_chain_balance as f64 / asset_factor, decimals = asset_decimals as usize),
+            "current_balance_raw": on_chain_balance.to_string(),
+            "balance_type": balance_type,
+            "comet": cfg.comet_proxy,
+            "pending_transactions": 1,
+            "transactions": [
+                {"step": 1, "action": "Comet.withdraw", "comet": cfg.comet_proxy, "asset": asset, "amount": amount_human.clone(), "amount_raw": amount.to_string(), "calldata": withdraw_calldata}
+            ],
+            "note": "Re-run with --confirm to execute this transaction on-chain."
+        });
+        println!("{}", serde_json::to_string_pretty(&result)?);
+        return Ok(());
+    }
 
     if dry_run {
         let result = serde_json::json!({

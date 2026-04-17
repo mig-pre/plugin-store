@@ -29,11 +29,85 @@ pub async fn run(
         .with_context(|| format!("Could not resolve token address for '{}'", asset))?;
 
     let amount_minimal = human_to_minimal(amount, decimals as u64);
+    let amount_display = format!("{:.2}", amount);
 
     // Resolve Pool address at runtime
     let pool_addr = rpc::get_pool(cfg.pool_addresses_provider, cfg.rpc_url)
         .await
         .context("Failed to resolve Pool address")?;
+
+    // Pre-flight: if supplying WETH and wallet has insufficient WETH, auto-wrap ETH.
+    // WETH.deposit{value: needed}() selector: 0xd0e30db0 (no parameters, ETH sent via --amt)
+    let is_weth = cfg.weth_address.to_lowercase() == token_addr.to_lowercase();
+    let mut wrap_tx: Option<String> = None;
+
+    if is_weth {
+        let weth_balance = rpc::get_erc20_balance(&token_addr, &from_addr, cfg.rpc_url)
+            .await
+            .context("Failed to fetch WETH balance")?;
+        if weth_balance < amount_minimal {
+            let needed = amount_minimal - weth_balance;
+            let eth_balance = rpc::get_eth_balance(&from_addr, cfg.rpc_url)
+                .await
+                .context("Failed to fetch ETH balance")?;
+            if eth_balance < needed {
+                anyhow::bail!(
+                    "Insufficient balance: need {:.6} WETH to supply, have {:.6} WETH and {:.6} ETH. \
+                     Add more ETH or WETH to your wallet.",
+                    amount_minimal as f64 / 1e18,
+                    weth_balance as f64 / 1e18,
+                    eth_balance as f64 / 1e18,
+                );
+            }
+            // Auto-wrap: call WETH.deposit() with ETH value = needed amount
+            if dry_run {
+                let wrap_cmd = format!(
+                    "onchainos wallet contract-call --chain {} --to {} --input-data 0xd0e30db0 --amt {} --from {}",
+                    chain_id, token_addr, needed, from_addr
+                );
+                eprintln!("[dry-run] step 0 wrap ETH→WETH: {}", wrap_cmd);
+            } else {
+                let wrap_result = onchainos::wallet_contract_call_with_value(
+                    chain_id,
+                    &token_addr,
+                    "0xd0e30db0",
+                    Some(&from_addr),
+                    needed,
+                    false,
+                )
+                .context("WETH.deposit() (ETH→WETH wrap) failed")?;
+                let tx = wrap_result["data"]["txHash"]
+                    .as_str()
+                    .or_else(|| wrap_result["txHash"].as_str())
+                    .or_else(|| wrap_result["hash"].as_str())
+                    .unwrap_or("pending")
+                    .to_string();
+                if tx == "pending" || !tx.starts_with("0x") {
+                    anyhow::bail!(
+                        "WETH wrap tx was not broadcast (tx hash: '{}'). Check wallet connection and retry.",
+                        tx
+                    );
+                }
+                rpc::wait_for_tx(cfg.rpc_url, &tx)
+                    .await
+                    .context("WETH wrap tx did not confirm in time")?;
+                wrap_tx = Some(tx);
+            }
+        }
+    } else {
+        // Non-WETH: check ERC-20 balance before attempting supply
+        let token_balance = rpc::get_erc20_balance(&token_addr, &from_addr, cfg.rpc_url)
+            .await
+            .context("Failed to fetch token balance")?;
+        if token_balance < amount_minimal && !dry_run {
+            anyhow::bail!(
+                "Insufficient {} balance: need {:.6}, have {:.6}. Add funds to your wallet before supplying.",
+                asset,
+                amount_minimal as f64 / 10f64.powi(decimals as i32),
+                token_balance as f64 / 10f64.powi(decimals as i32),
+            );
+        }
+    }
 
     if dry_run {
         let approve_calldata = calldata::encode_erc20_approve(&pool_addr, amount_minimal)
@@ -56,6 +130,7 @@ pub async fn run(
             "asset": asset,
             "tokenAddress": token_addr,
             "amount": amount,
+            "amountDisplay": amount_display,
             "amountMinimal": amount_minimal.to_string(),
             "poolAddress": pool_addr,
             "steps": [
@@ -83,12 +158,18 @@ pub async fn run(
         .unwrap_or("pending")
         .to_string();
 
-    // Wait for approve tx to be mined before submitting supply
-    if approve_tx != "pending" && approve_tx.starts_with("0x") {
-        rpc::wait_for_tx(cfg.rpc_url, &approve_tx)
-            .await
-            .context("Approve tx did not confirm in time")?;
+    // Wait for approve tx to be mined before submitting supply.
+    // Bail early if approve was not broadcast — proceeding with a "pending" hash
+    // would submit supply before allowance is on-chain, causing STF revert.
+    if approve_tx == "pending" || !approve_tx.starts_with("0x") {
+        anyhow::bail!(
+            "Approve tx was not broadcast (tx hash: '{}'). Check wallet connection and retry.",
+            approve_tx
+        );
     }
+    rpc::wait_for_tx(cfg.rpc_url, &approve_tx)
+        .await
+        .context("Approve tx did not confirm in time")?;
 
     // Step 2: supply
     let supply_calldata = calldata::encode_supply(&token_addr, amount_minimal, &from_addr)
@@ -112,8 +193,10 @@ pub async fn run(
         "asset": asset,
         "tokenAddress": token_addr,
         "amount": amount,
+        "amountDisplay": amount_display,
         "amountMinimal": amount_minimal.to_string(),
         "poolAddress": pool_addr,
+        "wrapTxHash": wrap_tx,
         "approveTxHash": approve_tx,
         "supplyTxHash": supply_tx.to_string(),
         "dryRun": false

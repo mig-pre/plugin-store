@@ -50,11 +50,13 @@ pub async fn run(
             .context("No position found for this market. Nothing to repay.")?;
 
         let borrow_shares_str = pos.state.borrow_shares.as_deref().unwrap_or("0");
-        repay_shares = borrow_shares_str.parse().unwrap_or(0);
+        repay_shares = borrow_shares_str.parse()
+            .with_context(|| format!("Failed to parse borrow shares: '{}'", borrow_shares_str))?;
         repay_assets = 0; // Use shares mode for full repay
 
         let borrow_assets_str = pos.state.borrow_assets.as_deref().unwrap_or("0");
-        borrow_assets = borrow_assets_str.parse().unwrap_or(0);
+        borrow_assets = borrow_assets_str.parse()
+            .with_context(|| format!("Failed to parse borrow assets: '{}'", borrow_assets_str))?;
         display_amount = calldata::format_amount(borrow_assets, decimals);
 
         eprintln!("[morpho] Repaying all debt ({} {}) using {} shares...", display_amount, symbol, repay_shares);
@@ -106,7 +108,7 @@ pub async fn run(
     if dry_run {
         eprintln!("[morpho] [dry-run] Would approve: onchainos wallet contract-call --chain {} --to {} --input-data {}", chain_id, loan_token, approve_calldata);
     }
-    let approve_result = onchainos::wallet_contract_call(chain_id, &loan_token, &approve_calldata, from, None, dry_run, true).await?;  // --force: approval is a prerequisite step
+    let approve_result = onchainos::wallet_contract_call(chain_id, &loan_token, &approve_calldata, Some(borrower), None, dry_run, true).await?;  // --force: approval is a prerequisite step
     let approve_tx = onchainos::extract_tx_hash_or_err(&approve_result)?;
     onchainos::wait_for_tx(&approve_tx, cfg.rpc_url, chain_id).await?;
 
@@ -123,7 +125,7 @@ pub async fn run(
         chain_id,
         cfg.morpho_blue,
         &repay_calldata,
-        from,
+        Some(borrower),
         None,
         dry_run,
         false,

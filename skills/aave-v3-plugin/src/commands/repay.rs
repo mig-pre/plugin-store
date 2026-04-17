@@ -58,36 +58,34 @@ pub async fn run(
         None
     };
 
-    // Compute repay amount in minimal units
-    // For --all: query the wallet's actual token balance and use that as the repay amount.
-    // Using uint256.max reverts when wallet balance < accrued dust interest.
+    // Compute repay amount in minimal units.
+    // For --all: use u128::MAX, which encode_repay maps to type(uint256).max.
+    // Aave interprets uint256.max as "repay full debt including all accrued interest",
+    // pulling the exact outstanding amount from the wallet — no dust risk.
     let (amount_minimal, amount_display) = if all {
-        let balance = rpc::get_erc20_balance(&token_addr, &from_addr, cfg.rpc_url)
-            .await
-            .context("Failed to fetch token balance for full repay")?;
-        if balance == 0 {
-            anyhow::bail!("No {} balance in wallet to repay with", asset);
-        }
-        (balance, format!("all ({})", balance))
+        (u128::MAX, "all".to_string())
     } else {
         let v = amount.unwrap();
         let minimal = (v * 10u128.pow(decimals as u32) as f64) as u128;
         (minimal, v.to_string())
     };
 
-    // Step 4: Check ERC-20 allowance for token → pool
+    // Step 4: Check ERC-20 allowance for token → pool.
+    // For --all (amount_minimal == u128::MAX), always approve with u128::MAX (unlimited)
+    // so Aave can pull the full debt amount including last-second interest.
     let needs_approval = if all {
         true
     } else {
         let allowance = rpc::get_allowance(&token_addr, &from_addr, &pool_addr, cfg.rpc_url)
             .await
-            .unwrap_or(0);
+            .context("Failed to fetch token allowance")?;
         allowance < amount_minimal
     };
 
     let mut approval_result: Option<Value> = None;
     if needs_approval {
-        let approve_calldata = calldata::encode_erc20_approve(&pool_addr, amount_minimal)
+        let approve_amount = if all { u128::MAX } else { amount_minimal };
+        let approve_calldata = calldata::encode_erc20_approve(&pool_addr, approve_amount)
             .context("Failed to encode approve calldata")?;
         let approve_res = onchainos::wallet_contract_call(
             chain_id,
@@ -97,17 +95,23 @@ pub async fn run(
             dry_run,
         )
         .context("ERC-20 approve failed")?;
-        // Wait for approve tx to be mined before submitting repay
+        // Wait for approve tx to be mined before submitting repay.
+        // Bail early if approve was not broadcast — proceeding with a "pending" hash
+        // would submit repay before allowance is on-chain, causing STF revert.
         if !dry_run {
             let approve_tx = approve_res["data"]["txHash"]
                 .as_str()
                 .or_else(|| approve_res["txHash"].as_str())
                 .unwrap_or("");
-            if !approve_tx.is_empty() && approve_tx.starts_with("0x") {
-                rpc::wait_for_tx(cfg.rpc_url, approve_tx)
-                    .await
-                    .context("Approve tx did not confirm in time")?;
+            if approve_tx.is_empty() || !approve_tx.starts_with("0x") {
+                anyhow::bail!(
+                    "Approve tx was not broadcast (tx hash: '{}'). Check wallet connection and retry.",
+                    approve_tx
+                );
             }
+            rpc::wait_for_tx(cfg.rpc_url, approve_tx)
+                .await
+                .context("Approve tx did not confirm in time")?;
         }
         approval_result = Some(approve_res);
     }
@@ -131,11 +135,18 @@ pub async fn run(
         .or_else(|| result["hash"].as_str())
         .unwrap_or("pending");
 
+    let amount_display_fmt = if all {
+        "all".to_string()
+    } else {
+        format!("{:.2}", amount.unwrap_or(0.0))
+    };
+
     Ok(json!({
         "ok": true,
         "txHash": tx_hash,
         "asset": asset,
         "repayAmount": amount_display,
+        "repayAmountDisplay": amount_display_fmt,
         "poolAddress": pool_addr,
         "totalDebtBefore": format!("{:.2}", account_data.total_debt_usd()),
         "healthFactorBefore": format!("{:.4}", account_data.health_factor_f64()),

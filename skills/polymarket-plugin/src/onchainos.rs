@@ -689,6 +689,73 @@ pub async fn ctf_redeem_positions(condition_id: &str) -> Result<String> {
     extract_tx_hash(&result)
 }
 
+/// ABI-encode and submit CTF redeemPositions via the PROXY_FACTORY.
+///
+/// Used when winning outcome tokens are held by the proxy wallet (POLY_PROXY mode).
+/// Routes: EOA → PROXY_FACTORY.proxy([(CALL, CTF, 0, redeemPositions_calldata)])
+/// The factory forwards the call from the proxy wallet's context, so CTF sees
+/// msg.sender = proxy wallet, which holds the winning tokens.
+pub async fn ctf_redeem_via_proxy(condition_id: &str) -> Result<String> {
+    use sha3::{Digest, Keccak256};
+    use crate::config::Contracts;
+
+    // Build inner redeemPositions calldata (identical to ctf_redeem_positions)
+    let inner_selector = Keccak256::digest(b"redeemPositions(address,bytes32,bytes32,uint256[])");
+    let inner_selector_hex = hex::encode(&inner_selector[..4]);
+    let collateral   = pad_address(Contracts::USDC_E);
+    let parent_id    = format!("{:064x}", 0u128);
+    let cond_id_hex  = condition_id.trim_start_matches("0x");
+    let cond_id_pad  = format!("{:0>64}", cond_id_hex);
+    let array_offset = pad_u256(4 * 32);
+    let array_len    = pad_u256(2);
+    let index_yes    = pad_u256(1);
+    let index_no     = pad_u256(2);
+
+    let inner_hex = format!(
+        "{}{}{}{}{}{}{}{}",
+        inner_selector_hex, collateral, parent_id, cond_id_pad,
+        array_offset, array_len, index_yes, index_no
+    );
+    // inner calldata = 4 + 7*32 = 228 bytes
+    let inner_bytes = hex::decode(&inner_hex).expect("inner redeem calldata");
+    let inner_len   = inner_bytes.len();
+    let pad_len     = (32 - inner_len % 32) % 32;
+    let inner_padded = format!("{}{}", inner_hex, "00".repeat(pad_len));
+
+    // Wrap in PROXY_FACTORY.proxy([(CALL, CTF, 0, inner_calldata)])
+    // Layout mirrors withdraw_usdc_from_proxy exactly, only `to` changes to CTF.
+    let outer_selector = Keccak256::digest(b"proxy((uint8,address,uint256,bytes)[])");
+    let outer_selector_hex = hex::encode(&outer_selector[..4]);
+    let ctf_padded     = pad_address(Contracts::CTF);
+    let data_len_padded = format!("{:064x}", inner_len);
+
+    let calldata = format!(
+        "0x{}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}",
+        outer_selector_hex,
+        "0000000000000000000000000000000000000000000000000000000000000020", // params array offset
+        "0000000000000000000000000000000000000000000000000000000000000001", // array length = 1
+        "0000000000000000000000000000000000000000000000000000000000000020", // tuple[0] offset
+        "0000000000000000000000000000000000000000000000000000000000000001", // op = 1 (CALL)
+        ctf_padded,                                                         // to = CTF
+        "0000000000000000000000000000000000000000000000000000000000000000", // value = 0
+        "0000000000000000000000000000000000000000000000000000000000000080", // data offset in tuple
+        data_len_padded,
+        inner_padded,
+    );
+
+    let result = wallet_contract_call(Contracts::PROXY_FACTORY, &calldata).await?;
+    extract_tx_hash(&result)
+}
+
 /// Get native POL balance for an address (eth_getBalance). Returns human-readable f64 (POL).
 pub async fn get_pol_balance(addr: &str) -> Result<f64> {
     use crate::config::Urls;
@@ -769,6 +836,15 @@ pub async fn wait_for_tx_receipt(tx_hash: &str, max_wait_secs: u64) -> Result<()
             if let Ok(v) = r.json::<serde_json::Value>().await {
                 // receipt is an object (not null) once the tx is mined
                 if v["result"].is_object() {
+                    // status "0x1" = success, "0x0" = reverted
+                    let status = v["result"]["status"].as_str().unwrap_or("0x1");
+                    if status == "0x0" {
+                        anyhow::bail!(
+                            "Transaction {} was mined but reverted (status 0x0). \
+                             Check Polygonscan for details.",
+                            tx_hash
+                        );
+                    }
                     return Ok(());
                 }
             }
@@ -781,6 +857,62 @@ pub async fn wait_for_tx_receipt(tx_hash: &str, max_wait_secs: u64) -> Result<()
             );
         }
         sleep(Duration::from_millis(2000)).await;
+    }
+}
+
+/// Poll eth_getTransactionReceipt on any supported EVM chain until mined or timeout.
+///
+/// `chain` is the onchainos chain name (e.g. "bnb", "ethereum", "arbitrum").
+/// Resolves to the correct public RPC endpoint per chain.
+pub async fn wait_for_receipt_on_chain(chain: &str, tx_hash: &str, max_wait_secs: u64) -> Result<()> {
+    use crate::config::Urls;
+    use std::time::{Duration, Instant};
+    use tokio::time::sleep;
+
+    let rpc = match chain {
+        "ethereum"  => Urls::ETHEREUM_RPC,
+        "arbitrum"  => Urls::ARBITRUM_RPC,
+        "base"      => Urls::BASE_RPC,
+        "optimism"  => Urls::OPTIMISM_RPC,
+        "bnb"       => Urls::BNB_RPC,
+        "polygon" | "137" => Urls::POLYGON_RPC,
+        other => anyhow::bail!("No RPC configured for chain '{}'", other),
+    };
+
+    let deadline = Instant::now() + Duration::from_secs(max_wait_secs);
+    loop {
+        let body = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "eth_getTransactionReceipt",
+            "params": [tx_hash],
+            "id": 1
+        });
+        let resp = reqwest::Client::new()
+            .post(rpc)
+            .json(&body)
+            .send()
+            .await;
+        if let Ok(r) = resp {
+            if let Ok(v) = r.json::<serde_json::Value>().await {
+                if v["result"].is_object() {
+                    let status = v["result"]["status"].as_str().unwrap_or("0x1");
+                    if status == "0x0" {
+                        anyhow::bail!(
+                            "Transaction {} was mined but reverted on {} (status 0x0).",
+                            tx_hash, chain
+                        );
+                    }
+                    return Ok(());
+                }
+            }
+        }
+        if Instant::now() >= deadline {
+            anyhow::bail!(
+                "Tx {} not confirmed on {} within {}s. Check a block explorer and retry.",
+                tx_hash, chain, max_wait_secs
+            );
+        }
+        sleep(Duration::from_millis(3000)).await;
     }
 }
 
@@ -874,6 +1006,66 @@ pub struct ChainTokenBalance {
 
 /// Call `onchainos wallet balance --chain <chain>` and return all token balances.
 /// Returns an empty vec on failure (non-fatal — used for best-effort suggestions).
+/// Estimate the gas cost of a standard ERC-20 transfer on the given chain, in native token units.
+///
+/// Uses `eth_gasPrice` (or `eth_maxFeePerGas` for EIP-1559 chains) from the public RPC,
+/// multiplied by 65,000 gas (standard ERC-20 transfer) with a 20% buffer.
+/// Falls back to conservative static minimums if the RPC call fails.
+pub async fn estimate_erc20_gas_cost(chain: &str) -> f64 {
+    use crate::config::Urls;
+
+    let rpc = match chain {
+        "ethereum"  => Urls::ETHEREUM_RPC,
+        "arbitrum"  => Urls::ARBITRUM_RPC,
+        "base"      => Urls::BASE_RPC,
+        "optimism"  => Urls::OPTIMISM_RPC,
+        "bnb"       => Urls::BNB_RPC,
+        "polygon" | "137" => Urls::POLYGON_RPC,
+        _ => return 0.001, // unknown chain: conservative fallback
+    };
+
+    // Try eth_feeHistory (EIP-1559) first, fall back to eth_gasPrice
+    let body = serde_json::json!({
+        "jsonrpc": "2.0", "method": "eth_gasPrice", "params": [], "id": 1
+    });
+    let gas_price_wei: u128 = match async {
+        let resp = reqwest::Client::new().post(rpc).json(&body).send().await.ok()?;
+        let v: serde_json::Value = resp.json().await.ok()?;
+        let hex = v["result"].as_str()?;
+        let price = u128::from_str_radix(hex.trim_start_matches("0x"), 16).ok()?;
+        if price > 0 { Some(price) } else { None }
+    }.await
+    {
+        Some(p) => p,
+        None => {
+            // RPC unreachable — use static fallback per chain
+            return match chain {
+                "ethereum"  => 0.005,
+                "arbitrum" | "base" | "optimism" => 0.0002,
+                "bnb"       => 0.001,
+                _           => 0.001,
+            };
+        }
+    };
+
+    const ERC20_GAS_UNITS: u128 = 65_000;
+    const BUFFER: f64 = 1.2; // 20% headroom
+    let cost_wei = gas_price_wei * ERC20_GAS_UNITS;
+    (cost_wei as f64 / 1e18) * BUFFER
+}
+
+/// Return the native gas token balance (ETH, BNB, etc.) on a given chain.
+/// Returns 0.0 if the chain cannot be queried or no native balance is found.
+pub async fn get_native_gas_balance(chain: &str) -> f64 {
+    let balances = get_chain_balances(chain).await;
+    // Native token has an empty token_address in the onchainos balance output.
+    balances
+        .iter()
+        .find(|b| b.token_address.is_empty())
+        .map(|b| b.balance.parse::<f64>().unwrap_or(0.0))
+        .unwrap_or(0.0)
+}
+
 pub async fn get_chain_balances(chain: &str) -> Vec<ChainTokenBalance> {
     let output = tokio::process::Command::new("onchainos")
         .args(["wallet", "balance", "--chain", chain])

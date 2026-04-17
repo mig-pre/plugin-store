@@ -116,6 +116,13 @@ enum Commands {
         confirm: bool,
     },
 
+    /// Show wallet status and suggest first command (default chain: BSC)
+    Quickstart {
+        /// Wallet address to query. Defaults to the connected onchainos wallet.
+        #[arg(long)]
+        address: Option<String>,
+    },
+
     /// Remove liquidity from a V3 position (decreaseLiquidity + collect)
     RemoveLiquidity {
         /// NFT position token ID
@@ -174,6 +181,10 @@ async fn main() -> anyhow::Result<()> {
             commands::remove_liquidity::run(commands::remove_liquidity::RemoveLiquidityArgs {
                 token_id, liquidity_pct, slippage, chain, dry_run, confirm,
             }).await?;
+        }
+
+        Commands::Quickstart { address } => {
+            commands::quickstart::run(address.as_deref()).await?;
         }
     }
 

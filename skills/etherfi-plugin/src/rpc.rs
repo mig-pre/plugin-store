@@ -85,6 +85,64 @@ pub async fn weeth_get_rate(weeth: &str, rpc_url: &str) -> anyhow::Result<f64> {
     Ok(raw as f64 / 1e18)
 }
 
+/// Get transaction receipt and extract the WithdrawRequestNFT token ID from the mint event.
+/// ERC-721 Transfer(address indexed from, address indexed to, uint256 indexed tokenId)
+/// Selector: 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
+/// Minting: from == 0x000...000, to == recipient
+pub async fn get_nft_token_id_from_mint(
+    tx_hash: &str,
+    nft_address: &str,
+    recipient: &str,
+    rpc_url: &str,
+) -> anyhow::Result<Option<u64>> {
+    let client = reqwest::Client::new();
+    let body = json!({
+        "jsonrpc": "2.0",
+        "method": "eth_getTransactionReceipt",
+        "params": [tx_hash],
+        "id": 1
+    });
+    let resp: Value = client
+        .post(rpc_url)
+        .json(&body)
+        .send()
+        .await
+        .context("eth_getTransactionReceipt HTTP request failed")?
+        .json()
+        .await
+        .context("eth_getTransactionReceipt JSON parse failed")?;
+    if let Some(err) = resp.get("error") {
+        anyhow::bail!("eth_getTransactionReceipt error: {}", err);
+    }
+    let logs = match resp["result"]["logs"].as_array() {
+        Some(l) => l,
+        None => return Ok(None),
+    };
+    let transfer_sig = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+    let zero_topic = "0x0000000000000000000000000000000000000000000000000000000000000000";
+    let recipient_topic = format!(
+        "0x000000000000000000000000{}",
+        recipient.trim_start_matches("0x").to_lowercase()
+    );
+    let nft_lower = nft_address.to_lowercase();
+    for log in logs {
+        let addr = log["address"].as_str().unwrap_or("").to_lowercase();
+        if addr != nft_lower { continue; }
+        let topics = match log["topics"].as_array() {
+            Some(t) if t.len() >= 4 => t,
+            _ => continue,
+        };
+        if topics[0].as_str().unwrap_or("").to_lowercase() != transfer_sig { continue; }
+        if topics[1].as_str().unwrap_or("") != zero_topic { continue; }
+        if topics[2].as_str().unwrap_or("").to_lowercase() != recipient_topic { continue; }
+        let id_hex = topics[3].as_str().unwrap_or("").trim_start_matches("0x");
+        if let Ok(id) = u64::from_str_radix(id_hex, 16) {
+            return Ok(Some(id));
+        }
+    }
+    Ok(None)
+}
+
 /// WithdrawRequestNFT.isFinalized(uint256 tokenId) -> bool
 /// Returns true if the withdrawal request has been finalized and ETH is ready to claim.
 /// Selector: 0x33727c4d (keccak256("isFinalized(uint256)")[0..4])

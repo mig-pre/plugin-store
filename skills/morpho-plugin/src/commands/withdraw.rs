@@ -71,7 +71,7 @@ pub async fn run(
         eprintln!("[morpho] [dry-run] Would call: onchainos wallet contract-call --chain {} --to {} --input-data {}", chain_id, vault, calldata_hex);
     }
 
-    let result = onchainos::wallet_contract_call(chain_id, vault, &calldata_hex, from, None, dry_run, false).await?;
+    let result = onchainos::wallet_contract_call(chain_id, vault, &calldata_hex, Some(owner), None, dry_run, false).await?;
     let tx_hash = onchainos::extract_tx_hash_or_err(&result)?;
 
     let output = serde_json::json!({

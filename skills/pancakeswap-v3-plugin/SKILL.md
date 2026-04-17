@@ -1,7 +1,7 @@
 ---
 name: pancakeswap-v3-plugin
 description: "Swap tokens and manage liquidity on PancakeSwap V3 on Ethereum, BNB Chain, Base, Arbitrum, and Linea"
-version: "1.0.1"
+version: "1.0.4"
 author: "GeoGu360"
 tags:
   - dex
@@ -25,7 +25,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/pancakeswap-v3-plugin"
 CACHE_MAX=3600
-LOCAL_VER="1.0.1"
+LOCAL_VER="1.0.4"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -36,7 +36,7 @@ if [ -f "$UPDATE_CACHE" ]; then
 fi
 
 if [ "$DO_CHECK" = true ]; then
-  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/mig-pre/plugin-store/main/skills/pancakeswap-v3-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
+  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v3-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
   if [ -n "$REMOTE_VER" ]; then
     mkdir -p "$HOME/.plugin-store/update-cache"
     echo "$REMOTE_VER" > "$UPDATE_CACHE"
@@ -46,7 +46,7 @@ fi
 REMOTE_VER=$(cat "$UPDATE_CACHE" 2>/dev/null || echo "$LOCAL_VER")
 if [ "$REMOTE_VER" != "$LOCAL_VER" ]; then
   echo "Update available: pancakeswap-v3-plugin v$LOCAL_VER -> v$REMOTE_VER. Updating..."
-  npx skills add mig-pre/plugin-store --skill pancakeswap-v3-plugin --yes --global 2>/dev/null || true
+  npx skills add okx/plugin-store --skill pancakeswap-v3-plugin --yes --global 2>/dev/null || true
   echo "Updated pancakeswap-v3-plugin to v$REMOTE_VER. Please re-read this SKILL.md."
 fi
 ```
@@ -61,7 +61,7 @@ onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/
 npx skills add okx/onchainos-skills --yes --global
 
 # 3. Install plugin-store skills (enables plugin discovery and management)
-npx skills add mig-pre/plugin-store --skill plugin-store --yes --global
+npx skills add okx/plugin-store --skill plugin-store --yes --global
 ```
 
 ### Install pancakeswap-v3-plugin binary + launcher (auto-injected)
@@ -72,11 +72,11 @@ LAUNCHER="$HOME/.plugin-store/launcher.sh"
 CHECKER="$HOME/.plugin-store/update-checker.py"
 if [ ! -f "$LAUNCHER" ]; then
   mkdir -p "$HOME/.plugin-store"
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
   chmod +x "$LAUNCHER"
 fi
 if [ ! -f "$CHECKER" ]; then
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
 fi
 
 # Clean up old installation
@@ -98,7 +98,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/mig-pre/plugin-store/releases/download/plugins/pancakeswap-v3-plugin@1.0.1/pancakeswap-v3-plugin-${TARGET}${EXT}" -o ~/.local/bin/.pancakeswap-v3-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/pancakeswap-v3-plugin@1.0.4/pancakeswap-v3-plugin-${TARGET}${EXT}" -o ~/.local/bin/.pancakeswap-v3-plugin-core${EXT}
 chmod +x ~/.local/bin/.pancakeswap-v3-plugin-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -106,7 +106,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/pancakeswap-v3-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "1.0.1" > "$HOME/.plugin-store/managed/pancakeswap-v3-plugin"
+echo "1.0.4" > "$HOME/.plugin-store/managed/pancakeswap-v3-plugin"
 ```
 
 ### Report install (auto-injected, runs once)
@@ -126,7 +126,7 @@ if [ ! -f "$REPORT_FLAG" ]; then
   # Report to Vercel stats
   curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
     -H "Content-Type: application/json" \
-    -d '{"name":"pancakeswap-v3-plugin","version":"1.0.1"}' >/dev/null 2>&1 || true
+    -d '{"name":"pancakeswap-v3-plugin","version":"1.0.4"}' >/dev/null 2>&1 || true
   # Report to OKX API (with HMAC-signed device token)
   curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
     -H "Content-Type: application/json" \
@@ -380,6 +380,40 @@ pancakeswap-v3 remove-liquidity --token-id 345455 --liquidity-pct 50 --slippage 
 
 ---
 
+### `quickstart` — Wallet status and first-step guidance
+
+Check your wallet's BNB and token balances on BNB Chain and get a suggested first command.
+
+**Trigger phrases:** "get started with pancakeswap", "pancakeswap quickstart", "what can I do on pancakeswap", "help me start on pancakeswap", "onboard pancakeswap"
+
+```
+pancakeswap-v3 quickstart [--address <wallet_address>]
+```
+
+**Parameters:**
+- `--address` — optional wallet address; defaults to the connected onchainos wallet
+
+**Output fields:** `about`, `wallet`, `assets` (bnb_balance, usdt_balance, usdc_balance, lp_positions_bsc), `status`, `suggestion`, `next_command`, `onboarding_steps` (only when status ≠ active)
+
+**States:**
+| Status | Meaning |
+|--------|---------|
+| `active` | Has V3 LP positions on BNB Chain — use `positions` to inspect |
+| `ready` | Has BNB + tokens — ready to swap or add liquidity |
+| `needs_gas` | Has tokens but insufficient BNB for gas — send ≥ 0.002 BNB |
+| `needs_funds` | Has BNB but no tokens — send ≥ 5 USDT/USDC |
+| `no_funds` | Empty wallet — send BNB and USDT/USDC to get started |
+
+**Example:**
+```
+pancakeswap-v3 quickstart
+pancakeswap-v3 quickstart --address 0xYourWallet
+```
+
+This command is read-only — no transactions, no gas. Default chain is BNB Chain (56).
+
+---
+
 ## Contract Addresses
 
 | Contract | Ethereum (1) | BSC (56) | Base (8453) | Arbitrum (42161) | Linea (59144) |
@@ -439,6 +473,10 @@ pancakeswap-v3 remove-liquidity --token-id 345455 --liquidity-pct 50 --slippage 
 | WBTC | `0x3aAB2285ddcDdaD8edf438C1bAB47e1a9D05a9b4` |
 
 ## Changelog
+
+### v1.0.4
+- **feat**: Add `quickstart` command — checks BNB/USDT/USDC balances and LP positions on BNB Chain, returns `about` + `onboarding_steps` + `next_command` for 5 user states (active/ready/needs_gas/needs_funds/no_funds).
+- **fix**: Add `ethereum-rpc.publicnode.com` and `linea-rpc.publicnode.com` to `plugin.yaml` `api_calls` — both chains were supported since v1.0.0 but their RPC domains were missing from the CI security whitelist.
 
 ### v1.0.0 (2026-04-12)
 

@@ -172,13 +172,16 @@ pub async fn get_reward_owed(
 
 /// Simulate a Comet.withdraw(asset, amount) call from a given address.
 /// Returns Ok(()) if the simulation passes; returns a descriptive error if it reverts.
-/// Catches NotCollateralized() (0x14c5f7b6) and surfaces it as a clear message.
+/// Catches NotCollateralized() (0x14c5f7b6) and surfaces it as a clear message
+/// including the market's baseBorrowMin so agents can guide users on position sizing.
 pub async fn simulate_borrow(
     comet: &str,
     asset: &str,
     amount: u128,
     from: &str,
     rpc_url: &str,
+    base_decimals: u8,
+    base_symbol: &str,
 ) -> anyhow::Result<()> {
     let calldata = format!("0xf3fef3a3{}{}", pad_address(asset), pad_u128(amount));
     let client = reqwest::Client::new();
@@ -204,12 +207,19 @@ pub async fn simulate_borrow(
             .and_then(|d| d.as_str())
             .unwrap_or("");
         if data.starts_with("0x14c5f7b6") {
-            // NotCollateralized() custom error
+            // NotCollateralized() custom error (keccak256("NotCollateralized()") = 0x14c5f7b6)
+            // fetch baseBorrowMin for the actionable message
+            let min_raw = get_base_borrow_min(comet, rpc_url).await.unwrap_or(0);
+            let decimals_factor = 10u128.pow(base_decimals as u32) as f64;
+            let min_human = min_raw as f64 / decimals_factor;
             anyhow::bail!(
-                "Borrow would fail: account has insufficient collateral. \
-                 Supply collateral (e.g. WETH, cbETH) to this Compound V3 market first \
-                 using 'compound-v3 supply --asset <collateral_address> --amount <amount>', \
-                 then retry the borrow."
+                "Borrow would fail: account is not sufficiently collateralized. \
+                 This market requires a minimum borrow of {min_human:.6} {base_symbol} \
+                 (baseBorrowMin = {min_raw} raw units). \
+                 To fix: (1) supply more collateral using 'compound-v3 supply --asset <collateral_address> --amount <amount>', \
+                 then borrow at least {min_human:.6} {base_symbol}. \
+                 If you already have collateral, your borrowing capacity may be too low for the requested amount — \
+                 check your position with 'compound-v3 get-position'."
             );
         }
         anyhow::bail!("Borrow simulation failed: {}", err);

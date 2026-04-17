@@ -41,14 +41,11 @@ pub async fn run(args: StakeArgs) -> anyhow::Result<()> {
     // Resolve wallet address
     let wallet = resolve_wallet(CHAIN_ID)?;
 
-    println!(
-        "Staking {} ETH ({} wei) via LiquidityPool.deposit()",
-        args.amount, eth_wei
-    );
-    println!("  LiquidityPool: {}", pool);
-    println!("  Wallet: {}", wallet);
-    println!("  You will receive approximately {} eETH in return.", args.amount);
-    println!("  Run with --confirm to broadcast. (Proceeding automatically in non-interactive mode.)");
+    eprintln!("Staking {} ETH ({} wei) via LiquidityPool.deposit()", args.amount, eth_wei);
+    eprintln!("  LiquidityPool: {}", pool);
+    eprintln!("  Wallet: {}", wallet);
+    eprintln!("  You will receive approximately {} eETH in return.", args.amount);
+    eprintln!("  Run with --confirm to broadcast.");
 
     // Build deposit(address _referral) calldata
     // ETH value is passed as msg.value (native send), not ABI-encoded

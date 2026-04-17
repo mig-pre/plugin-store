@@ -90,6 +90,24 @@ pub fn defi_collect(
     run_cmd(cmd)
 }
 
+/// Get per-asset Aave V3 holdings (SUPPLY/BORROW) for a wallet via onchainos.
+/// platform_id 10 = Aave V3 across all supported chains.
+pub fn defi_position_detail(chain_id: u64, wallet_addr: &str) -> anyhow::Result<Value> {
+    let chain_name = chain_id_to_name(chain_id);
+    let mut cmd = base_cmd();
+    cmd.args([
+        "defi",
+        "position-detail",
+        "--address",
+        wallet_addr,
+        "--chain",
+        chain_name,
+        "--platform-id",
+        "10",
+    ]);
+    run_cmd(cmd)
+}
+
 /// Get DeFi positions for a wallet address on a given chain.
 /// Requires --address and --chains (comma-separated chain names).
 pub fn defi_positions(chain_id: u64, wallet_addr: &str) -> anyhow::Result<Value> {
@@ -182,6 +200,48 @@ pub fn wallet_contract_call(
         to.to_string(),
         "--input-data".to_string(),
         input_data.to_string(),
+    ];
+    if let Some(addr) = from {
+        args.push("--from".to_string());
+        args.push(addr.to_string());
+    }
+    if dry_run {
+        args.push("--dry-run".to_string());
+        let cmd_str = format!("onchainos {}", args.join(" "));
+        eprintln!("[dry-run] would execute: {}", cmd_str);
+        return Ok(serde_json::json!({
+            "ok": true,
+            "dryRun": true,
+            "simulatedCommand": cmd_str
+        }));
+    }
+    args.push("--force".to_string());
+    let mut cmd = base_cmd();
+    cmd.args(&args);
+    run_cmd(cmd)
+}
+
+/// Same as wallet_contract_call but attaches a native ETH value (--amt).
+/// Used for WETH.deposit() and similar payable calls.
+pub fn wallet_contract_call_with_value(
+    chain_id: u64,
+    to: &str,
+    input_data: &str,
+    from: Option<&str>,
+    value_wei: u128,
+    dry_run: bool,
+) -> anyhow::Result<Value> {
+    let mut args: Vec<String> = vec![
+        "wallet".to_string(),
+        "contract-call".to_string(),
+        "--chain".to_string(),
+        chain_id.to_string(),
+        "--to".to_string(),
+        to.to_string(),
+        "--input-data".to_string(),
+        input_data.to_string(),
+        "--amt".to_string(),
+        value_wei.to_string(),
     ];
     if let Some(addr) = from {
         args.push("--from".to_string());

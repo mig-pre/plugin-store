@@ -1,7 +1,7 @@
 ---
 name: meteora-plugin
-description: "Meteora DLMM plugin for Solana — search liquidity pools, get swap quotes, view user positions, execute token swaps, add and remove liquidity"
-version: "0.3.4"
+description: "Meteora DLMM plugin for Solana — search liquidity pools, get swap quotes, view user positions, execute token swaps, add and remove liquidity, quickstart wallet check"
+version: "0.3.7"
 tags:
   - solana
   - dex
@@ -21,7 +21,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/meteora-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.3.4"
+LOCAL_VER="0.3.7"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -32,7 +32,7 @@ if [ -f "$UPDATE_CACHE" ]; then
 fi
 
 if [ "$DO_CHECK" = true ]; then
-  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/mig-pre/plugin-store/main/skills/meteora-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
+  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meteora-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
   if [ -n "$REMOTE_VER" ]; then
     mkdir -p "$HOME/.plugin-store/update-cache"
     echo "$REMOTE_VER" > "$UPDATE_CACHE"
@@ -42,7 +42,7 @@ fi
 REMOTE_VER=$(cat "$UPDATE_CACHE" 2>/dev/null || echo "$LOCAL_VER")
 if [ "$REMOTE_VER" != "$LOCAL_VER" ]; then
   echo "Update available: meteora-plugin v$LOCAL_VER -> v$REMOTE_VER. Updating..."
-  npx skills add mig-pre/plugin-store --skill meteora-plugin --yes --global 2>/dev/null || true
+  npx skills add okx/plugin-store --skill meteora-plugin --yes --global 2>/dev/null || true
   echo "Updated meteora-plugin to v$REMOTE_VER. Please re-read this SKILL.md."
 fi
 ```
@@ -57,7 +57,7 @@ onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/
 npx skills add okx/onchainos-skills --yes --global
 
 # 3. Install plugin-store skills (enables plugin discovery and management)
-npx skills add mig-pre/plugin-store --skill plugin-store --yes --global
+npx skills add okx/plugin-store --skill plugin-store --yes --global
 ```
 
 ### Install meteora-plugin binary + launcher (auto-injected)
@@ -68,11 +68,11 @@ LAUNCHER="$HOME/.plugin-store/launcher.sh"
 CHECKER="$HOME/.plugin-store/update-checker.py"
 if [ ! -f "$LAUNCHER" ]; then
   mkdir -p "$HOME/.plugin-store"
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
   chmod +x "$LAUNCHER"
 fi
 if [ ! -f "$CHECKER" ]; then
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
 fi
 
 # Clean up old installation
@@ -94,7 +94,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/mig-pre/plugin-store/releases/download/plugins/meteora-plugin@0.3.4/meteora-plugin-${TARGET}${EXT}" -o ~/.local/bin/.meteora-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/meteora-plugin@0.3.7/meteora-plugin-${TARGET}${EXT}" -o ~/.local/bin/.meteora-plugin-core${EXT}
 chmod +x ~/.local/bin/.meteora-plugin-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -102,7 +102,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/meteora-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.3.4" > "$HOME/.plugin-store/managed/meteora-plugin"
+echo "0.3.7" > "$HOME/.plugin-store/managed/meteora-plugin"
 ```
 
 ### Report install (auto-injected, runs once)
@@ -122,7 +122,7 @@ if [ ! -f "$REPORT_FLAG" ]; then
   # Report to Vercel stats
   curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
     -H "Content-Type: application/json" \
-    -d '{"name":"meteora-plugin","version":"0.3.4"}' >/dev/null 2>&1 || true
+    -d '{"name":"meteora-plugin","version":"0.3.7"}' >/dev/null 2>&1 || true
   # Report to OKX API (with HMAC-signed device token)
   curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
     -H "Content-Type: application/json" \
@@ -334,6 +334,33 @@ meteora remove-liquidity --pool 8skykrYgFFpQNMhqhKbZoVKXFss55uGPUXhVMfnCzqJv --p
 
 # Remove all liquidity and close the position (reclaims rent)
 meteora remove-liquidity --pool 8skykrYgFFpQNMhqhKbZoVKXFss55uGPUXhVMfnCzqJv --position <position_addr> --close
+```
+
+---
+
+### quickstart — Check wallet balances and get a recommended deposit command
+
+Check your SOL and USDC balances against the current pool state and receive a ready-to-run `add-liquidity` command based on what you can afford.
+
+```
+meteora quickstart --pool <pool_address> [--wallet <address>]
+```
+
+**Parameters:**
+- `--pool` — DLMM pool (LbPair) address (required)
+- `--wallet` — Wallet address; omit to use the onchainos logged-in wallet
+
+**Output fields:** `ok`, `wallet`, `pool`, `sol_balance`, `usdc_balance`, `active_id`, `bin_step`, `token_x_mint`, `token_y_mint`, `suggestion` (one of `two_sided` / `x_only` / `y_only` / `insufficient_funds`), `recommended_command`
+
+**Execution Flow:**
+1. Reads SOL and USDC balances from the logged-in wallet
+2. Fetches current pool state to determine active bin and token pair
+3. Computes the maximum deposit amounts affordable with current balances
+4. Returns a ready-to-run `add-liquidity` command
+
+**Example:**
+```
+meteora quickstart --pool 5rCf1DM8LjKTw4YqhnoLcngyZYeNnQqztScTogYHAS6
 ```
 
 ---

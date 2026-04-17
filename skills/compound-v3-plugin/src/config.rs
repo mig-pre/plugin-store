@@ -33,6 +33,15 @@ pub fn get_market_config(chain_id: u64, market: &str) -> anyhow::Result<MarketCo
             base_asset_symbol: "USDC",
             rpc_url: "https://base-rpc.publicnode.com",
         }),
+        (8453, "weth") => Ok(MarketConfig {
+            chain_id: 8453,
+            comet_proxy: "0x46e6b214b524310239732D51387075E0e70970bf",
+            rewards_contract: "0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1",
+            base_asset: "0x4200000000000000000000000000000000000006",
+            base_asset_decimals: 18,
+            base_asset_symbol: "WETH",
+            rpc_url: "https://base-rpc.publicnode.com",
+        }),
         (42161, "usdc") => Ok(MarketConfig {
             chain_id: 42161,
             comet_proxy: "0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf",
@@ -40,6 +49,24 @@ pub fn get_market_config(chain_id: u64, market: &str) -> anyhow::Result<MarketCo
             base_asset: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
             base_asset_decimals: 6,
             base_asset_symbol: "USDC",
+            rpc_url: "https://arbitrum-one-rpc.publicnode.com",
+        }),
+        (42161, "weth") => Ok(MarketConfig {
+            chain_id: 42161,
+            comet_proxy: "0x6f7D514bbD4aFf3BcD1140B7344b32f063dEe486",
+            rewards_contract: "0x88730d254A2f7e6AC8388c3198aFd694bA9f7fae",
+            base_asset: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+            base_asset_decimals: 18,
+            base_asset_symbol: "WETH",
+            rpc_url: "https://arbitrum-one-rpc.publicnode.com",
+        }),
+        (42161, "usdc.e") => Ok(MarketConfig {
+            chain_id: 42161,
+            comet_proxy: "0xA5EDBDD9646f8dFF606d7448e414884C7d905dCA",
+            rewards_contract: "0x88730d254A2f7e6AC8388c3198aFd694bA9f7fae",
+            base_asset: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+            base_asset_decimals: 6,
+            base_asset_symbol: "USDC.e",
             rpc_url: "https://arbitrum-one-rpc.publicnode.com",
         }),
         (137, "usdc") => Ok(MarketConfig {
@@ -52,7 +79,10 @@ pub fn get_market_config(chain_id: u64, market: &str) -> anyhow::Result<MarketCo
             rpc_url: "https://polygon-bor-rpc.publicnode.com",
         }),
         _ => anyhow::bail!(
-            "Unsupported chain_id={} market={}. Supported: chain 1/8453/42161/137 market usdc",
+            "Unsupported chain_id={} market={}. Supported markets: \
+             usdc (chains 1/8453/42161/137), \
+             weth (chains 8453/42161), \
+             usdc.e (chain 42161 only)",
             chain_id,
             market
         ),

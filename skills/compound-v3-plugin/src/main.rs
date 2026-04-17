@@ -12,13 +12,17 @@ struct Cli {
     #[arg(long, default_value = "8453", global = true)]
     chain: u64,
 
-    /// Market name (usdc, weth, usdt)
+    /// Market name — usdc (all chains), weth (Base/Arbitrum), usdc.e (Arbitrum only)
     #[arg(long, default_value = "usdc", global = true)]
     market: String,
 
     /// Simulate without broadcasting on-chain transactions
     #[arg(long, global = true)]
     dry_run: bool,
+
+    /// Execute the transaction on-chain. Without this flag write operations show a preview and exit.
+    #[arg(long, global = true)]
+    confirm: bool,
 
     #[command(subcommand)]
     command: Commands,
@@ -112,19 +116,19 @@ async fn main() {
             commands::get_position::run(cli.chain, &cli.market, wallet, collateral_asset).await
         }
         Commands::Supply { asset, amount, from } => {
-            commands::supply::run(cli.chain, &cli.market, &asset, &amount, from, cli.dry_run).await
+            commands::supply::run(cli.chain, &cli.market, &asset, &amount, from, cli.dry_run, cli.confirm).await
         }
         Commands::Borrow { amount, from } => {
-            commands::borrow::run(cli.chain, &cli.market, &amount, from, cli.dry_run).await
+            commands::borrow::run(cli.chain, &cli.market, &amount, from, cli.dry_run, cli.confirm).await
         }
         Commands::Repay { amount, from } => {
-            commands::repay::run(cli.chain, &cli.market, amount.as_deref(), from, cli.dry_run).await
+            commands::repay::run(cli.chain, &cli.market, amount.as_deref(), from, cli.dry_run, cli.confirm).await
         }
         Commands::Withdraw { asset, amount, from } => {
-            commands::withdraw::run(cli.chain, &cli.market, &asset, &amount, from, cli.dry_run).await
+            commands::withdraw::run(cli.chain, &cli.market, &asset, &amount, from, cli.dry_run, cli.confirm).await
         }
         Commands::ClaimRewards { from } => {
-            commands::claim_rewards::run(cli.chain, &cli.market, from, cli.dry_run).await
+            commands::claim_rewards::run(cli.chain, &cli.market, from, cli.dry_run, cli.confirm).await
         }
     };
 

@@ -1,11 +1,10 @@
 use clap::Args;
-use tokio::time::{sleep, Duration};
 use crate::calldata::build_wrap_calldata;
 use crate::config::{
     build_approve_calldata, eeth_address, format_units, parse_units,
     rpc_url, weeth_address, CHAIN_ID,
 };
-use crate::onchainos::{extract_tx_hash, resolve_wallet, wallet_contract_call};
+use crate::onchainos::{extract_tx_hash, resolve_wallet, wait_for_tx, wallet_contract_call};
 use crate::rpc::{get_allowance, get_balance};
 
 #[derive(Args)]
@@ -36,14 +35,21 @@ pub async fn run(args: WrapArgs) -> anyhow::Result<()> {
     // Resolve wallet address
     let wallet = resolve_wallet(CHAIN_ID)?;
 
-    println!(
-        "Wrapping {} eETH ({} wei) → weETH",
-        args.amount, eeth_wei
-    );
-    println!("  eETH contract:  {}", eeth);
-    println!("  weETH contract: {}", weeth);
-    println!("  Wallet: {}", wallet);
-    println!("  Run with --confirm to broadcast. (Proceeding automatically in non-interactive mode.)");
+    // Preview: expected weETH output via getRate() — 1 weETH = rate eETH → weETH = eETH / rate
+    let weeth_expected_str = match crate::rpc::weeth_get_rate(weeth, rpc).await {
+        Ok(rate) if rate > 0.0 => {
+            let expected = (eeth_wei as f64 / rate) as u128;
+            format!("{:.6}", expected as f64 / 1e18)
+        }
+        _ => "N/A".to_string(),
+    };
+
+    eprintln!("Wrapping {} eETH ({} wei) → weETH", args.amount, eeth_wei);
+    eprintln!("  eETH contract:  {}", eeth);
+    eprintln!("  weETH contract: {}", weeth);
+    eprintln!("  Wallet: {}", wallet);
+    eprintln!("  Expected weETH to receive: {}", weeth_expected_str);
+    eprintln!("  Run with --confirm to broadcast.");
 
     // Step 1: Check eETH balance
     if !args.dry_run {
@@ -63,10 +69,6 @@ pub async fn run(args: WrapArgs) -> anyhow::Result<()> {
     if !args.dry_run {
         let allowance = get_allowance(eeth, &wallet, weeth, rpc).await?;
         if allowance < eeth_wei {
-            println!(
-                "WARNING: This approval grants the weETH contract unlimited (u128::MAX) spending                  access to your eETH. To revoke later, call approve(weETH, 0)."
-            );
-            println!("Approving weETH contract to spend eETH (unlimited allowance)...");
             let approve_data = build_approve_calldata(weeth, u128::MAX);
             let approve_result = wallet_contract_call(
                 CHAIN_ID,
@@ -79,15 +81,18 @@ pub async fn run(args: WrapArgs) -> anyhow::Result<()> {
             .await?;
 
             if approve_result["preview"].as_bool() == Some(true) {
-                println!("Preview (approve): {}", serde_json::to_string_pretty(&approve_result)?);
-                println!("Re-run with --confirm to execute approve + wrap.");
+                eprintln!("NOTE: eETH approval needed. Re-run with --confirm to approve + wrap.");
+                println!("{}", serde_json::to_string_pretty(&approve_result)?);
                 return Ok(());
             }
 
-            let approve_tx = extract_tx_hash(&approve_result);
-            println!("Approve tx: {}", approve_tx);
-            // Wait for approve nonce to clear before wrapping
-            sleep(Duration::from_secs(3)).await;
+            // Only reached when --confirm is passed and tx is actually broadcast
+            let approve_tx = extract_tx_hash(&approve_result).to_string();
+            eprintln!("WARNING: Granting weETH contract unlimited (u128::MAX) eETH allowance. To revoke later: approve(weETH, 0).");
+            eprintln!("Approve tx: {} — waiting for confirmation...", approve_tx);
+            wait_for_tx(approve_tx, wallet.clone()).await
+                .map_err(|e| anyhow::anyhow!("Approve tx did not confirm: {}", e))?;
+            eprintln!("Approve confirmed.");
         }
     }
 
@@ -111,7 +116,15 @@ pub async fn run(args: WrapArgs) -> anyhow::Result<()> {
 
     let tx_hash = extract_tx_hash(&result);
 
-    // Fetch updated weETH balance if live transaction
+    // Wait for wrap tx to confirm before querying balance (fix: was querying before confirmation)
+    if !args.dry_run && args.confirm {
+        eprintln!("Wrap tx: {} — waiting for confirmation...", tx_hash);
+        wait_for_tx(tx_hash.to_string(), wallet.clone()).await
+            .map_err(|e| anyhow::anyhow!("Wrap tx did not confirm: {}", e))?;
+        eprintln!("Wrap confirmed.");
+    }
+
+    // Fetch updated weETH balance after confirmation
     let weeth_balance_str = if !args.dry_run && args.confirm {
         match get_balance(weeth, &wallet, rpc).await {
             Ok(bal) => format_units(bal, 18),
@@ -122,8 +135,16 @@ pub async fn run(args: WrapArgs) -> anyhow::Result<()> {
     };
 
     println!(
-        "{{\"ok\":true,\"txHash\":\"{}\",\"action\":\"wrap\",\"eETHWrapped\":\"{}\",\"eETHWei\":\"{}\",\"weETHBalance\":\"{}\"}}",
-        tx_hash, args.amount, eeth_wei, weeth_balance_str
+        "{}",
+        serde_json::json!({
+            "ok":            true,
+            "txHash":        tx_hash,
+            "action":        "wrap",
+            "eETHWrapped":   args.amount,
+            "eETHWei":       eeth_wei.to_string(),
+            "weETHExpected": weeth_expected_str,
+            "weETHBalance":  weeth_balance_str,
+        })
     );
 
     Ok(())

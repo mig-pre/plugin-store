@@ -1,7 +1,7 @@
 ---
 name: morpho-plugin
 description: "Supply, borrow and earn yield on Morpho — a permissionless lending protocol with $5B+ TVL. Trigger phrases: supply to morpho, deposit to morpho vault, borrow from morpho, repay morpho loan, morpho health factor, my morpho positions, morpho interest rates, claim morpho rewards, morpho markets, metamorpho vaults."
-version: "0.2.4"
+version: "0.2.5"
 author: "GeoGu360"
 tags:
   - lending
@@ -25,7 +25,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/morpho-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.2.4"
+LOCAL_VER="0.2.5"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -36,7 +36,7 @@ if [ -f "$UPDATE_CACHE" ]; then
 fi
 
 if [ "$DO_CHECK" = true ]; then
-  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/mig-pre/plugin-store/main/skills/morpho-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
+  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/okx/plugin-store/main/skills/morpho-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
   if [ -n "$REMOTE_VER" ]; then
     mkdir -p "$HOME/.plugin-store/update-cache"
     echo "$REMOTE_VER" > "$UPDATE_CACHE"
@@ -46,7 +46,7 @@ fi
 REMOTE_VER=$(cat "$UPDATE_CACHE" 2>/dev/null || echo "$LOCAL_VER")
 if [ "$REMOTE_VER" != "$LOCAL_VER" ]; then
   echo "Update available: morpho-plugin v$LOCAL_VER -> v$REMOTE_VER. Updating..."
-  npx skills add mig-pre/plugin-store --skill morpho-plugin --yes --global 2>/dev/null || true
+  npx skills add okx/plugin-store --skill morpho-plugin --yes --global 2>/dev/null || true
   echo "Updated morpho-plugin to v$REMOTE_VER. Please re-read this SKILL.md."
 fi
 ```
@@ -61,7 +61,7 @@ onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/
 npx skills add okx/onchainos-skills --yes --global
 
 # 3. Install plugin-store skills (enables plugin discovery and management)
-npx skills add mig-pre/plugin-store --skill plugin-store --yes --global
+npx skills add okx/plugin-store --skill plugin-store --yes --global
 ```
 
 ### Install morpho-plugin binary + launcher (auto-injected)
@@ -72,11 +72,11 @@ LAUNCHER="$HOME/.plugin-store/launcher.sh"
 CHECKER="$HOME/.plugin-store/update-checker.py"
 if [ ! -f "$LAUNCHER" ]; then
   mkdir -p "$HOME/.plugin-store"
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
   chmod +x "$LAUNCHER"
 fi
 if [ ! -f "$CHECKER" ]; then
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
 fi
 
 # Clean up old installation
@@ -98,7 +98,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/mig-pre/plugin-store/releases/download/plugins/morpho-plugin@0.2.4/morpho-plugin-${TARGET}${EXT}" -o ~/.local/bin/.morpho-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/morpho-plugin@0.2.5/morpho-plugin-${TARGET}${EXT}" -o ~/.local/bin/.morpho-plugin-core${EXT}
 chmod +x ~/.local/bin/.morpho-plugin-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -106,7 +106,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/morpho-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.2.4" > "$HOME/.plugin-store/managed/morpho-plugin"
+echo "0.2.5" > "$HOME/.plugin-store/managed/morpho-plugin"
 ```
 
 ### Report install (auto-injected, runs once)
@@ -126,7 +126,7 @@ if [ ! -f "$REPORT_FLAG" ]; then
   # Report to Vercel stats
   curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
     -H "Content-Type: application/json" \
-    -d '{"name":"morpho-plugin","version":"0.2.4"}' >/dev/null 2>&1 || true
+    -d '{"name":"morpho-plugin","version":"0.2.5"}' >/dev/null 2>&1 || true
   # Report to OKX API (with HMAC-signed device token)
   curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
     -H "Content-Type: application/json" \
@@ -397,6 +397,7 @@ morpho --chain 1 repay --market-id 0xb323... --all --confirm
 - A 0.5% approval buffer is added to cover accrued interest between approval and repay transactions (1% buffer for `--all` mode).
 - Step 1 approves Morpho Blue to spend the loan token — submits immediately via `onchainos wallet contract-call --force`; waits for on-chain confirmation before proceeding.
 - Step 2 calls `repay(...)` — presents to user for confirmation via `onchainos wallet contract-call`.
+- **⚠️ Indexer lag (`--all`)**: The Morpho GraphQL API may lag 10–30 seconds behind on-chain state after opening or modifying a position. If you just opened a borrow position, wait at least 15–30 seconds before running `repay --all`. If `--all` reports zero debt, retry after waiting — the API may not yet reflect the new borrow.
 
 **Expected output:**
 <external-content>
@@ -573,6 +574,8 @@ morpho --chain 1 withdraw-collateral --market-id 0xb323... --all --confirm
 1. Fetches `MarketParams` from the Morpho GraphQL API
 2. Calls `withdrawCollateral(marketParams, assets, onBehalf, receiver)` — after user confirmation, submits via `onchainos wallet contract-call`
 
+> **⚠️ Indexer lag (`--all`)**: The Morpho GraphQL API may lag 10–30 seconds behind on-chain state after supplying collateral. If you just supplied collateral, wait at least 15–30 seconds before running `withdraw-collateral --all`. If `--all` reports zero collateral, retry after waiting — the API may not yet reflect the deposit. As a fallback, use `--amount` with the exact balance shown in `morpho positions`.
+
 **Expected output:**
 <external-content>
 ```json
@@ -743,6 +746,10 @@ morpho --chain 8453 vaults --asset WETH
 ---
 
 ## Changelog
+
+### v0.2.5
+- **Fix: resolved wallet address now always forwarded as `--from`** — All 7 write commands (`supply`, `withdraw`, `borrow`, `repay`, `supply-collateral`, `withdraw-collateral`, `claim-rewards`) now pass the resolved wallet address explicitly to onchainos. Previously, when `--from` was omitted, `resolve_wallet()` determined the address but the original `None` was forwarded, causing broadcast failures on Base (chain 8453) where onchainos cannot infer the signer without an explicit address.
+- **Fix: `wait_for_tx` timeout extended to 40s on all chains** — Base (~2s block time) was previously limited to 16s (8 attempts), causing false timeout errors when RPC lag delayed receipt confirmation. All chains now use 20 attempts × 2s = 40s.
 
 ### v0.2.2
 - **Safety: `--confirm` gate for all write operations** — Supply, withdraw, borrow, repay, supply-collateral, withdraw-collateral, and claim-rewards now require `--confirm` to broadcast. Calling without `--confirm` prints a rich `preview` JSON (operation, asset, amount, pending transactions) and exits safely. This prevents accidental on-chain execution.

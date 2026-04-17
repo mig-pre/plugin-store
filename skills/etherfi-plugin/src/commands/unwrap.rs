@@ -46,18 +46,11 @@ pub async fn run(args: UnwrapArgs) -> anyhow::Result<()> {
     }
     let eeth_expected = (weeth_wei as f64 * rate) as u128;
 
-    println!(
-        "Unwrapping {} weETH ({} wei) → eETH",
-        args.amount, weeth_wei
-    );
-    println!("  weETH contract: {}", weeth);
-    println!("  Wallet: {}", wallet);
-    println!(
-        "  Expected eETH to receive: {} ({}  wei)",
-        format_units(eeth_expected, 18),
-        eeth_expected
-    );
-    println!("  Run with --confirm to broadcast. (Proceeding automatically in non-interactive mode.)");
+    eprintln!("Unwrapping {} weETH ({} wei) → eETH", args.amount, weeth_wei);
+    eprintln!("  weETH contract: {}", weeth);
+    eprintln!("  Wallet: {}", wallet);
+    eprintln!("  Expected eETH to receive: {} ({} wei)", format_units(eeth_expected, 18), eeth_expected);
+    eprintln!("  Run with --confirm to broadcast.");
 
     // Check weETH balance
     if !args.dry_run {
@@ -105,12 +98,16 @@ pub async fn run(args: UnwrapArgs) -> anyhow::Result<()> {
     };
 
     println!(
-        "{{\"ok\":true,\"txHash\":\"{}\",\"action\":\"unwrap\",\"weETHRedeemed\":\"{}\",\"weETHWei\":\"{}\",\"eETHExpected\":\"{}\",\"eETHBalance\":\"{}\"}}",
-        tx_hash,
-        args.amount,
-        weeth_wei,
-        format_units(eeth_expected, 18),
-        eeth_balance_str
+        "{}",
+        serde_json::json!({
+            "ok":           true,
+            "txHash":       tx_hash,
+            "action":       "unwrap",
+            "weETHRedeemed": args.amount,
+            "weETHWei":     weeth_wei.to_string(),
+            "eETHExpected": format!("{:.6}", eeth_expected as f64 / 1e18),
+            "eETHBalance":  eeth_balance_str,
+        })
     );
 
     Ok(())
