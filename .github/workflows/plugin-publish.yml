@@ -17,12 +17,15 @@
 name: "Phase 4: Publish"
 
 on:
-  # Triggered by adding 'approved-for-publish' label (after reviewer approves)
-  # Using pull_request_target ensures secrets and write permissions for fork PRs
   pull_request_target:
     types: [labeled]
   workflow_dispatch:
     inputs:
+      pr_number:
+        description: 'PR number to publish (leave empty for rebuild-all mode)'
+        required: false
+        default: ''
+        type: string
       rebuild_all:
         description: 'Rebuild ALL plugins (force re-create releases)'
         required: false
@@ -44,7 +47,7 @@ jobs:
   detect:
     name: Detect changes
     runs-on: ubuntu-latest
-    # Only run when 'approved-for-publish' label is added, or on workflow_dispatch
+    # Run on: label trigger, or workflow_dispatch with pr_number or rebuild_all
     if: >-
       (github.event_name == 'workflow_dispatch') ||
       (github.event.label.name == 'approved-for-publish' &&
@@ -66,10 +69,12 @@ jobs:
           fetch-depth: 0
 
       - name: Checkout PR head
-        if: github.event_name == 'pull_request_target'
+        if: github.event_name == 'pull_request_target' || (github.event_name == 'workflow_dispatch' && inputs.pr_number != '')
+        env:
+          PR_NUM: ${{ github.event.pull_request.number || inputs.pr_number }}
         run: |
           # Fetch the fork PR branch and check it out
-          git fetch origin "refs/pull/${{ github.event.pull_request.number }}/head:pr-head"
+          git fetch origin "refs/pull/${PR_NUM}/head:pr-head"
           git checkout pr-head
 
       - name: Detect changed plugins
@@ -88,15 +93,16 @@ jobs:
             exit 0
           fi
 
-          # PR review: diff against base branch
-          PR_NUM="${{ github.event.pull_request.number }}"
-          PR_HEAD="${{ github.event.pull_request.head.ref }}"
-          PR_HEAD_REPO="${{ github.event.pull_request.head.repo.full_name }}"
-          echo "pr_number=${PR_NUM}" >> "$GITHUB_OUTPUT"
-          echo "pr_head_ref=${PR_HEAD}" >> "$GITHUB_OUTPUT"
-          echo "pr_head_repo=${PR_HEAD_REPO}" >> "$GITHUB_OUTPUT"
+          # Resolve PR info from event or workflow_dispatch input
+          PR_NUM="${{ github.event.pull_request.number || inputs.pr_number }}"
+          if [ -n "$PR_NUM" ]; then
+            # Get PR head ref from API (works for both event types)
+            PR_HEAD=$(gh pr view "$PR_NUM" --json headRefName --jq '.headRefName' 2>/dev/null || echo "")
+            echo "pr_number=${PR_NUM}" >> "$GITHUB_OUTPUT"
+            echo "pr_head_ref=${PR_HEAD}" >> "$GITHUB_OUTPUT"
+          fi
 
-          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          BASE_REF="${{ github.event.pull_request.base.ref || 'main' }}"
           git fetch origin "${BASE_REF}" 2>/dev/null || true
           CHANGED=$(git diff --name-only "origin/${BASE_REF}...HEAD" -- 'skills/' || true)
           if [ -z "$CHANGED" ]; then
@@ -221,17 +227,19 @@ jobs:
 
       - name: Generate App token
         id: app-token
-        if: github.event_name == 'pull_request_target'
+        if: inputs.pr_number != '' || github.event_name == 'pull_request_target'
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Checkout PR head
-        if: github.event_name == 'pull_request_target'
+        if: inputs.pr_number != '' || github.event_name == 'pull_request_target'
+        env:
+          PR_NUM: ${{ github.event.pull_request.number || inputs.pr_number }}
         run: |
           git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}"
-          git fetch origin "refs/pull/${{ github.event.pull_request.number }}/head:pr-head"
+          git fetch origin "refs/pull/${PR_NUM}/head:pr-head"
           git checkout pr-head
 
       - name: Install yq
