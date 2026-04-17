@@ -145,7 +145,7 @@ Before running any command, verify:
    ```bash
    npx skills add clanker --global
    ```
-2. **`onchainos` is installed and logged in** — check with `onchainos wallet addresses`. If not logged in, run `onchainos login`.
+2. **`onchainos` is installed and logged in** — check with `onchainos wallet addresses`. If not logged in, run `onchainos wallet login`.
 3. **For write operations** (`deploy-token`, `claim-rewards`): ensure the wallet has sufficient ETH for gas on the target chain.
 
 ## Do NOT use for
@@ -493,6 +493,7 @@ clanker claim-rewards --token-address 0xTokenAddress --from 0xYourWallet --confi
 </external-content>
 
 **No rewards scenario:** If there are no claimable rewards, the plugin returns:
+<external-content>
 ```json
 {
   "ok": true,
@@ -502,6 +503,7 @@ clanker claim-rewards --token-address 0xTokenAddress --from 0xYourWallet --confi
   }
 }
 ```
+</external-content>
 
 ---
 
