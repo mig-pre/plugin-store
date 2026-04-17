@@ -1,7 +1,7 @@
 ---
 name: rust-eth-price
 description: "Query real-time ETH price via onchainos CLI"
-version: "1.0.0"
+version: "1.1.0"
 author: "yz06276"
 tags:
   - ethereum
