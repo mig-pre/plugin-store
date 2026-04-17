@@ -1,17 +1,13 @@
-# Bridge: Approve → trigger Phase 4 via workflow_dispatch
+# Bridge: /publish comment → trigger Phase 4
 #
-# Uses pull_request_target (has secrets + write access) and checks
-# for approved review via API before dispatching Phase 4.
-#
-# Triggers on synchronize too, so if a PR already has an approval
-# and gets updated, Phase 4 re-runs automatically.
+# Reviewer comments "/publish" on an approved PR to trigger Phase 4.
+# Uses issue_comment event which has full secrets + write permissions.
 
-name: "Phase 4: Trigger on Approve"
+name: "Phase 4: Trigger on /publish"
 
 on:
-  pull_request_target:
-    paths:
-      - 'skills/**'
+  issue_comment:
+    types: [created]
 
 permissions:
   actions: write
@@ -20,27 +16,29 @@ permissions:
 jobs:
   trigger:
     name: Trigger Phase 4
-    if: github.event.pull_request.base.ref == 'main'
+    # Only run on PR comments containing "/publish" from repo collaborators
+    if: >-
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '/publish') &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
     runs-on: ubuntu-latest
     steps:
-      - name: Check for approved review
+      - name: Check PR is approved
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          PR_NUM="${{ github.event.pull_request.number }}"
+          PR_NUM="${{ github.event.issue.number }}"
           APPROVED=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUM}/reviews" \
             --jq '[.[] | select(.state == "APPROVED")] | length')
           echo "PR #${PR_NUM}: ${APPROVED} approved review(s)"
-          if [ "$APPROVED" -gt 0 ]; then
-            echo "approved=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "approved=false" >> "$GITHUB_OUTPUT"
-            echo "No approval yet — skipping Phase 4"
+          if [ "$APPROVED" -eq 0 ]; then
+            echo "::error::PR #${PR_NUM} has no approved reviews. Approve first."
+            exit 1
           fi
+          echo "pr_number=${PR_NUM}" >> "$GITHUB_OUTPUT"
 
       - name: Generate App token
-        if: steps.check.outputs.approved == 'true'
         id: app-token
         uses: actions/create-github-app-token@v1
         with:
@@ -48,14 +46,20 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Dispatch Phase 4
-        if: steps.check.outputs.approved == 'true'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          PR_NUM="${{ github.event.pull_request.number }}"
-          echo "Approved PR #${PR_NUM} — dispatching Phase 4: Publish..."
+          PR_NUM="${{ steps.check.outputs.pr_number }}"
+          echo "Dispatching Phase 4: Publish for PR #${PR_NUM}..."
           gh workflow run "Phase 4: Publish" \
             --repo "${{ github.repository }}" \
             --ref main \
             -f pr_number="${PR_NUM}"
-          echo "Phase 4 dispatched for PR #${PR_NUM}"
+          echo "✅ Phase 4 dispatched for PR #${PR_NUM}"
+
+      - name: React to comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions" \
+            -f content="rocket" || true
