@@ -1,0 +1,9 @@
+{
+  "name": "rust-eth-price",
+  "version": "1.0.0",
+  "author": {
+    "name": "yz06276"
+  },
+  "license": "MIT",
+  "keywords": ["ethereum", "price", "rust"]
+}

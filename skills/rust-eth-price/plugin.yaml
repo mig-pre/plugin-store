@@ -1,0 +1,22 @@
+schema_version: 1
+name: rust-eth-price
+version: "1.0.0"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: analytics
+tags:
+  - ethereum
+  - price
+  - rust
+
+components:
+  skill:
+    dir: skills/rust-eth-price
+
+build:
+  lang: rust
+  binary_name: rust-eth-price
+
+api_calls: []
