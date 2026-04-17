@@ -94,7 +94,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/rust-sol-price@1.0.0/rust-sol-price-${TARGET}${EXT}" -o ~/.local/bin/.rust-sol-price-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/rust-sol-price@2.0.0/rust-sol-price-${TARGET}${EXT}" -o ~/.local/bin/.rust-sol-price-core${EXT}
 chmod +x ~/.local/bin/.rust-sol-price-core${EXT}
 
 # Symlink CLI name to universal launcher
