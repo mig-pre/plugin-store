@@ -59,6 +59,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # Explicitly checkout base branch first (avoids default ref=PR head which fails for forks)
+          ref: ${{ github.event.pull_request.base.ref || github.ref }}
           fetch-depth: 0
 
       - name: Checkout PR head
@@ -735,6 +737,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.base.ref || github.ref }}
           fetch-depth: 0
 
       - name: Checkout PR head
