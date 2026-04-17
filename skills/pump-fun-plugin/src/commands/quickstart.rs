@@ -57,8 +57,8 @@ pub async fn run() -> Result<()> {
             serde_json::json!([
                 "1. Get token info (replace with your token mint):",
                 "   pump-fun-plugin get-token-info --mint <TOKEN_MINT>",
-                "2. Check buy price:",
-                "   pump-fun-plugin get-price --mint <TOKEN_MINT> --direction buy",
+                "2. Check buy price (--amount is in lamports; 10000000 = 0.01 SOL):",
+                "   pump-fun-plugin get-price --mint <TOKEN_MINT> --direction buy --amount 10000000",
                 "3. Preview a buy (no transaction):",
                 "   pump-fun-plugin buy --mint <TOKEN_MINT> --sol-amount 0.01",
                 "4. Execute when ready:",

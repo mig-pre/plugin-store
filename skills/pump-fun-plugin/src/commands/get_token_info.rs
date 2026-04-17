@@ -57,6 +57,7 @@ struct TokenInfoOutput {
     /// SOL (not lamports). Divide the raw on-chain lamport value by 1e9.
     #[serde(serialize_with = "serialize_f64_decimal")]
     final_market_cap_sol: f64,
+    #[serde(serialize_with = "serialize_f64_decimal")]
     graduation_progress_pct: f64,
     status: String,
 }
