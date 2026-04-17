@@ -212,8 +212,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          # Checkout base branch, then switch to PR head
+          ref: ${{ github.event.pull_request.base.ref || github.ref }}
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout PR head
+        if: github.event_name == 'pull_request_review'
+        run: |
+          git fetch origin "refs/pull/${{ github.event.pull_request.number }}/head:pr-head"
+          git checkout pr-head
 
       - name: Install yq
         run: |
@@ -327,11 +335,13 @@ jobs:
           git add skills/ .claude-plugin/marketplace.json
           git diff --staged --quiet && echo "No changes" && exit 0
           git commit -m "auto: fetch external plugin skills + update marketplace.json"
-          for attempt in 1 2 3; do
-            if git push; then echo "Push succeeded"; break; fi
-            echo "Push failed (attempt $attempt/3), rebasing..."
-            git pull --rebase origin ${{ github.ref_name }}
-          done
+          # Push to PR branch (works for both fork and same-repo PRs)
+          PR_HEAD_REF="${{ needs.detect.outputs.pr_head_ref }}"
+          if [ -n "$PR_HEAD_REF" ]; then
+            git push origin HEAD:refs/heads/$PR_HEAD_REF
+          else
+            git push
+          fi
 
   # ═══════════════════════════════════════════════════════════════
   #  Step 3: Multi-platform build (Rust/Go only)
