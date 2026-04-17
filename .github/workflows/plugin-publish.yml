@@ -213,148 +213,12 @@ jobs:
           echo "has_builds=$([ "$COUNT" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
   # ═══════════════════════════════════════════════════════════════
-  #  Step 2: Fetch external repo skills + update marketplace
-  # ═══════════════════════════════════════════════════════════════
-  fetch-external:
-    name: Fetch external skills
-    needs: detect
-    if: needs.detect.outputs.has_changes == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.base.ref || github.ref }}
-          fetch-depth: 0
-
-      - name: Checkout PR head
-        if: inputs.pr_number != '' || github.event_name == 'pull_request_target'
-        env:
-          PR_NUM: ${{ github.event.pull_request.number || inputs.pr_number }}
-        run: |
-          git fetch origin "refs/pull/${PR_NUM}/head:pr-head"
-          git checkout pr-head
-
-      - name: Install yq
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
-
-      # ── Fetch Mode B: external repo skills into skills/<name>/ ──
-      - name: Fetch skills from external repos
-        env:
-          EXTERNAL_PLUGINS: ${{ needs.detect.outputs.external_plugins_json }}
-        run: |
-          [ "${{ needs.detect.outputs.has_external }}" = "true" ] || { echo "No external plugins"; exit 0; }
-          echo "$EXTERNAL_PLUGINS" | jq -r '.[] | @base64' | while read ENCODED; do
-            PLUGIN=$(echo "$ENCODED" | base64 -d)
-            NAME=$(echo "$PLUGIN" | jq -r '.name')
-            REPO=$(echo "$PLUGIN" | jq -r '.repo')
-            COMMIT=$(echo "$PLUGIN" | jq -r '.commit')
-
-            echo "Fetching skills from ${REPO}@${COMMIT} → skills/${NAME}/"
-
-            # Clone external repo at pinned commit
-            git clone --depth=100 "https://github.com/${REPO}.git" "/tmp/ext-${NAME}"
-            cd "/tmp/ext-${NAME}"
-            git checkout "$COMMIT"
-            cd -
-
-            # Target directory already exists in skills/
-            DEST="skills/${NAME}"
-            mkdir -p "$DEST"
-
-            # Copy skill content (Claude marketplace compatible structure)
-            # Claude marketplace repos use skills/<name>/ — flatten into DEST directly
-            SKILL_SUBDIR="/tmp/ext-${NAME}/skills/${NAME}"
-            if [ -d "$SKILL_SUBDIR" ]; then
-              # Claude marketplace format: copy contents of skills/<name>/ directly
-              cp -r "$SKILL_SUBDIR"/* "$DEST/" 2>/dev/null || true
-              echo "  Copied skills/${NAME}/* (Claude marketplace format, flattened)"
-            else
-              # Flat format: copy individual directories
-              for dir in scripts assets commands hooks references; do
-                if [ -d "/tmp/ext-${NAME}/${dir}" ]; then
-                  cp -r "/tmp/ext-${NAME}/${dir}" "$DEST/"
-                  echo "  Copied ${dir}/"
-                fi
-              done
-            fi
-
-            # Copy SKILL.md if not already present (check multiple locations)
-            if [ ! -f "$DEST/SKILL.md" ]; then
-              if [ -f "/tmp/ext-${NAME}/SKILL.md" ]; then
-                cp "/tmp/ext-${NAME}/SKILL.md" "$DEST/SKILL.md"
-                echo "  Copied root SKILL.md"
-              elif [ -f "/tmp/ext-${NAME}/skill.md" ]; then
-                cp "/tmp/ext-${NAME}/skill.md" "$DEST/SKILL.md"
-                echo "  Copied root skill.md → SKILL.md"
-              fi
-            fi
-
-            # Copy .mcp.json if present
-            if [ -f "/tmp/ext-${NAME}/.mcp.json" ]; then
-              cp "/tmp/ext-${NAME}/.mcp.json" "$DEST/.mcp.json"
-              echo "  Copied .mcp.json"
-            fi
-
-            rm -rf "/tmp/ext-${NAME}"
-          done
-
-      - name: Regenerate marketplace.json
-        run: |
-          python3 << 'PYEOF'
-          import json, os, re
-
-          plugins = []
-          for name in sorted(os.listdir('skills')):
-              skill_path = os.path.join('skills', name)
-              if not os.path.isdir(skill_path):
-                  continue
-              desc = ''
-              yaml_path = os.path.join('skills', name, 'plugin.yaml')
-              if os.path.exists(yaml_path):
-                  with open(yaml_path) as f:
-                      for line in f:
-                          m = re.match(r'^description:\s*["\'](.+)["\']\s*$', line)
-                          if m:
-                              desc = m.group(1)
-                              break
-              plugins.append({
-                  'name': name,
-                  'description': desc or f'Plugin: {name}',
-                  'source': f'./skills/{name}'
-              })
-
-          marketplace = {
-              'name': 'okx-plugin-store',
-              'description': 'Official and community plugins for OKX Plugin Store.',
-              'owner': {'name': 'OKX', 'email': 'plugin-store@okx.com'},
-              'plugins': plugins
-          }
-
-          os.makedirs('.claude-plugin', exist_ok=True)
-          with open('.claude-plugin/marketplace.json', 'w') as f:
-              json.dump(marketplace, f, indent=2, ensure_ascii=False)
-              f.write('\n')
-          print(f'marketplace.json: {len(plugins)} plugins')
-          PYEOF
-
-      - name: Upload fetched skills as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: external-skills
-          path: |
-            skills/
-            .claude-plugin/marketplace.json
-          if-no-files-found: ignore
-
-  # ═══════════════════════════════════════════════════════════════
   #  Step 3: Multi-platform build (Rust/Go only)
   # ═══════════════════════════════════════════════════════════════
   build-release:
     name: Build (${{ matrix.target }})
-    needs: [detect, fetch-external]
-    if: always() && needs.detect.outputs.has_builds == 'true'
+    needs: [detect]
+    if: needs.detect.outputs.has_builds == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -752,8 +616,8 @@ jobs:
   #  Step 5: Update registry.json in plugin-store repo
   # ═══════════════════════════════════════════════════════════════
   publish-registry:
-    name: Update registry
-    needs: [detect, fetch-external, create-release]
+    name: Publish
+    needs: [detect, create-release]
     if: always() && needs.detect.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -770,13 +634,55 @@ jobs:
           git fetch origin "refs/pull/${PR_NUM}/head:pr-head"
           git checkout pr-head
 
-      # Download external skills fetched by fetch-external job
-      - name: Download external skills artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: external-skills
-          path: .
-        continue-on-error: true
+      # ── Fetch external repo skills (Mode B/C) ──────────
+      - name: Fetch external skills
+        if: needs.detect.outputs.has_external == 'true'
+        env:
+          EXTERNAL_PLUGINS: ${{ needs.detect.outputs.external_plugins_json }}
+        run: |
+          echo "$EXTERNAL_PLUGINS" | jq -r '.[] | @base64' | while read ENCODED; do
+            PLUGIN=$(echo "$ENCODED" | base64 -d)
+            NAME=$(echo "$PLUGIN" | jq -r '.name')
+            REPO=$(echo "$PLUGIN" | jq -r '.repo')
+            COMMIT=$(echo "$PLUGIN" | jq -r '.commit')
+            echo "Fetching skills from ${REPO}@${COMMIT} → skills/${NAME}/"
+            git clone --depth=100 "https://github.com/${REPO}.git" "/tmp/ext-${NAME}"
+            cd "/tmp/ext-${NAME}" && git checkout "$COMMIT" && cd -
+            DEST="skills/${NAME}"; mkdir -p "$DEST"
+            SKILL_SUBDIR="/tmp/ext-${NAME}/skills/${NAME}"
+            if [ -d "$SKILL_SUBDIR" ]; then
+              cp -r "$SKILL_SUBDIR"/* "$DEST/" 2>/dev/null || true
+            else
+              for dir in scripts assets commands hooks references; do
+                [ -d "/tmp/ext-${NAME}/${dir}" ] && cp -r "/tmp/ext-${NAME}/${dir}" "$DEST/"
+              done
+            fi
+            [ ! -f "$DEST/SKILL.md" ] && [ -f "/tmp/ext-${NAME}/SKILL.md" ] && cp "/tmp/ext-${NAME}/SKILL.md" "$DEST/SKILL.md"
+            [ -f "/tmp/ext-${NAME}/.mcp.json" ] && cp "/tmp/ext-${NAME}/.mcp.json" "$DEST/.mcp.json"
+            rm -rf "/tmp/ext-${NAME}"
+          done
+
+      - name: Regenerate marketplace.json
+        run: |
+          python3 << 'PYEOF'
+          import json, os, re
+          plugins = []
+          for name in sorted(os.listdir('skills')):
+              skill_path = os.path.join('skills', name)
+              if not os.path.isdir(skill_path): continue
+              desc = ''
+              yaml_path = os.path.join('skills', name, 'plugin.yaml')
+              if os.path.exists(yaml_path):
+                  with open(yaml_path) as f:
+                      for line in f:
+                          m = re.match(r'^description:\s*["\'](.+)["\']\s*$', line)
+                          if m: desc = m.group(1); break
+              plugins.append({'name': name, 'description': desc or f'Plugin: {name}', 'source': f'./skills/{name}'})
+          marketplace = {'name': 'okx-plugin-store', 'description': 'Official and community plugins for OKX Plugin Store.', 'owner': {'name': 'OKX', 'email': 'plugin-store@okx.com'}, 'plugins': plugins}
+          os.makedirs('.claude-plugin', exist_ok=True)
+          with open('.claude-plugin/marketplace.json', 'w') as f: json.dump(marketplace, f, indent=2, ensure_ascii=False); f.write('\n')
+          print(f'marketplace.json: {len(plugins)} plugins')
+          PYEOF
 
       # ── GitHub App token: push without dismissing approval ──
       - name: Generate App token
@@ -1060,7 +966,7 @@ jobs:
           # ── Atomic commit: pre-flight + registry + marketplace ──
           git config user.name "plugin-store-bot"
           git config user.email "bot@plugin-store.local"
-          git add skills/ registry.json
+          git add skills/ registry.json .claude-plugin/marketplace.json
           git diff --staged --quiet && echo "No CI changes to commit" || {
             CHANGED="${{ needs.detect.outputs.changed_plugins }}"
             git commit -m "auto: publish ${CHANGED} (pre-flight + registry)"
@@ -1106,7 +1012,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════
   notify-failure:
     name: Publish failure handler
-    needs: [detect, fetch-external, build-release, create-release, publish-registry]
+    needs: [detect, build-release, create-release, publish-registry]
     if: >-
       failure() &&
       needs.detect.outputs.pr_number != ''
@@ -1120,7 +1026,7 @@ jobs:
         run: |
           FAILED_JOBS=""
           [ "${{ needs.detect.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}detect, "
-          [ "${{ needs.fetch-external.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}fetch-external, "
+
           [ "${{ needs.build-release.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}build-release, "
           [ "${{ needs.create-release.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}create-release, "
           [ "${{ needs.publish-registry.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}publish-registry, "
