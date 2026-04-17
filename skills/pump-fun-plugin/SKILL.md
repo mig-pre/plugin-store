@@ -284,6 +284,27 @@ pump-fun-plugin sell --mint <MINT> --confirm
 
 ---
 
+## Proactive Onboarding
+
+When a user first mentions pump.fun, buying/selling meme tokens on Solana, or bonding curves — run the `quickstart` command automatically before answering:
+
+```bash
+pump-fun-plugin quickstart
+```
+
+This checks their wallet connection and SOL balance in one shot. Use the output to tailor your response:
+
+| `status` field | Meaning | What to do |
+|----------------|---------|------------|
+| `"ready"` | Wallet connected, SOL balance sufficient | Proceed to research (get-token-info) or execute trade |
+| `"low_balance"` | Wallet connected but SOL < 0.01 | Warn user to top up SOL before trading |
+| `"no_wallet"` | No Solana wallet configured | Guide user through `onchainos wallet login` first |
+| `"error"` | RPC or auth failure | Ask user to check connectivity / re-login |
+
+**Do not ask the user to run quickstart themselves** — run it proactively and act on the result.
+
+---
+
 ## Quickstart
 
 New to pump-fun-plugin? Follow these steps for your first buy and sell.
