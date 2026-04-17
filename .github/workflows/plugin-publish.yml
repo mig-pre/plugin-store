@@ -46,7 +46,7 @@ jobs:
     if: >-
       (github.event_name == 'workflow_dispatch') ||
       (github.event.review.state == 'approved' &&
-       github.event.pull_request.base.ref == 'main')
+       contains(fromJSON('["main","test"]'), github.event.pull_request.base.ref))
     outputs:
       has_changes: ${{ steps.detect.outputs.has_changes }}
       changed_plugins: ${{ steps.detect.outputs.changed_plugins }}
