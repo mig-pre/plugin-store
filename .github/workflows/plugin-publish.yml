@@ -17,8 +17,7 @@
 name: "Phase 4: Publish"
 
 on:
-  pull_request_target:
-    types: [labeled]
+  # Triggered by phase4-trigger.yml (approve → dispatch) or manually
   workflow_dispatch:
     inputs:
       pr_number:
@@ -47,11 +46,7 @@ jobs:
   detect:
     name: Detect changes
     runs-on: ubuntu-latest
-    # Run on: label trigger, or workflow_dispatch with pr_number or rebuild_all
-    if: >-
-      (github.event_name == 'workflow_dispatch') ||
-      (github.event.label.name == 'approved-for-publish' &&
-       github.event.pull_request.base.ref == 'main')
+    if: github.event_name == 'workflow_dispatch'
     outputs:
       has_changes: ${{ steps.detect.outputs.has_changes }}
       changed_plugins: ${{ steps.detect.outputs.changed_plugins }}
@@ -69,7 +64,7 @@ jobs:
           fetch-depth: 0
 
       - name: Checkout PR head
-        if: github.event_name == 'pull_request_target' || (github.event_name == 'workflow_dispatch' && inputs.pr_number != '')
+        if: inputs.pr_number != ''
         env:
           PR_NUM: ${{ github.event.pull_request.number || inputs.pr_number }}
         run: |
@@ -627,7 +622,7 @@ jobs:
           fetch-depth: 0
 
       - name: Checkout PR head
-        if: inputs.pr_number != '' || github.event_name == 'pull_request_target'
+        if: inputs.pr_number != ''
         env:
           PR_NUM: ${{ github.event.pull_request.number || inputs.pr_number }}
         run: |
@@ -687,14 +682,14 @@ jobs:
       # ── GitHub App token: push without dismissing approval ──
       - name: Generate App token
         id: app-token
-        if: inputs.pr_number != '' || github.event_name == 'pull_request_target'
+        if: inputs.pr_number != ''
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Configure Git with App token
-        if: inputs.pr_number != '' || github.event_name == 'pull_request_target'
+        if: inputs.pr_number != ''
         run: |
           git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}"
 

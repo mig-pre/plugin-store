@@ -1,0 +1,30 @@
+# Bridge: Approve → trigger Phase 4 via workflow_dispatch
+#
+# pull_request_review fires for fork PRs but lacks secrets.
+# This workflow bridges to Phase 4 (workflow_dispatch) which has full permissions.
+
+name: "Phase 4: Trigger on Approve"
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  trigger:
+    name: Trigger Phase 4
+    if: >-
+      github.event.review.state == 'approved' &&
+      github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch Phase 4
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUM="${{ github.event.pull_request.number }}"
+          echo "Approved PR #${PR_NUM} — dispatching Phase 4: Publish..."
+          gh workflow run "Phase 4: Publish" \
+            --repo "${{ github.repository }}" \
+            --ref main \
+            -f pr_number="${PR_NUM}"
+          echo "Phase 4 dispatched for PR #${PR_NUM}"
