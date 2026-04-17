@@ -223,25 +223,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Checkout base branch, then switch to PR head
           ref: ${{ github.event.pull_request.base.ref || github.ref }}
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate App token
-        id: app-token
-        if: inputs.pr_number != '' || github.event_name == 'pull_request_target'
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Checkout PR head
         if: inputs.pr_number != '' || github.event_name == 'pull_request_target'
         env:
           PR_NUM: ${{ github.event.pull_request.number || inputs.pr_number }}
         run: |
-          git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}"
           git fetch origin "refs/pull/${PR_NUM}/head:pr-head"
           git checkout pr-head
 
@@ -350,20 +339,14 @@ jobs:
           print(f'marketplace.json: {len(plugins)} plugins')
           PYEOF
 
-      - name: Commit fetched skills + marketplace.json
-        run: |
-          git config user.name "plugin-store-bot"
-          git config user.email "bot@plugin-store.local"
-          git add skills/ .claude-plugin/marketplace.json
-          git diff --staged --quiet && echo "No changes" && exit 0
-          git commit -m "auto: fetch external plugin skills + update marketplace.json"
-          # Push to PR branch (works for both fork and same-repo PRs)
-          PR_HEAD_REF="${{ needs.detect.outputs.pr_head_ref }}"
-          if [ -n "$PR_HEAD_REF" ]; then
-            git push origin HEAD:refs/heads/$PR_HEAD_REF
-          else
-            git push origin HEAD:main
-          fi
+      - name: Upload fetched skills as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-skills
+          path: |
+            skills/
+            .claude-plugin/marketplace.json
+          if-no-files-found: ignore
 
   # ═══════════════════════════════════════════════════════════════
   #  Step 3: Multi-platform build (Rust/Go only)
@@ -780,22 +763,32 @@ jobs:
           fetch-depth: 0
 
       - name: Checkout PR head
-        if: github.event_name == 'pull_request_target'
+        if: inputs.pr_number != '' || github.event_name == 'pull_request_target'
+        env:
+          PR_NUM: ${{ github.event.pull_request.number || inputs.pr_number }}
         run: |
-          git fetch origin "refs/pull/${{ github.event.pull_request.number }}/head:pr-head"
+          git fetch origin "refs/pull/${PR_NUM}/head:pr-head"
           git checkout pr-head
+
+      # Download external skills fetched by fetch-external job
+      - name: Download external skills artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: external-skills
+          path: .
+        continue-on-error: true
 
       # ── GitHub App token: push without dismissing approval ──
       - name: Generate App token
         id: app-token
-        if: github.event_name == 'pull_request_target'
+        if: inputs.pr_number != '' || github.event_name == 'pull_request_target'
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Configure Git with App token
-        if: github.event_name == 'pull_request_target'
+        if: inputs.pr_number != '' || github.event_name == 'pull_request_target'
         run: |
           git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}"
 
@@ -1093,7 +1086,7 @@ jobs:
 
       # ── Final step: merge feature branch to main ──────────
       - name: Merge PR to main
-        if: github.event_name == 'pull_request_target'
+        if: needs.detect.outputs.pr_number != ''
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
@@ -1116,7 +1109,6 @@ jobs:
     needs: [detect, fetch-external, build-release, create-release, publish-registry]
     if: >-
       failure() &&
-      github.event_name == 'pull_request_target' &&
       needs.detect.outputs.pr_number != ''
     runs-on: ubuntu-latest
     permissions:
