@@ -1,28 +1,55 @@
 # Bridge: Approve → trigger Phase 4 via workflow_dispatch
 #
-# pull_request_review fires for fork PRs but lacks secrets.
-# This workflow bridges to Phase 4 (workflow_dispatch) which has full permissions.
+# Uses pull_request_target (has secrets + write access) and checks
+# for approved review via API before dispatching Phase 4.
+#
+# Triggers on synchronize too, so if a PR already has an approval
+# and gets updated, Phase 4 re-runs automatically.
 
 name: "Phase 4: Trigger on Approve"
 
 on:
-  pull_request_review:
-    types: [submitted]
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled]
 
 permissions:
   actions: write
+  pull-requests: read
 
 jobs:
   trigger:
     name: Trigger Phase 4
-    if: >-
-      github.event.review.state == 'approved' &&
-      github.event.pull_request.base.ref == 'main'
+    if: github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
     steps:
-      - name: Dispatch Phase 4
+      - name: Check for approved review
+        id: check
         env:
           GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUM="${{ github.event.pull_request.number }}"
+          APPROVED=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUM}/reviews" \
+            --jq '[.[] | select(.state == "APPROVED")] | length')
+          echo "PR #${PR_NUM}: ${APPROVED} approved review(s)"
+          if [ "$APPROVED" -gt 0 ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+            echo "No approval yet — skipping Phase 4"
+          fi
+
+      - name: Generate App token
+        if: steps.check.outputs.approved == 'true'
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Dispatch Phase 4
+        if: steps.check.outputs.approved == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           PR_NUM="${{ github.event.pull_request.number }}"
           echo "Approved PR #${PR_NUM} — dispatching Phase 4: Publish..."
