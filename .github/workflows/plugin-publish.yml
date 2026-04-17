@@ -21,8 +21,6 @@ on:
   # Using pull_request_target ensures secrets and write permissions for fork PRs
   pull_request_target:
     types: [labeled]
-    paths:
-      - 'skills/**'
   workflow_dispatch:
     inputs:
       rebuild_all:
