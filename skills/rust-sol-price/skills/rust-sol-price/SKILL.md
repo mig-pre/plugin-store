@@ -1,7 +1,7 @@
 ---
 name: rust-sol-price
 description: "Query real-time SOL price via OKX API"
-version: "1.0.0"
+version: "2.0.0"
 author: "yz06276"
 tags:
   - solana
@@ -21,7 +21,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/rust-sol-price"
 CACHE_MAX=3600
-LOCAL_VER="1.0.0"
+LOCAL_VER="2.0.0"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -102,7 +102,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/rust-sol-price
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "1.0.0" > "$HOME/.plugin-store/managed/rust-sol-price"
+echo "2.0.0" > "$HOME/.plugin-store/managed/rust-sol-price"
 ```
 
 ---
