@@ -21,7 +21,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/go-eth-price"
 CACHE_MAX=3600
-LOCAL_VER="1.0.0"
+LOCAL_VER="1.1.0"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -94,7 +94,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/go-eth-price@1.0.0/go-eth-price-${TARGET}${EXT}" -o ~/.local/bin/.go-eth-price-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/go-eth-price@1.1.0/go-eth-price-${TARGET}${EXT}" -o ~/.local/bin/.go-eth-price-core${EXT}
 chmod +x ~/.local/bin/.go-eth-price-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -102,7 +102,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/go-eth-price
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "1.0.0" > "$HOME/.plugin-store/managed/go-eth-price"
+echo "1.1.0" > "$HOME/.plugin-store/managed/go-eth-price"
 ```
 
 ---
