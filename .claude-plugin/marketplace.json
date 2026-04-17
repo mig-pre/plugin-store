@@ -196,7 +196,7 @@
       }
     },
     {
-      "name": "pendle",
+      "name": "pendle-plugin",
       "description": "Pendle Finance yield tokenization plugin — buy/sell PT & YT, add/remove liquidity, mint/redeem PT+YT pairs across Ethereum, Arbitrum, BSC, and Base",
       "source": "./skills/pendle-plugin",
       "category": "trading-strategy",
