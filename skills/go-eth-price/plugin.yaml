@@ -1,0 +1,23 @@
+schema_version: 1
+name: go-eth-price
+version: "1.0.0"
+description: "Query real-time ETH price via OKX API using a Go CLI tool"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: analytics
+tags:
+  - ethereum
+  - price
+  - go
+
+components:
+  skill:
+    dir: skills/go-eth-price
+
+build:
+  lang: go
+  binary_name: go-eth-price
+
+api_calls: []
