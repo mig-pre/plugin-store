@@ -4,7 +4,7 @@ description: >
   Liquid restaking on Ethereum. Deposit ETH into ether.fi LiquidityPool to receive eETH,
   wrap eETH into weETH (ERC-4626 yield-bearing token) to earn staking + EigenLayer
   restaking rewards, unstake eETH back to ETH, check balances, and view current APY.
-version: "0.2.8"
+version: "0.2.9"
 author: GeoGu360
 tags:
   - liquid-staking
@@ -29,7 +29,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/etherfi-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.2.8"
+LOCAL_VER="0.2.9"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -102,7 +102,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/etherfi-plugin@0.2.8/etherfi-plugin-${TARGET}${EXT}" -o ~/.local/bin/.etherfi-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/etherfi-plugin@0.2.9/etherfi-plugin-${TARGET}${EXT}" -o ~/.local/bin/.etherfi-plugin-core${EXT}
 chmod +x ~/.local/bin/.etherfi-plugin-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -110,7 +110,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/etherfi-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.2.8" > "$HOME/.plugin-store/managed/etherfi-plugin"
+echo "0.2.9" > "$HOME/.plugin-store/managed/etherfi-plugin"
 ```
 
 ### Report install (auto-injected, runs once)
@@ -130,7 +130,7 @@ if [ ! -f "$REPORT_FLAG" ]; then
   # Report to Vercel stats
   curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
     -H "Content-Type: application/json" \
-    -d '{"name":"etherfi-plugin","version":"0.2.8"}' >/dev/null 2>&1 || true
+    -d '{"name":"etherfi-plugin","version":"0.2.9"}' >/dev/null 2>&1 || true
   # Report to OKX API (with HMAC-signed device token)
   curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
     -H "Content-Type: application/json" \
@@ -268,19 +268,20 @@ etherfi unstake --amount 1.0 --dry-run
 
 **Output:**
 ```json
-{"ok":true,"txHash":"0xabc...","action":"unstake_request","eETHUnstaked":"1.0","eETHWei":"1000000000000000000","eETHBalance":"0.5","note":"Find your WithdrawRequestNFT token ID in the tx receipt, then run: etherfi unstake --claim --token-id <id> --confirm"}
+{"ok":true,"txHash":"0xabc...","action":"unstake_request","eETHUnstaked":"1.0","eETHWei":"1000000000000000000","eETHBalance":"0.5","nftTokenId":12345,"note":"WithdrawRequestNFT #12345 minted. Withdrawals typically take 1-7 days. Check the ether.fi app to track status — then run: etherfi unstake --claim --token-id 12345 --confirm"}
 ```
 
-**Display:** `txHash` (abbreviated), `eETHUnstaked`, `eETHBalance` (updated balance), `note` (next step instructions).
+**Output fields:** `txHash`, `eETHUnstaked`, `eETHBalance` (post-confirmation balance), `nftTokenId` (auto-extracted from receipt; `null` if extraction fails), `note` (next step with token ID pre-filled when available).
 
 **Flow:**
 1. Parse eETH amount to wei (18 decimals)
 2. Resolve wallet address via `onchainos wallet addresses`
 3. Validate eETH balance is sufficient
-4. Check eETH allowance for LiquidityPool; if insufficient, approve `u128::MAX` first — **waits for on-chain confirmation before proceeding** (polls `onchainos wallet history`, up to 90s)
+4. Check eETH allowance for LiquidityPool; if insufficient, prints `NOTE` in preview mode or approves `u128::MAX` with WARNING in confirm mode — **waits for on-chain confirmation before proceeding** (polls `onchainos wallet history`, up to 90s)
 5. **Requires `--confirm`** — without it, prints preview JSON and exits
 6. Call `LiquidityPool.requestWithdraw(recipient, amountOfEEth)` (selector `0x397a1b28`)
-7. WithdrawRequestNFT is minted — token ID is in the tx receipt (check Etherscan)
+7. Waits for requestWithdraw tx confirmation, then queries updated eETH balance
+8. Extracts `WithdrawRequestNFT` token ID from tx receipt logs (ERC-721 Transfer mint event); surfaces as `nftTokenId` in output
 
 #### Step 2 — Claim ETH (after finalization)
 
@@ -309,7 +310,7 @@ etherfi unstake --claim --token-id 12345 --dry-run
 4. **Requires `--confirm`** to broadcast
 5. Call `WithdrawRequestNFT.claimWithdraw(tokenId)` (selector `0xb13acedd`) — burns NFT, sends ETH
 
-**Important:** If finalization check returns false, the transaction will revert on-chain. Always confirm the status before claiming.
+**Important:** If finalization check returns false, the plugin aborts with an error including a wait-time estimate (typically 1-7 days) and a reminder to check the ether.fi app to track status.
 
 ---
 
@@ -340,9 +341,10 @@ etherfi wrap --amount 1.0 --dry-run
 1. Parse eETH amount to wei
 2. Fetch `weETH.getRate()` and compute `weETHExpected = eETH / rate` — shown in preview before confirm
 3. Resolve wallet; check eETH balance is sufficient
-4. Check eETH allowance for weETH contract; approve `u128::MAX` if needed — **waits for on-chain confirmation before proceeding** (polls `onchainos wallet history`, up to 90s)
+4. Check eETH allowance for weETH contract; if insufficient, prints `NOTE` in preview mode or approves `u128::MAX` with WARNING in confirm mode — **waits for on-chain confirmation before proceeding** (polls `onchainos wallet history`, up to 90s)
 5. **Requires `--confirm`** for each step (approve + wrap)
 6. Call `weETH.wrap(uint256)` via `onchainos wallet contract-call` (selector `0xea598cb0`)
+7. Waits for wrap tx confirmation, then queries updated weETH balance
 
 ---
 

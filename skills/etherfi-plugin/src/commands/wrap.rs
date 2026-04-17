@@ -69,8 +69,6 @@ pub async fn run(args: WrapArgs) -> anyhow::Result<()> {
     if !args.dry_run {
         let allowance = get_allowance(eeth, &wallet, weeth, rpc).await?;
         if allowance < eeth_wei {
-            eprintln!("WARNING: This approval grants the weETH contract unlimited (u128::MAX) spending access to your eETH. To revoke later, call approve(weETH, 0).");
-            eprintln!("Approving weETH contract to spend eETH (unlimited allowance)...");
             let approve_data = build_approve_calldata(weeth, u128::MAX);
             let approve_result = wallet_contract_call(
                 CHAIN_ID,
@@ -83,12 +81,14 @@ pub async fn run(args: WrapArgs) -> anyhow::Result<()> {
             .await?;
 
             if approve_result["preview"].as_bool() == Some(true) {
+                eprintln!("NOTE: eETH approval needed. Re-run with --confirm to approve + wrap.");
                 println!("{}", serde_json::to_string_pretty(&approve_result)?);
-                eprintln!("Re-run with --confirm to execute approve + wrap.");
                 return Ok(());
             }
 
+            // Only reached when --confirm is passed and tx is actually broadcast
             let approve_tx = extract_tx_hash(&approve_result).to_string();
+            eprintln!("WARNING: Granting weETH contract unlimited (u128::MAX) eETH allowance. To revoke later: approve(weETH, 0).");
             eprintln!("Approve tx: {} — waiting for confirmation...", approve_tx);
             wait_for_tx(approve_tx, wallet.clone()).await
                 .map_err(|e| anyhow::anyhow!("Approve tx did not confirm: {}", e))?;
@@ -116,7 +116,15 @@ pub async fn run(args: WrapArgs) -> anyhow::Result<()> {
 
     let tx_hash = extract_tx_hash(&result);
 
-    // Fetch updated weETH balance if live transaction
+    // Wait for wrap tx to confirm before querying balance (fix: was querying before confirmation)
+    if !args.dry_run && args.confirm {
+        eprintln!("Wrap tx: {} — waiting for confirmation...", tx_hash);
+        wait_for_tx(tx_hash.to_string(), wallet.clone()).await
+            .map_err(|e| anyhow::anyhow!("Wrap tx did not confirm: {}", e))?;
+        eprintln!("Wrap confirmed.");
+    }
+
+    // Fetch updated weETH balance after confirmation
     let weeth_balance_str = if !args.dry_run && args.confirm {
         match get_balance(weeth, &wallet, rpc).await {
             Ok(bal) => format_units(bal, 18),

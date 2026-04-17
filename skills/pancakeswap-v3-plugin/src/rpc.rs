@@ -136,6 +136,34 @@ pub async fn get_balance(token: &str, account: &str, rpc_url: &str) -> Result<u1
     Ok(decode_u256_from_hex(&hex))
 }
 
+/// Fetch the native coin balance (BNB/ETH) of an address via eth_getBalance.
+pub async fn get_native_balance(account: &str, rpc_url: &str) -> Result<u128> {
+    let body = json!({
+        "jsonrpc": "2.0",
+        "method": "eth_getBalance",
+        "params": [account, "latest"],
+        "id": 1
+    });
+    let resp: serde_json::Value = reqwest::Client::new()
+        .post(rpc_url)
+        .json(&body)
+        .send()
+        .await?
+        .json()
+        .await?;
+    if let Some(err) = resp.get("error") {
+        anyhow::bail!("eth_getBalance error: {}", err);
+    }
+    Ok(decode_u256_from_hex(resp["result"].as_str().unwrap_or("0x0")))
+}
+
+/// Count LP positions owned by address via NonfungiblePositionManager.balanceOf.
+pub async fn get_lp_position_count(npm: &str, owner: &str, rpc_url: &str) -> Result<usize> {
+    let padded = format!("{:0>64}", &owner[2..]);
+    let hex = eth_call(npm, &format!("0x70a08231{}", padded), rpc_url).await?;
+    Ok(decode_u256_from_hex(&hex) as usize)
+}
+
 // ── PancakeV3Factory ──────────────────────────────────────────────────────────
 
 /// Get pool address from factory.
