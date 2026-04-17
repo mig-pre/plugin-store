@@ -21,7 +21,7 @@
         "collateral",
         "health-factor"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -69,7 +69,7 @@
         "uniswap-v4",
         "base"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -108,7 +108,7 @@
         "compound",
         "comet"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -149,7 +149,7 @@
         "amm",
         "liquidity"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -191,7 +191,7 @@
         "demo",
         "ethereum"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -237,7 +237,7 @@
         "ethereum",
         "erc4626"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -276,7 +276,7 @@
         "arbitrum",
         "avalanche"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -316,7 +316,7 @@
         "hyperliquid",
         "derivatives"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -357,7 +357,7 @@
         "kamino",
         "defi"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -392,7 +392,7 @@
         "liquidity",
         "kamino"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -433,7 +433,7 @@
         "steth",
         "ethereum"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -472,7 +472,7 @@
         "fred",
         "finnhub"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -502,7 +502,7 @@
         "spot-trading",
         "auto-research"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -540,7 +540,7 @@
         "onchainos",
         "trading-bot"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community",
       "components": {
         "skill": {
@@ -576,7 +576,7 @@
         "dlmm",
         "swap"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -615,7 +615,7 @@
         "morpho",
         "collateral"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -654,7 +654,7 @@
         "uniswap",
         "moltbook"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "official",
       "components": {
         "skill": {
@@ -695,7 +695,7 @@
         "one-click-token-launch",
         "meme-coin"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -743,7 +743,7 @@
         "solana",
         "amm"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -791,7 +791,7 @@
         "v3",
         "pancakeswap"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -835,7 +835,7 @@
         "lp",
         "arbitrum"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -875,7 +875,7 @@
         "base",
         "arbitrum"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -917,7 +917,7 @@
         "yt",
         "liquidity"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -967,7 +967,7 @@
         "defi",
         "clob"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -1018,7 +1018,7 @@
         "launchpad",
         "pump-fun"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -1055,7 +1055,7 @@
         "swap",
         "raydium"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -1077,6 +1077,37 @@
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/raydium-plugin/SUMMARY.md"
     },
     {
+      "name": "rust-eth-price",
+      "version": "1.0.0",
+      "description": "Query real-time ETH price via OKX API with a Rust CLI tool",
+      "author": {
+        "name": "yz06276",
+        "github": "yz06276"
+      },
+      "license": "MIT",
+      "category": "analytics",
+      "tags": [
+        "ethereum",
+        "price",
+        "rust"
+      ],
+      "modify_date": "1776421798",
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "dir": "skills/rust-eth-price"
+        },
+        "binary": {
+          "repo": "okx/plugin-store",
+          "asset_pattern": "rust-eth-price-{target}",
+          "checksums_asset": "checksums.txt",
+          "release_tag": "plugins/rust-eth-price@1.0.0"
+        }
+      },
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/rust-eth-price/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/rust-eth-price/SUMMARY.md"
+    },
+    {
       "name": "smart-money-signal-copy-trade",
       "version": "1.0.0",
       "description": "Smart Money Signal Copy Trade v1.0 — Smart money signal tracker with cost-aware TP, 15-check safety, 7-layer exit system",
@@ -1091,7 +1122,7 @@
         "onchainos",
         "trading-bot"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community",
       "components": {
         "skill": {
@@ -1125,7 +1156,7 @@
         "onchainos",
         "trading-bot"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community",
       "components": {
         "skill": {
@@ -1163,7 +1194,7 @@
         "v4",
         "multi-chain"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "dapp-official",
       "components": {
         "skill": {
@@ -1199,7 +1230,7 @@
         "smart-contracts",
         "ethereum"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "dapp-official",
       "components": {
         "skill": {
@@ -1236,7 +1267,7 @@
         "smart-contracts",
         "ethereum"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "dapp-official",
       "components": {
         "skill": {
@@ -1273,7 +1304,7 @@
         "deep-links",
         "ethereum"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "dapp-official",
       "components": {
         "skill": {
@@ -1313,7 +1344,7 @@
         "defi",
         "ethereum"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "dapp-official",
       "components": {
         "skill": {
@@ -1353,7 +1384,7 @@
         "permit2",
         "ethereum"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "dapp-official",
       "components": {
         "skill": {
@@ -1393,7 +1424,7 @@
         "ethereum",
         "multichain"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "dapp-official",
       "components": {
         "skill": {
@@ -1433,7 +1464,7 @@
         "solidity",
         "ethereum"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "dapp-official",
       "components": {
         "skill": {
@@ -1470,7 +1501,7 @@
         "typescript",
         "smart-contracts"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "dapp-official",
       "components": {
         "skill": {
@@ -1507,7 +1538,7 @@
         "volatile",
         "optimism"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
@@ -1543,7 +1574,7 @@
         "copy-trade",
         "meme-coin"
       ],
-      "modify_date": "1776419634",
+      "modify_date": "1776421798",
       "type": "community-developer",
       "components": {
         "skill": {
