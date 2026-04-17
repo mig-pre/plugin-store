@@ -17,8 +17,12 @@
 name: "Phase 4: Publish"
 
 on:
-  pull_request_review:
-    types: [submitted]
+  # Triggered by adding 'approved-for-publish' label (after reviewer approves)
+  # Using pull_request_target ensures secrets and write permissions for fork PRs
+  pull_request_target:
+    types: [labeled]
+    paths:
+      - 'skills/**'
   workflow_dispatch:
     inputs:
       rebuild_all:
@@ -42,10 +46,10 @@ jobs:
   detect:
     name: Detect changes
     runs-on: ubuntu-latest
-    # Only run on approved reviews targeting skills/, or on workflow_dispatch
+    # Only run when 'approved-for-publish' label is added, or on workflow_dispatch
     if: >-
       (github.event_name == 'workflow_dispatch') ||
-      (github.event.review.state == 'approved' &&
+      (github.event.label.name == 'approved-for-publish' &&
        github.event.pull_request.base.ref == 'main')
     outputs:
       has_changes: ${{ steps.detect.outputs.has_changes }}
@@ -64,7 +68,7 @@ jobs:
           fetch-depth: 0
 
       - name: Checkout PR head
-        if: github.event_name == 'pull_request_review'
+        if: github.event_name == 'pull_request_target'
         run: |
           # Fetch the fork PR branch and check it out
           git fetch origin "refs/pull/${{ github.event.pull_request.number }}/head:pr-head"
@@ -217,9 +221,18 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Generate App token
+        id: app-token
+        if: github.event_name == 'pull_request_target'
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Checkout PR head
-        if: github.event_name == 'pull_request_review'
+        if: github.event_name == 'pull_request_target'
         run: |
+          git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}"
           git fetch origin "refs/pull/${{ github.event.pull_request.number }}/head:pr-head"
           git checkout pr-head
 
@@ -758,7 +771,7 @@ jobs:
           fetch-depth: 0
 
       - name: Checkout PR head
-        if: github.event_name == 'pull_request_review'
+        if: github.event_name == 'pull_request_target'
         run: |
           git fetch origin "refs/pull/${{ github.event.pull_request.number }}/head:pr-head"
           git checkout pr-head
@@ -766,14 +779,14 @@ jobs:
       # ── GitHub App token: push without dismissing approval ──
       - name: Generate App token
         id: app-token
-        if: github.event_name == 'pull_request_review'
+        if: github.event_name == 'pull_request_target'
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Configure Git with App token
-        if: github.event_name == 'pull_request_review'
+        if: github.event_name == 'pull_request_target'
         run: |
           git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}"
 
@@ -1071,7 +1084,7 @@ jobs:
 
       # ── Final step: merge feature branch to main ──────────
       - name: Merge PR to main
-        if: github.event_name == 'pull_request_review'
+        if: github.event_name == 'pull_request_target'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
@@ -1094,7 +1107,7 @@ jobs:
     needs: [detect, fetch-external, build-release, create-release, publish-registry]
     if: >-
       failure() &&
-      github.event_name == 'pull_request_review' &&
+      github.event_name == 'pull_request_target' &&
       needs.detect.outputs.pr_number != ''
     runs-on: ubuntu-latest
     permissions:
