@@ -732,6 +732,20 @@ jobs:
           # Checkout the PR feature branch to apply all CI changes there
           ref: ${{ needs.detect.outputs.pr_head_ref || github.ref }}
 
+      # ── GitHub App token: push without dismissing approval ──
+      - name: Generate App token
+        id: app-token
+        if: github.event_name == 'pull_request_review'
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Configure Git with App token
+        if: github.event_name == 'pull_request_review'
+        run: |
+          git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}"
+
       - name: Install yq
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
@@ -1027,11 +1041,11 @@ jobs:
       - name: Merge PR to main
         if: github.event_name == 'pull_request_review'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           PR_NUM="${{ needs.detect.outputs.pr_number }}"
           echo "All CI work complete. Merging PR #${PR_NUM} to main..."
-          gh pr merge "${PR_NUM}" --merge --admin \
+          gh pr merge "${PR_NUM}" --merge \
             --repo "${{ github.repository }}" \
             --subject "Merge PR #${PR_NUM}: publish ${{ needs.detect.outputs.changed_plugins }}" \
             || {
