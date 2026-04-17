@@ -25,6 +25,16 @@ on:
         required: false
         default: ''
         type: string
+      check_run_id:
+        description: 'Check run ID to update on completion (set by trigger)'
+        required: false
+        default: ''
+        type: string
+      head_sha:
+        description: 'PR head SHA for check run updates'
+        required: false
+        default: ''
+        type: string
       rebuild_all:
         description: 'Rebuild ALL plugins (force re-create releases)'
         required: false
@@ -34,6 +44,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  checks: write
 
 # Concurrency removed — Phase 4 runs in parallel.
 # Registry conflicts are handled by rebase retry (5 attempts) + auto-issue on failure.
@@ -1010,6 +1021,18 @@ jobs:
             }
           echo "PR #${PR_NUM} merged to main successfully."
 
+      - name: Update check run (success)
+        if: needs.detect.outputs.pr_number != '' && inputs.check_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/check-runs/${{ inputs.check_run_id }}" \
+            --method PATCH \
+            -f status="completed" \
+            -f conclusion="success" \
+            -f output[title]="Phase 4: Publish — Success" \
+            -f output[summary]="All plugins compiled, released, and merged." || true
+
       - name: Post success report to PR
         if: needs.detect.outputs.pr_number != ''
         env:
@@ -1046,6 +1069,7 @@ jobs:
     permissions:
       pull-requests: write
       issues: write
+      checks: write
     steps:
       - name: Determine failed job
         id: failed
@@ -1081,6 +1105,18 @@ jobs:
           *Phase 4 publish failed at $(date -u '+%Y-%m-%d %H:%M:%S UTC')*"
 
           gh pr comment "${PR_NUM}" --repo "${{ github.repository }}" --body "$BODY"
+
+      - name: Update check run (failure)
+        if: inputs.check_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/check-runs/${{ inputs.check_run_id }}" \
+            --method PATCH \
+            -f status="completed" \
+            -f conclusion="failure" \
+            -f output[title]="Phase 4: Publish — Failed" \
+            -f output[summary]="${{ steps.failed.outputs.failed_jobs }}" || true
 
       - name: Add publish-failed label
         env:

@@ -16,6 +16,7 @@ on:
 
 permissions:
   actions: write
+  checks: write
   pull-requests: read
 
 jobs:
@@ -27,6 +28,24 @@ jobs:
       github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
     steps:
+      - name: Create check run (in_progress)
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          CHECK_ID=$(gh api "repos/${{ github.repository }}/check-runs" \
+            --method POST \
+            -f name="Phase 4: Publish" \
+            -f head_sha="$HEAD_SHA" \
+            -f status="in_progress" \
+            -f output[title]="Phase 4: Publish" \
+            -f output[summary]="Building, publishing, and merging..." \
+            --jq '.id')
+          echo "check_run_id=${CHECK_ID}" >> "$GITHUB_OUTPUT"
+          echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
+          echo "Created check run ${CHECK_ID} on ${HEAD_SHA}"
+
       - name: Generate App token
         id: app-token
         uses: actions/create-github-app-token@v1
@@ -43,7 +62,9 @@ jobs:
           gh workflow run "Phase 4: Publish" \
             --repo "${{ github.repository }}" \
             --ref main \
-            -f pr_number="${PR_NUM}"
+            -f pr_number="${PR_NUM}" \
+            -f check_run_id="${{ steps.check.outputs.check_run_id }}" \
+            -f head_sha="${{ steps.check.outputs.head_sha }}"
           echo "✅ Phase 4 dispatched"
 
   trigger-on-comment:
@@ -68,7 +89,24 @@ jobs:
             echo "::error::PR #${PR_NUM} has no approved reviews. Approve first."
             exit 1
           fi
+          HEAD_SHA=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUM}" --jq '.head.sha')
           echo "pr_number=${PR_NUM}" >> "$GITHUB_OUTPUT"
+          echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Create check run (in_progress)
+        id: check-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          CHECK_ID=$(gh api "repos/${{ github.repository }}/check-runs" \
+            --method POST \
+            -f name="Phase 4: Publish" \
+            -f head_sha="${{ steps.check.outputs.head_sha }}" \
+            -f status="in_progress" \
+            -f output[title]="Phase 4: Publish" \
+            -f output[summary]="Building, publishing, and merging..." \
+            --jq '.id')
+          echo "check_run_id=${CHECK_ID}" >> "$GITHUB_OUTPUT"
 
       - name: Generate App token
         id: app-token
@@ -86,7 +124,9 @@ jobs:
           gh workflow run "Phase 4: Publish" \
             --repo "${{ github.repository }}" \
             --ref main \
-            -f pr_number="${PR_NUM}"
+            -f pr_number="${PR_NUM}" \
+            -f check_run_id="${{ steps.check-run.outputs.check_run_id }}" \
+            -f head_sha="${{ steps.check.outputs.head_sha }}"
           echo "✅ Phase 4 dispatched"
 
       - name: React to comment
