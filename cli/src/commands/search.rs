@@ -12,17 +12,18 @@ pub async fn execute(keyword: &str) -> Result<()> {
     }
 
     println!(
-        "{:<32} {:<10} {:<15}",
+        "{:<32} {:<10} {:<15} {}",
         "Name".bold(),
         "Version".bold(),
         "Source".bold(),
+        "Description".bold()
     );
-    println!("{}", "-".repeat(60));
+    println!("{}", "-".repeat(90));
 
     for plugin in &results {
         println!(
-            "{:<32} {:<10} {:<15}",
-            plugin.name, plugin.version, plugin.source
+            "{:<32} {:<10} {:<15} {}",
+            plugin.name, plugin.version, plugin.source, plugin.description
         );
     }
 

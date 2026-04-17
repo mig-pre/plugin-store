@@ -28,6 +28,7 @@ impl RegistryManager {
             .into_iter()
             .filter(|p| {
                 p.name.to_lowercase().contains(&kw)
+                    || p.description.to_lowercase().contains(&kw)
                     || p.tags.iter().any(|t| t.to_lowercase().contains(&kw))
                     || p.category.to_lowercase().contains(&kw)
             })

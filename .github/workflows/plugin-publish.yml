@@ -46,7 +46,7 @@ jobs:
     if: >-
       (github.event_name == 'workflow_dispatch') ||
       (github.event.review.state == 'approved' &&
-       contains(fromJSON('["main","test"]'), github.event.pull_request.base.ref))
+       github.event.pull_request.base.ref == 'main')
     outputs:
       has_changes: ${{ steps.detect.outputs.has_changes }}
       changed_plugins: ${{ steps.detect.outputs.changed_plugins }}
@@ -126,7 +126,7 @@ jobs:
             SKILL_COMMIT=$(yq '.components.skill.commit // ""' "$YAML")
 
             # External = has repo field AND it's not our own repo
-            if [ -n "$SKILL_REPO" ] && [ "$SKILL_REPO" != "mig-pre/plugin-store" ]; then
+            if [ -n "$SKILL_REPO" ] && [ "$SKILL_REPO" != "okx/plugin-store" ]; then
               ITEM=$(jq -n \
                 --arg name "$PLUGIN_NAME" \
                 --arg repo "$SKILL_REPO" \
@@ -292,10 +292,17 @@ jobs:
               if not os.path.isdir(skill_path):
                   continue
               desc = ''
-              # In merged repo, plugin.yaml lives in skills/<name>/
+              yaml_path = os.path.join('skills', name, 'plugin.yaml')
+              if os.path.exists(yaml_path):
+                  with open(yaml_path) as f:
+                      for line in f:
+                          m = re.match(r'^description:\s*["\'](.+)["\']\s*$', line)
+                          if m:
+                              desc = m.group(1)
+                              break
               plugins.append({
                   'name': name,
-                  'description': '-',
+                  'description': desc or f'Plugin: {name}',
                   'source': f'./skills/{name}'
               })
 
@@ -596,7 +603,7 @@ jobs:
               SRC_COMMIT=$(echo "$PLUGIN" | jq -r '.source_commit // empty')
               AUTHOR=$(yq '.author.name // "Community"' "$YAML_FILE" 2>/dev/null || echo "Community")
               AUTHOR_GH=$(yq '.author.github // ""' "$YAML_FILE" 2>/dev/null || echo "")
-              DESC="-"
+              DESC=$(yq '.description // ""' "$YAML_FILE" 2>/dev/null || echo "")
               LANG=$(echo "$PLUGIN" | jq -r '.lang // "unknown"')
               PLATFORM_COUNT=$(ls ${BIN}-* 2>/dev/null | wc -l | tr -d ' ')
 
@@ -607,7 +614,7 @@ jobs:
               else
                 SRC_LINE="Source: skills/${NAME}/ (included in submission)"
               fi
-              printf '%s\n' "## What's Changed" "" "- **${NAME}** v${VERSION} -- ${DESC}" "- Language: ${LANG} | Platforms: ${PLATFORM_COUNT}" "- Install: npx skills add mig-pre/plugin-store --skill ${NAME}" "- ${SRC_LINE}" "" "## New Contributors" "" "- **${CONTRIBUTOR}** made their first contribution" "" "## Contributors" "" "- **${CONTRIBUTOR}**" "" "---" "Published by OKX Plugin Store CI" > "$NOTES_FILE"
+              printf '%s\n' "## What's Changed" "" "- **${NAME}** v${VERSION} -- ${DESC}" "- Language: ${LANG} | Platforms: ${PLATFORM_COUNT}" "- Install: npx skills add okx/plugin-store --skill ${NAME}" "- ${SRC_LINE}" "" "## New Contributors" "" "- **${CONTRIBUTOR}** made their first contribution" "" "## Contributors" "" "- **${CONTRIBUTOR}**" "" "---" "Published by OKX Plugin Store CI" > "$NOTES_FILE"
 
               echo "Creating release: $TAG with ${PLATFORM_COUNT} binaries"
 
@@ -803,14 +810,14 @@ jobs:
           if candidates:
               skill_md_path = candidates[0]
 
-          REPO = "mig-pre/plugin-store"
+          REPO = "okx/plugin-store"
           BASE = f"https://raw.githubusercontent.com/{REPO}/main"
           GUI  = f"https://github.com/{REPO}/tree/main"
 
           entry = {
               "name": name,
               "version": os.environ["VERSION"],
-              "description": "-",
+              "description": yq(".description"),
               "author": {"name": yq(".author.name")},
               "category": yq(".category"),
               "tags": json.loads(yq(".tags | @json")),
@@ -859,7 +866,7 @@ jobs:
               else:
                   # Rust/Go: binary Release on plugin-store repo
                   entry["components"]["binary"] = {
-                      "repo": "mig-pre/plugin-store",
+                      "repo": "okx/plugin-store",
                       "asset_pattern": bin_name + "-{target}",
                       "checksums_asset": "checksums.txt",
                       "release_tag": f"plugins/{name}@{version}"
@@ -952,7 +959,7 @@ jobs:
               entry = {
                   "name": name,
                   "version": str(data.get("version", "0.1.0")),
-                  "description": "-",
+                  "description": data.get("description", ""),
                   "author": data.get("author", {}),
                   "license": data.get("license", "MIT"),
                   "category": data.get("category", ""),
@@ -980,7 +987,7 @@ jobs:
                   entry["components"] = {
                       "skill": {"dir": skill.get("dir", ".")},
                       "binary": {
-                          "repo": "mig-pre/plugin-store",
+                          "repo": "okx/plugin-store",
                           "asset_pattern": f"{bin_name}-{{target}}",
                           "checksums_asset": "checksums.txt",
                           "release_tag": f"plugins/{name}@{entry['version']}"
@@ -1000,8 +1007,8 @@ jobs:
                   skill_dir_path = f"skills/{name}"
               elif not skill_dir_path.startswith("skills/"):
                   skill_dir_path = f"skills/{name}/{skill_dir_path}"
-              entry["skill_md_link"] = f"https://raw.githubusercontent.com/mig-pre/plugin-store/main/{skill_dir_path}/SKILL.md"
-              entry["summary_md_link"] = f"https://raw.githubusercontent.com/mig-pre/plugin-store/main/{skill_dir_path}/SUMMARY.md"
+              entry["skill_md_link"] = f"https://raw.githubusercontent.com/okx/plugin-store/main/{skill_dir_path}/SKILL.md"
+              entry["summary_md_link"] = f"https://raw.githubusercontent.com/okx/plugin-store/main/{skill_dir_path}/SUMMARY.md"
 
               # Preserve link/extra from existing registry
               existing = existing_by_name.get(name, {})

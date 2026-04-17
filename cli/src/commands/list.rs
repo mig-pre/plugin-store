@@ -208,12 +208,12 @@ pub async fn execute() -> Result<()> {
 }
 
 fn execute_plain(plugins: &[Plugin], counts: &StatsMap) -> Result<()> {
-    println!("{:<40} {:<10} {:<10}", "Name", "Version", "Downloads");
-    println!("{}", "-".repeat(65));
+    println!("{:<40} {:<10} {:<10} {}", "Name", "Version", "Downloads", "Description");
+    println!("{}", "-".repeat(100));
     for p in plugins {
         let downloads = counts.get(&p.name).copied().unwrap_or(0);
         let dl = if downloads == 0 { "-".to_string() } else { format_downloads(downloads) };
-        println!("{:<40} {:<10} {:<10}", p.name, p.version, dl);
+        println!("{:<40} {:<10} {:<10} {}", p.name, p.version, dl, p.description);
     }
     println!("\n{} plugins available. Use `npx skills add okx/plugin-store --name <name>` to install.", plugins.len());
     Ok(())
@@ -282,7 +282,7 @@ fn render_table(f: &mut Frame, app: &mut App, counts: &StatsMap, area: Rect) {
     let active_tab = app.active_tab;
     let plugins = app.plugins_by_tab[active_tab].clone();
 
-    let header_cells = ["#", "Name", "Version", "Downloads", "Source"]
+    let header_cells = ["#", "Name", "Version", "Downloads", "Source", "Description"]
         .iter()
         .map(|h| {
             Cell::from(*h)
@@ -328,6 +328,10 @@ fn render_table(f: &mut Frame, app: &mut App, counts: &StatsMap, area: Rect) {
                 )),
                 Cell::from(downloads_str),
                 Cell::from(source_span),
+                Cell::from(Span::styled(
+                    p.description.clone(),
+                    Style::default().fg(Color::Gray),
+                )),
             ])
             .height(1)
         })
@@ -349,6 +353,7 @@ fn render_table(f: &mut Frame, app: &mut App, counts: &StatsMap, area: Rect) {
             Constraint::Length(9),
             Constraint::Length(11),
             Constraint::Length(12),
+            Constraint::Min(20),
         ],
     )
     .header(header)
@@ -414,6 +419,12 @@ fn render_detail_popup(f: &mut Frame, plugin: &Plugin, downloads: u64, area: Rec
 
     // Build content lines
     let mut lines: Vec<Line> = Vec::new();
+
+    lines.push(Line::from(vec![
+        Span::styled("Description: ", Style::default().fg(Color::Yellow)),
+        Span::raw(plugin.description.clone()),
+    ]));
+    lines.push(Line::from(""));
 
     lines.push(Line::from(vec![
         Span::styled("Version:     ", Style::default().fg(Color::Yellow)),

@@ -117,7 +117,8 @@ pub fn lint_submission(submission_dir: &Path) -> Result<LintReport> {
     // ── 5. Version validation (semver) ────────────────────────────
     check_version(&plugin.version, &mut diags);
 
-    // ── 6. Description (deprecated — no longer validated) ─────────
+    // ── 6. Description ────────────────────────────────────────────
+    check_description(&plugin.description, &mut diags);
 
     // ── 7. Author validation ──────────────────────────────────────
     check_author(&plugin.author, &mut diags);
@@ -254,6 +255,25 @@ fn check_version(version: &str, diags: &mut Vec<LintDiag>) {
     }
 }
 
+fn check_description(desc: &str, diags: &mut Vec<LintDiag>) {
+    if desc.trim().is_empty() {
+        diags.push(LintDiag {
+            level: DiagLevel::Error,
+            code: "E010",
+            message: "description is empty".to_string(),
+        });
+    } else if desc.len() > 200 {
+        diags.push(LintDiag {
+            level: DiagLevel::Warning,
+            code: "W010",
+            message: format!(
+                "description is {} chars (recommended < 200)",
+                desc.len()
+            ),
+        });
+    }
+}
+
 fn check_author(author: &super::plugin_yaml::AuthorInfo, diags: &mut Vec<LintDiag>) {
     if author.name.trim().is_empty() {
         diags.push(LintDiag {
@@ -341,9 +361,7 @@ fn check_tags(plugin: &PluginYaml, diags: &mut Vec<LintDiag>) {
             v.push(("tag", tag.as_str()));
         }
         v.push(("name", plugin.name.as_str()));
-        if let Some(ref desc) = plugin.description {
-            v.push(("description", desc.as_str()));
-        }
+        v.push(("description", plugin.description.as_str()));
         v
     };
 
@@ -627,7 +645,7 @@ fn check_single_skill_md(path: &Path, plugin: &PluginYaml, diags: &mut Vec<LintD
             match serde_yaml::from_str::<serde_yaml::Value>(frontmatter) {
                 Ok(val) => {
                     if let Some(map) = val.as_mapping() {
-                        for field in ["name"] {
+                        for field in ["name", "description"] {
                             if !map.contains_key(&serde_yaml::Value::String(
                                 field.to_string(),
                             )) {

@@ -39,6 +39,7 @@ pub fn scaffold(name: &str, target_dir: &Path) -> Result<()> {
 schema_version: 1
 name: {name}
 version: "1.0.0"
+description: "TODO: One-line description of what this plugin does"
 author:
   name: "TODO: Your Name"
   github: "TODO: your-github-username"
