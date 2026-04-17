@@ -1053,3 +1053,62 @@ jobs:
               exit 1
             }
           echo "PR #${PR_NUM} merged to main successfully."
+
+  # ═══════════════════════════════════════════════════════════════
+  #  Failure handler: notify on any error, block merge
+  # ═══════════════════════════════════════════════════════════════
+  notify-failure:
+    name: Publish failure handler
+    needs: [detect, fetch-external, build-release, create-release, publish-registry]
+    if: >-
+      failure() &&
+      github.event_name == 'pull_request_review' &&
+      needs.detect.outputs.pr_number != ''
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Determine failed job
+        id: failed
+        run: |
+          FAILED_JOBS=""
+          [ "${{ needs.detect.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}detect, "
+          [ "${{ needs.fetch-external.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}fetch-external, "
+          [ "${{ needs.build-release.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}build-release, "
+          [ "${{ needs.create-release.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}create-release, "
+          [ "${{ needs.publish-registry.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}publish-registry, "
+          FAILED_JOBS=$(echo "$FAILED_JOBS" | sed 's/, $//')
+          echo "failed_jobs=${FAILED_JOBS}" >> "$GITHUB_OUTPUT"
+
+      - name: Post failure comment on PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUM="${{ needs.detect.outputs.pr_number }}"
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          FAILED="${{ steps.failed.outputs.failed_jobs }}"
+
+          BODY="## ❌ Phase 4: Publish Failed
+
+          **PR will NOT be merged.** The following job(s) failed:
+
+          \`\`\`
+          ${FAILED}
+          \`\`\`
+
+          **Action required**: Review the [workflow run](${RUN_URL}) logs, fix the issue, and re-trigger by pushing a fix or re-requesting review.
+
+          ---
+          *Phase 4 publish failed at $(date -u '+%Y-%m-%d %H:%M:%S UTC')*"
+
+          gh pr comment "${PR_NUM}" --repo "${{ github.repository }}" --body "$BODY"
+
+      - name: Add publish-failed label
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUM="${{ needs.detect.outputs.pr_number }}"
+          gh pr edit "${PR_NUM}" --repo "${{ github.repository }}" --add-label "publish-failed" 2>/dev/null || \
+            gh api "repos/${{ github.repository }}/labels" -f name="publish-failed" -f color="d73a49" -f description="Phase 4 publish failed" 2>/dev/null; \
+            gh pr edit "${PR_NUM}" --repo "${{ github.repository }}" --add-label "publish-failed"
