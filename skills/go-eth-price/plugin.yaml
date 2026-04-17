@@ -1,6 +1,6 @@
 schema_version: 1
 name: go-eth-price
-version: "1.0.0"
+version: "1.1.0"
 description: "Query real-time ETH price via OKX API using a Go CLI tool"
 author:
   name: "yz06276"
