@@ -1,13 +1,15 @@
 /// swap: Execute a token swap on Raydium via the transaction API + onchainos broadcast.
 ///
 /// Flow:
-///   1. (dry_run guard) - return early before wallet resolution
-///   2. Resolve Solana wallet address
-///   3. GET /compute/swap-base-in -> get quote
-///   4. POST /transaction/swap-base-in -> get base64 serialized tx
-///   5. onchainos wallet contract-call --chain 501 --unsigned-tx <base58_tx>
+///   1. Resolve token decimals + parse amount
+///   2. GET /compute/swap-base-in -> get quote
+///   3. (dry_run guard) - return early with full quote data, no wallet resolution
+///   4. Resolve Solana wallet address + pre-flight balance check
+///   5. (--confirm gate) - show preview and exit unless user explicitly confirms
+///   6. POST /transaction/swap-base-in -> get base64 serialized tx
+///   7. onchainos wallet contract-call --chain 501 --unsigned-tx <base58_tx>
 ///
-/// NOTE: Steps 4 and 5 must happen consecutively - Solana blockhash expires in ~60s.
+/// NOTE: Steps 6 and 7 must happen consecutively - Solana blockhash expires in ~60s.
 use anyhow::Result;
 use clap::Args;
 use serde_json::Value;
@@ -111,11 +113,55 @@ pub async fn execute(args: &SwapArgs, dry_run: bool) -> Result<()> {
     let input_decimals = resolve_decimals(&input_mint, &client).await?;
     let raw_amount = parse_human_amount(&args.amount, input_decimals)?;
 
-    // dry_run guard - must come before resolve_wallet_solana()
+    // Step 1: Get swap quote
+    let quote_url = format!("{}/compute/swap-base-in", TX_API_BASE);
+    let quote_resp: Value = client
+        .get(&quote_url)
+        .query(&[
+            ("inputMint", input_mint.as_str()),
+            ("outputMint", output_mint.as_str()),
+            ("amount", &raw_amount.to_string()),
+            ("slippageBps", &args.slippage_bps.to_string()),
+            ("txVersion", args.tx_version.as_str()),
+        ])
+        .send()
+        .await?
+        .json()
+        .await?;
+
+    if !quote_resp["success"].as_bool().unwrap_or(false) {
+        anyhow::bail!(
+            "Failed to get swap quote: {}",
+            serde_json::to_string(&quote_resp)?
+        );
+    }
+
+    // Warn on high price impact
+    let price_impact = quote_resp["data"]["priceImpactPct"]
+        .as_f64()
+        .unwrap_or(0.0);
+    if price_impact >= PRICE_IMPACT_BLOCK_PCT {
+        anyhow::bail!(
+            "Price impact {:.2}% exceeds {:.1}% threshold. Swap aborted to protect funds.",
+            price_impact,
+            PRICE_IMPACT_BLOCK_PCT
+        );
+    }
+    if price_impact >= PRICE_IMPACT_WARN_PCT {
+        eprintln!(
+            "WARNING: Price impact {:.2}% exceeds {:.1}% warning threshold. Proceeding.",
+            price_impact, PRICE_IMPACT_WARN_PCT
+        );
+    }
+
+    // dry_run guard - after quote fetch, before wallet resolution
+    // Returns full quote data so dry-run is useful for previewing amounts
     if dry_run {
         let amount_display = args.amount.parse::<f64>()
             .map(|v| format!("{:.2}", v))
             .unwrap_or_else(|_| args.amount.clone());
+        let output_amount = &quote_resp["data"]["outputAmount"];
+        let route_plan = &quote_resp["data"]["routePlan"];
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
@@ -126,8 +172,11 @@ pub async fn execute(args: &SwapArgs, dry_run: bool) -> Result<()> {
                 "amount": args.amount,
                 "amountDisplay": amount_display,
                 "rawAmount": raw_amount,
+                "outputAmount": output_amount,
+                "priceImpactPct": price_impact,
+                "route": route_plan,
                 "slippageBps": args.slippage_bps,
-                "note": "dry_run: tx not built or broadcast"
+                "note": "dry_run: wallet not resolved, tx not built or broadcast"
             }))?
         );
         return Ok(());
@@ -172,47 +221,6 @@ pub async fn execute(args: &SwapArgs, dry_run: bool) -> Result<()> {
                 input_mint,
             );
         }
-    }
-
-    // Step 1: Get swap quote
-    let quote_url = format!("{}/compute/swap-base-in", TX_API_BASE);
-    let quote_resp: Value = client
-        .get(&quote_url)
-        .query(&[
-            ("inputMint", input_mint.as_str()),
-            ("outputMint", output_mint.as_str()),
-            ("amount", &raw_amount.to_string()),
-            ("slippageBps", &args.slippage_bps.to_string()),
-            ("txVersion", args.tx_version.as_str()),
-        ])
-        .send()
-        .await?
-        .json()
-        .await?;
-
-    if !quote_resp["success"].as_bool().unwrap_or(false) {
-        anyhow::bail!(
-            "Failed to get swap quote: {}",
-            serde_json::to_string(&quote_resp)?
-        );
-    }
-
-    // Warn on high price impact
-    let price_impact = quote_resp["data"]["priceImpactPct"]
-        .as_f64()
-        .unwrap_or(0.0);
-    if price_impact >= PRICE_IMPACT_BLOCK_PCT {
-        anyhow::bail!(
-            "Price impact {:.2}% exceeds {:.1}% threshold. Swap aborted to protect funds.",
-            price_impact,
-            PRICE_IMPACT_BLOCK_PCT
-        );
-    }
-    if price_impact >= PRICE_IMPACT_WARN_PCT {
-        eprintln!(
-            "WARNING: Price impact {:.2}% exceeds {:.1}% warning threshold. Proceeding.",
-            price_impact, PRICE_IMPACT_WARN_PCT
-        );
     }
 
     // --confirm gate: show preview and exit unless user explicitly confirms

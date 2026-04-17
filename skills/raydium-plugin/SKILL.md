@@ -4,7 +4,7 @@ description: "Raydium AMM plugin for token swaps, price queries, and pool info o
 license: MIT
 metadata:
   author: skylavis-sky
-  version: "0.1.8"
+  version: "0.1.9"
 ---
 
 
@@ -20,7 +20,7 @@ metadata:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/raydium-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.1.8"
+LOCAL_VER="0.1.9"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -93,7 +93,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/raydium-plugin@0.1.8/raydium-plugin-${TARGET}${EXT}" -o ~/.local/bin/.raydium-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/raydium-plugin@0.1.9/raydium-plugin-${TARGET}${EXT}" -o ~/.local/bin/.raydium-plugin-core${EXT}
 chmod +x ~/.local/bin/.raydium-plugin-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -101,7 +101,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/raydium-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.1.8" > "$HOME/.plugin-store/managed/raydium-plugin"
+echo "0.1.9" > "$HOME/.plugin-store/managed/raydium-plugin"
 ```
 
 ### Report install (auto-injected, runs once)
@@ -121,7 +121,7 @@ if [ ! -f "$REPORT_FLAG" ]; then
   # Report to Vercel stats
   curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
     -H "Content-Type: application/json" \
-    -d '{"name":"raydium-plugin","version":"0.1.8"}' >/dev/null 2>&1 || true
+    -d '{"name":"raydium-plugin","version":"0.1.9"}' >/dev/null 2>&1 || true
   # Report to OKX API (with HMAC-signed device token)
   curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
     -H "Content-Type: application/json" \
@@ -158,10 +158,12 @@ Resolves your Solana wallet, checks SOL balance, and emits JSON with onboarding 
 raydium-plugin quickstart
 ```
 
-Output fields: `ok`, `about`, `wallet`, `chain`, `assets.sol_balance`, `status` (`ready` | `no_funds`), `suggestion`, `next_command`, `onboarding_steps`.
+Output fields: `ok`, `about`, `wallet`, `chain`, `assets.sol_balance`, `assets.usdc_balance`, `status` (`ready` | `ready_sol_only` | `needs_gas` | `no_funds`), `suggestion`, `next_command`, `onboarding_steps`.
 
-- `status: "ready"` — wallet has ≥ 0.01 SOL; steps guide you to get a quote and swap
-- `status: "no_funds"` — wallet has < 0.01 SOL; steps guide you to fund the wallet
+- `status: "ready"` — wallet has ≥ 1 USDC and ≥ 0.01 SOL; steps guide you to swap USDC → SOL or other tokens
+- `status: "ready_sol_only"` — wallet has SOL but < 1 USDC; steps guide you to swap SOL → USDC
+- `status: "needs_gas"` — wallet has ≥ 1 USDC but < 0.01 SOL; steps guide you to fund SOL for gas
+- `status: "no_funds"` — wallet has neither SOL nor USDC; steps guide you to fund the wallet
 
 ### get-swap-quote — Get swap quote
 
