@@ -56,6 +56,7 @@ jobs:
       external_plugins_json: ${{ steps.external.outputs.external_plugins_json }}
       pr_number: ${{ steps.detect.outputs.pr_number }}
       pr_head_ref: ${{ steps.detect.outputs.pr_head_ref }}
+      pr_head_repo: ${{ steps.detect.outputs.pr_head_repo }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -94,10 +95,14 @@ jobs:
           PR_NUM="${{ github.event.pull_request.number || inputs.pr_number }}"
           if [ -n "$PR_NUM" ]; then
             # Get PR head ref via API (needs GH_TOKEN)
-            PR_HEAD=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefName --jq '.headRefName' || echo "")
+            PR_INFO=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefName,headRepositoryOwner --jq '{ref: .headRefName, owner: .headRepositoryOwner.login}' || echo '{}')
+            PR_HEAD=$(echo "$PR_INFO" | jq -r '.ref // empty')
+            PR_OWNER=$(echo "$PR_INFO" | jq -r '.owner // empty')
+            PR_HEAD_REPO="${PR_OWNER}/plugin-store"
             echo "pr_number=${PR_NUM}" >> "$GITHUB_OUTPUT"
             echo "pr_head_ref=${PR_HEAD}" >> "$GITHUB_OUTPUT"
-            echo "Resolved PR #${PR_NUM} head ref: ${PR_HEAD}"
+            echo "pr_head_repo=${PR_HEAD_REPO}" >> "$GITHUB_OUTPUT"
+            echo "Resolved PR #${PR_NUM}: ${PR_HEAD_REPO}:${PR_HEAD}"
           fi
 
           BASE_REF="${{ github.event.pull_request.base.ref || 'main' }}"
@@ -691,7 +696,10 @@ jobs:
       - name: Configure Git with App token
         if: inputs.pr_number != ''
         run: |
-          git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}"
+          # Set remote to fork repo so we can push to the PR branch
+          PUSH_REPO="${{ needs.detect.outputs.pr_head_repo || github.repository }}"
+          git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${PUSH_REPO}"
+          echo "Push target: ${PUSH_REPO}"
 
       - name: Install yq
         run: |
