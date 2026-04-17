@@ -1,0 +1,7 @@
+[project]
+name = "py-eth-price"
+version = "1.0.0"
+requires-python = ">=3.6"
+
+[project.scripts]
+py-eth-price = "src.main:main"
