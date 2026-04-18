@@ -1,14 +1,17 @@
-# Trigger Phase 4 on: label added OR /publish comment
+# Trigger Phase 4 on: Approve review OR label added OR /publish comment
 #
-# Two trigger paths:
-# 1. pull_request_target: labeled → reviewer adds 'approved-for-publish' label
-# 2. issue_comment: /publish → reviewer comments "/publish" (fallback)
+# Three trigger paths:
+# 1. pull_request_review: submitted (approved) → reviewer clicks Approve
+# 2. pull_request_target: labeled → reviewer adds 'approved-for-publish' label (fallback)
+# 3. issue_comment: /publish → reviewer comments "/publish" (fallback)
 #
-# Both have full secrets + write permissions.
+# All three have full secrets + write permissions.
 
 name: "Phase 4: Trigger"
 
 on:
+  pull_request_review:
+    types: [submitted]
   pull_request_target:
     types: [labeled]
   issue_comment:
@@ -20,6 +23,54 @@ permissions:
   pull-requests: read
 
 jobs:
+  trigger-on-approve:
+    name: Trigger (approve)
+    if: >-
+      github.event_name == 'pull_request_review' &&
+      github.event.review.state == 'approved' &&
+      github.event.pull_request.base.ref == 'main' &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create check run (in_progress)
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          CHECK_ID=$(gh api "repos/${{ github.repository }}/check-runs" \
+            --method POST \
+            -f name="Phase 4: Publish" \
+            -f head_sha="$HEAD_SHA" \
+            -f status="in_progress" \
+            -f output[title]="Phase 4: Publish" \
+            -f output[summary]="Approve detected — dispatching Phase 4..." \
+            --jq '.id')
+          echo "check_run_id=${CHECK_ID}" >> "$GITHUB_OUTPUT"
+          echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
+          echo "Created check run ${CHECK_ID} on ${HEAD_SHA}"
+
+      - name: Generate App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Dispatch Phase 4
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          PR_NUM="${{ github.event.pull_request.number }}"
+          echo "Approve trigger: dispatching Phase 4 for PR #${PR_NUM}..."
+          gh workflow run "Phase 4: Publish" \
+            --repo "${{ github.repository }}" \
+            --ref main \
+            -f pr_number="${PR_NUM}" \
+            -f check_run_id="${{ steps.check.outputs.check_run_id }}" \
+            -f head_sha="${{ steps.check.outputs.head_sha }}"
+          echo "✅ Phase 4 dispatched"
+
   trigger-on-label:
     name: Trigger (label)
     if: >-

@@ -52,6 +52,27 @@ permissions:
 
 jobs:
   # ═══════════════════════════════════════════════════════════════
+  #  Step 0: Initialize master check run (attach workflow URL)
+  # ═══════════════════════════════════════════════════════════════
+  init-master:
+    name: Init master check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.check_run_id != ''
+    steps:
+      - name: Attach workflow run URL to master check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          SUMMARY=$(printf '🔄 Phase 4 started. [View full logs](%s)\n\n**Stage 1/4**: detecting changed plugins...' "$RUN_URL")
+          gh api "repos/${{ github.repository }}/check-runs/${{ inputs.check_run_id }}" \
+            --method PATCH \
+            -f status="in_progress" \
+            -f details_url="$RUN_URL" \
+            -f output[title]="Phase 4: Publish — running" \
+            -f output[summary]="$SUMMARY" || true
+
+  # ═══════════════════════════════════════════════════════════════
   #  Step 1: Detect changes + extract build info
   # ═══════════════════════════════════════════════════════════════
   detect:
@@ -68,7 +89,27 @@ jobs:
       pr_number: ${{ steps.detect.outputs.pr_number }}
       pr_head_ref: ${{ steps.detect.outputs.pr_head_ref }}
       pr_head_repo: ${{ steps.detect.outputs.pr_head_repo }}
+      stage1_check_id: ${{ steps.stage1_start.outputs.check_run_id }}
     steps:
+      - name: Create stage 1 check run (Detect)
+        id: stage1_start
+        if: inputs.head_sha != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          CHECK_ID=$(gh api "repos/${{ github.repository }}/check-runs" \
+            --method POST \
+            -f name="Phase 4 • 1. Detect" \
+            -f head_sha="${{ inputs.head_sha }}" \
+            -f status="in_progress" \
+            -f details_url="$RUN_URL" \
+            -f output[title]="Detecting changed plugins" \
+            -f output[summary]="🔍 Diffing PR against base to find changed plugins..." \
+            --jq '.id')
+          echo "check_run_id=${CHECK_ID}" >> "$GITHUB_OUTPUT"
+          echo "Stage 1 check run: ${CHECK_ID}"
+
       - uses: actions/checkout@v4
         with:
           # Explicitly checkout base branch first (avoids default ref=PR head which fails for forks)
@@ -223,12 +264,78 @@ jobs:
           COUNT=$(echo "$BUILD_PLUGINS" | jq length)
           echo "has_builds=$([ "$COUNT" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
+      - name: Complete stage 1 check (Detect)
+        if: always() && steps.stage1_start.outputs.check_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          CONCLUSION="success"
+          [ "${{ job.status }}" = "failure" ] && CONCLUSION="failure"
+          [ "${{ job.status }}" = "cancelled" ] && CONCLUSION="cancelled"
+
+          PLUGINS="${{ steps.detect.outputs.changed_plugins }}"
+          HAS_BUILDS="${{ steps.build_info.outputs.has_builds }}"
+          SUMMARY=$(printf '**Changed plugins**: `%s`\n**Has compiled builds**: %s\n\n[View logs](%s)' "${PLUGINS:-none}" "${HAS_BUILDS:-false}" "$RUN_URL")
+
+          gh api "repos/${{ github.repository }}/check-runs/${{ steps.stage1_start.outputs.check_run_id }}" \
+            --method PATCH \
+            -f status="completed" \
+            -f conclusion="$CONCLUSION" \
+            -f output[title]="Detect — $CONCLUSION" \
+            -f output[summary]="$SUMMARY" || true
+
+      - name: Update master check (Stage 1 complete)
+        if: always() && inputs.check_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          PLUGINS="${{ steps.detect.outputs.changed_plugins }}"
+          HAS_BUILDS="${{ steps.build_info.outputs.has_builds }}"
+          SUMMARY=$(printf '✅ **Stage 1/4 — Detect** complete\n  Changed plugins: `%s`\n\n🔄 **Stage 2/4 — Build** starting...\n\n[View full logs](%s)' "${PLUGINS:-none}" "$RUN_URL")
+          gh api "repos/${{ github.repository }}/check-runs/${{ inputs.check_run_id }}" \
+            --method PATCH \
+            -f status="in_progress" \
+            -f details_url="$RUN_URL" \
+            -f output[title]="Phase 4: Publish — running" \
+            -f output[summary]="$SUMMARY" || true
+
+  # ═══════════════════════════════════════════════════════════════
+  #  Step 2: Build setup — create stage check, announce build start
+  # ═══════════════════════════════════════════════════════════════
+  build-setup:
+    name: Build setup
+    needs: [detect]
+    if: needs.detect.outputs.has_builds == 'true' && inputs.head_sha != ''
+    runs-on: ubuntu-latest
+    outputs:
+      stage2_check_id: ${{ steps.create.outputs.check_run_id }}
+    steps:
+      - name: Create stage 2 check run (Build)
+        id: create
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          CHECK_ID=$(gh api "repos/${{ github.repository }}/check-runs" \
+            --method POST \
+            -f name="Phase 4 • 2. Build" \
+            -f head_sha="${{ inputs.head_sha }}" \
+            -f status="in_progress" \
+            -f details_url="$RUN_URL" \
+            -f output[title]="Building binaries" \
+            -f output[summary]="🔨 Compiling plugins for 9 target platforms (darwin/linux/windows × arm64/x86_64/...)..." \
+            --jq '.id')
+          echo "check_run_id=${CHECK_ID}" >> "$GITHUB_OUTPUT"
+          echo "Stage 2 check run: ${CHECK_ID}"
+
   # ═══════════════════════════════════════════════════════════════
   #  Step 3: Multi-platform build (Rust/Go only)
   # ═══════════════════════════════════════════════════════════════
   build-release:
     name: Build (${{ matrix.target }})
-    needs: [detect]
+    needs: [detect, build-setup]
     if: needs.detect.outputs.has_builds == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
@@ -417,14 +524,81 @@ jobs:
           if-no-files-found: ignore
 
   # ═══════════════════════════════════════════════════════════════
+  #  Step 3.5: Finalize build stage check run
+  # ═══════════════════════════════════════════════════════════════
+  build-finalize:
+    name: Build finalize
+    needs: [detect, build-setup, build-release]
+    if: always() && needs.build-setup.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Complete stage 2 check (Build)
+        if: needs.build-setup.outputs.stage2_check_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          BUILD_RESULT="${{ needs.build-release.result }}"
+          case "$BUILD_RESULT" in
+            success)   CONCLUSION="success";   ICON="✅" ;;
+            failure)   CONCLUSION="failure";   ICON="❌" ;;
+            cancelled) CONCLUSION="cancelled"; ICON="⚠️" ;;
+            skipped)   CONCLUSION="skipped";   ICON="⏭️" ;;
+            *)         CONCLUSION="neutral";   ICON="❔" ;;
+          esac
+          SUMMARY=$(printf '%s Build matrix result: **%s**\n\n[View logs](%s)' "$ICON" "$BUILD_RESULT" "$RUN_URL")
+          gh api "repos/${{ github.repository }}/check-runs/${{ needs.build-setup.outputs.stage2_check_id }}" \
+            --method PATCH \
+            -f status="completed" \
+            -f conclusion="$CONCLUSION" \
+            -f output[title]="Build — $CONCLUSION" \
+            -f output[summary]="$SUMMARY" || true
+
+      - name: Update master check (Stage 2 complete)
+        if: inputs.check_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          BUILD_RESULT="${{ needs.build-release.result }}"
+          SUMMARY=$(printf '✅ **Stage 1/4 — Detect** complete\n✅ **Stage 2/4 — Build** complete (result: %s)\n\n🔄 **Stage 3/4 — Release** starting...\n\n[View full logs](%s)' "$BUILD_RESULT" "$RUN_URL")
+          gh api "repos/${{ github.repository }}/check-runs/${{ inputs.check_run_id }}" \
+            --method PATCH \
+            -f status="in_progress" \
+            -f details_url="$RUN_URL" \
+            -f output[title]="Phase 4: Publish — running" \
+            -f output[summary]="$SUMMARY" || true
+
+  # ═══════════════════════════════════════════════════════════════
   #  Step 4: Create Release on THIS repo (community)
   # ═══════════════════════════════════════════════════════════════
   create-release:
     name: Create Release
-    needs: [detect, build-release]
+    needs: [detect, build-release, build-finalize]
     if: always() && needs.detect.outputs.has_builds == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      stage3_check_id: ${{ steps.stage3_start.outputs.check_run_id }}
     steps:
+      - name: Create stage 3 check run (Release)
+        id: stage3_start
+        if: inputs.head_sha != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          CHECK_ID=$(gh api "repos/${{ github.repository }}/check-runs" \
+            --method POST \
+            -f name="Phase 4 • 3. Release" \
+            -f head_sha="${{ inputs.head_sha }}" \
+            -f status="in_progress" \
+            -f details_url="$RUN_URL" \
+            -f output[title]="Creating GitHub Releases" \
+            -f output[summary]="📦 Uploading binaries and creating release tags..." \
+            --jq '.id')
+          echo "check_run_id=${CHECK_ID}" >> "$GITHUB_OUTPUT"
+          echo "Stage 3 check run: ${CHECK_ID}"
+
       - uses: actions/checkout@v4
 
       - name: Install yq
@@ -623,6 +797,37 @@ jobs:
             cd "$REPO_ROOT"
           done
 
+      - name: Complete stage 3 check (Release)
+        if: always() && steps.stage3_start.outputs.check_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          CONCLUSION="success"
+          [ "${{ job.status }}" = "failure" ] && CONCLUSION="failure"
+          [ "${{ job.status }}" = "cancelled" ] && CONCLUSION="cancelled"
+          SUMMARY=$(printf '📦 GitHub Releases created for changed plugins.\n\n[View logs](%s)' "$RUN_URL")
+          gh api "repos/${{ github.repository }}/check-runs/${{ steps.stage3_start.outputs.check_run_id }}" \
+            --method PATCH \
+            -f status="completed" \
+            -f conclusion="$CONCLUSION" \
+            -f output[title]="Release — $CONCLUSION" \
+            -f output[summary]="$SUMMARY" || true
+
+      - name: Update master check (Stage 3 complete)
+        if: always() && inputs.check_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          SUMMARY=$(printf '✅ **Stage 1/4 — Detect** complete\n✅ **Stage 2/4 — Build** complete\n✅ **Stage 3/4 — Release** complete\n\n🔄 **Stage 4/4 — Publish & Merge** starting...\n\n[View full logs](%s)' "$RUN_URL")
+          gh api "repos/${{ github.repository }}/check-runs/${{ inputs.check_run_id }}" \
+            --method PATCH \
+            -f status="in_progress" \
+            -f details_url="$RUN_URL" \
+            -f output[title]="Phase 4: Publish — running" \
+            -f output[summary]="$SUMMARY" || true
+
   # ═══════════════════════════════════════════════════════════════
   #  Step 5: Update registry.json in plugin-store repo
   # ═══════════════════════════════════════════════════════════════
@@ -631,7 +836,29 @@ jobs:
     needs: [detect, create-release]
     if: always() && needs.detect.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      stage4_check_id: ${{ steps.stage4_start.outputs.check_run_id }}
+      new_master_check_id: ${{ steps.new_master.outputs.check_run_id }}
     steps:
+      - name: Create stage 4 check run (Publish)
+        id: stage4_start
+        if: inputs.head_sha != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          CHECK_ID=$(gh api "repos/${{ github.repository }}/check-runs" \
+            --method POST \
+            -f name="Phase 4 • 4. Publish & Merge" \
+            -f head_sha="${{ inputs.head_sha }}" \
+            -f status="in_progress" \
+            -f details_url="$RUN_URL" \
+            -f output[title]="Publishing registry & merging PR" \
+            -f output[summary]="🚀 Injecting pre-flight, regenerating registry.json, pushing to fork, merging..." \
+            --jq '.id')
+          echo "check_run_id=${CHECK_ID}" >> "$GITHUB_OUTPUT"
+          echo "Stage 4 check run: ${CHECK_ID}"
+
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.ref || github.ref }}
@@ -876,6 +1103,7 @@ jobs:
           done
 
       - name: Update registry in this repo
+        id: registry_push
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -981,12 +1209,42 @@ jobs:
           git config user.name "plugin-store-bot"
           git config user.email "bot@plugin-store.local"
           git add skills/ registry.json .claude-plugin/marketplace.json
-          git diff --staged --quiet && echo "No CI changes to commit" || {
+          if git diff --staged --quiet; then
+            echo "No CI changes to commit"
+            echo "pushed_new_commit=false" >> "$GITHUB_OUTPUT"
+          else
             CHANGED="${{ needs.detect.outputs.changed_plugins }}"
             git commit -m "auto: publish ${CHANGED} (pre-flight + registry)"
             # Push to fork PR branch (works for both fork and same-repo PRs)
             git push origin HEAD:refs/heads/${{ needs.detect.outputs.pr_head_ref || github.ref_name }}
-          }
+            NEW_HEAD_SHA=$(git rev-parse HEAD)
+            echo "pushed_new_commit=true" >> "$GITHUB_OUTPUT"
+            echo "new_head_sha=${NEW_HEAD_SHA}" >> "$GITHUB_OUTPUT"
+            echo "Pushed new commit: ${NEW_HEAD_SHA}"
+          fi
+
+      - name: Create new master check on new head SHA
+        id: new_master
+        if: inputs.check_run_id != '' && steps.registry_push.outputs.pushed_new_commit == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # After pushing new CI commit to fork, the PR head SHA changed.
+          # The original master check run is now on a stale SHA — invisible in PR UI.
+          # Re-create a master check on the NEW head SHA so PR keeps showing progress.
+          NEW_SHA="${{ steps.registry_push.outputs.new_head_sha }}"
+          CHECK_ID=$(gh api "repos/${{ github.repository }}/check-runs" \
+            --method POST \
+            -f name="Phase 4: Publish" \
+            -f head_sha="$NEW_SHA" \
+            -f status="in_progress" \
+            -f details_url="$RUN_URL" \
+            -f output[title]="Phase 4: Publish — merging" \
+            -f output[summary]="🚀 Registry updates pushed to fork. Un-drafting releases and merging PR..." \
+            --jq '.id')
+          echo "check_run_id=${CHECK_ID}" >> "$GITHUB_OUTPUT"
+          echo "Created new master check ${CHECK_ID} on new SHA ${NEW_SHA}"
 
       - name: Un-draft all releases
         env:
@@ -1021,17 +1279,52 @@ jobs:
             }
           echo "PR #${PR_NUM} merged to main successfully."
 
-      - name: Update check run (success)
+      - name: Complete stage 4 check (Publish)
+        if: always() && steps.stage4_start.outputs.check_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          CONCLUSION="success"
+          [ "${{ job.status }}" = "failure" ] && CONCLUSION="failure"
+          [ "${{ job.status }}" = "cancelled" ] && CONCLUSION="cancelled"
+          SUMMARY=$(printf '🎉 Registry updated, PR merged to main.\n\n[View logs](%s)' "$RUN_URL")
+          gh api "repos/${{ github.repository }}/check-runs/${{ steps.stage4_start.outputs.check_run_id }}" \
+            --method PATCH \
+            -f status="completed" \
+            -f conclusion="$CONCLUSION" \
+            -f output[title]="Publish & Merge — $CONCLUSION" \
+            -f output[summary]="$SUMMARY" || true
+
+      - name: Update master check (success)
         if: needs.detect.outputs.pr_number != '' && inputs.check_run_id != ''
         env:
           GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          SUMMARY=$(printf '✅ **Stage 1/4 — Detect** complete\n✅ **Stage 2/4 — Build** complete\n✅ **Stage 3/4 — Release** complete\n✅ **Stage 4/4 — Publish & Merge** complete\n\nAll plugins compiled, released, and merged to main.\n\n[View full logs](%s)' "$RUN_URL")
           gh api "repos/${{ github.repository }}/check-runs/${{ inputs.check_run_id }}" \
             --method PATCH \
             -f status="completed" \
             -f conclusion="success" \
+            -f details_url="$RUN_URL" \
             -f output[title]="Phase 4: Publish — Success" \
-            -f output[summary]="All plugins compiled, released, and merged." || true
+            -f output[summary]="$SUMMARY" || true
+
+      - name: Update new-head master check (success)
+        if: steps.new_master.outputs.check_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          SUMMARY=$(printf '🎉 Registry updated, PR merged to main.\n\n[View full logs](%s)' "$RUN_URL")
+          gh api "repos/${{ github.repository }}/check-runs/${{ steps.new_master.outputs.check_run_id }}" \
+            --method PATCH \
+            -f status="completed" \
+            -f conclusion="success" \
+            -f details_url="$RUN_URL" \
+            -f output[title]="Phase 4: Publish — Success" \
+            -f output[summary]="$SUMMARY" || true
 
       - name: Post success report to PR
         if: needs.detect.outputs.pr_number != ''
@@ -1061,7 +1354,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════
   notify-failure:
     name: Publish failure handler
-    needs: [detect, build-release, create-release, publish-registry]
+    needs: [detect, build-setup, build-release, build-finalize, create-release, publish-registry]
     if: >-
       failure() &&
       needs.detect.outputs.pr_number != ''
@@ -1076,8 +1369,9 @@ jobs:
         run: |
           FAILED_JOBS=""
           [ "${{ needs.detect.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}detect, "
-
+          [ "${{ needs.build-setup.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}build-setup, "
           [ "${{ needs.build-release.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}build-release, "
+          [ "${{ needs.build-finalize.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}build-finalize, "
           [ "${{ needs.create-release.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}create-release, "
           [ "${{ needs.publish-registry.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}publish-registry, "
           FAILED_JOBS=$(echo "$FAILED_JOBS" | sed 's/, $//')
@@ -1106,17 +1400,37 @@ jobs:
 
           gh pr comment "${PR_NUM}" --repo "${{ github.repository }}" --body "$BODY"
 
-      - name: Update check run (failure)
+      - name: Update master check (failure)
         if: inputs.check_run_id != ''
         env:
           GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          FAILED="${{ steps.failed.outputs.failed_jobs }}"
+          SUMMARY=$(printf '❌ Phase 4 failed. Failed job(s): `%s`\n\n[View full logs](%s)' "$FAILED" "$RUN_URL")
           gh api "repos/${{ github.repository }}/check-runs/${{ inputs.check_run_id }}" \
             --method PATCH \
             -f status="completed" \
             -f conclusion="failure" \
+            -f details_url="$RUN_URL" \
             -f output[title]="Phase 4: Publish — Failed" \
-            -f output[summary]="${{ steps.failed.outputs.failed_jobs }}" || true
+            -f output[summary]="$SUMMARY" || true
+
+      - name: Update new-head master check (failure)
+        if: needs.publish-registry.outputs.new_master_check_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          FAILED="${{ steps.failed.outputs.failed_jobs }}"
+          SUMMARY=$(printf '❌ Failed after pushing registry commit. Failed job(s): `%s`\n\n[View full logs](%s)' "$FAILED" "$RUN_URL")
+          gh api "repos/${{ github.repository }}/check-runs/${{ needs.publish-registry.outputs.new_master_check_id }}" \
+            --method PATCH \
+            -f status="completed" \
+            -f conclusion="failure" \
+            -f details_url="$RUN_URL" \
+            -f output[title]="Phase 4: Publish — Failed" \
+            -f output[summary]="$SUMMARY" || true
 
       - name: Add publish-failed label
         env:
