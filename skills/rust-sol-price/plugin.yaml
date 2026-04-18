@@ -1,6 +1,6 @@
 schema_version: 1
 name: rust-sol-price
-version: "2.0.0"
+version: "3.0.0"
 description: "Query real-time SOL price via OKX API with a Rust CLI tool"
 author:
   name: "yz06276"
