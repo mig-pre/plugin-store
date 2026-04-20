@@ -1,5 +1,31 @@
 use serde_json::Value;
 
+/// Get the native gas balance (in wei) for a wallet on the given chain.
+/// Uses eth_getBalance via the chain's default public RPC.
+/// Returns 0 on any error so callers can treat it as "no gas" gracefully.
+pub async fn get_native_balance(chain_id: u64, wallet: &str) -> anyhow::Result<u128> {
+    let rpc_url = crate::config::get_rpc_url(chain_id, None)?;
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()?;
+    let body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "eth_getBalance",
+        "params": [wallet, "latest"],
+        "id": 1
+    });
+    let resp: Value = client
+        .post(&rpc_url)
+        .json(&body)
+        .send()
+        .await?
+        .json()
+        .await?;
+    let hex = resp["result"].as_str().unwrap_or("0x0");
+    let clean = hex.trim_start_matches("0x");
+    Ok(u128::from_str_radix(clean, 16).unwrap_or(0))
+}
+
 /// Get the currently logged-in wallet address for the given chain.
 pub async fn resolve_wallet(chain_id: u64) -> anyhow::Result<String> {
     let chain_str = chain_id.to_string();

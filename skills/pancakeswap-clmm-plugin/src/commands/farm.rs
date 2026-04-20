@@ -44,18 +44,32 @@ pub async fn run(
         None => onchainos::resolve_wallet(chain_id).await.unwrap_or_default(),
     };
     if wallet.is_empty() {
-        anyhow::bail!("Cannot resolve wallet address. Pass --from or ensure onchainos is logged in.");
+        println!("{}", serde_json::to_string_pretty(&serde_json::json!({
+            "ok": false,
+            "error": "Cannot resolve wallet address. Pass --from or ensure onchainos is logged in.",
+            "action_required": "onchainos wallet login"
+        }))?);
+        return Ok(());
     }
 
-    // Pre-check: verify NFT ownership
-    let owner = rpc::owner_of(cfg.nonfungible_position_manager, token_id, &rpc).await?;
+    // Pre-check: verify NFT exists and is owned by this wallet
+    let owner = match rpc::owner_of(cfg.nonfungible_position_manager, token_id, &rpc).await {
+        Ok(o) => o,
+        Err(_) => {
+            println!("{}", serde_json::to_string_pretty(&serde_json::json!({
+                "ok": false,
+                "error": format!("Token ID {} does not exist on chain {}.", token_id, chain_id),
+            }))?);
+            return Ok(());
+        }
+    };
     if owner.to_lowercase() != wallet.to_lowercase() {
-        anyhow::bail!(
-            "Token ID {} is not owned by wallet {}. Current owner: {}",
-            token_id,
-            wallet,
-            owner
-        );
+        println!("{}", serde_json::to_string_pretty(&serde_json::json!({
+            "ok": false,
+            "error": format!("Token ID {} is not owned by wallet {}. Current owner: {}", token_id, wallet, owner),
+            "action_required": format!("Use the wallet that owns token ID {}", token_id)
+        }))?);
+        return Ok(());
     }
 
     if !confirm {
