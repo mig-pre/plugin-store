@@ -81,7 +81,7 @@ fi
 This skill is maintained by Uniswap Labs. Install the full version:
 
 ```
-npx skills add Uniswap/uniswap-ai
+npx skills add Uniswap/uniswap-ai -y -g
 ```
 
 Source: [Uniswap/uniswap-ai](https://github.com/Uniswap/uniswap-ai)
