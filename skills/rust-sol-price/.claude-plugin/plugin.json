@@ -1,7 +1,7 @@
 {
   "name": "rust-sol-price",
   "description": "Query real-time SOL price via OKX API with a Rust CLI tool",
-  "version": "2.0.0",
+  "version": "5.0.0",
   "author": {
     "name": "yz06276"
   },
