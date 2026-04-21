@@ -1,12 +1,12 @@
-**Overview**
+## Overview
 
 Swap tokens and provide liquidity on Velodrome V2's AMM on Optimism — supporting volatile and stable pool types — earning trading fees and VELO emissions from pool gauges.
 
-**Prerequisites**
+## Prerequisites
 - onchainos agentic wallet connected
 - Some tokens on Optimism to swap or provide as liquidity
 
-**How it Works**
+## How it Works
 1. **Swap tokens**:
    - 1.1 **Get a quote**: Check the expected output before committing — auto-checks both volatile and stable pools (no gas). `velodrome-v2-plugin quote --token-in WETH --token-out USDC --amount-in <amount>`
    - 1.2 **Execute the swap**: Send tokens and receive output in one transaction. `velodrome-v2-plugin swap --token-in WETH --token-out USDC --amount-in <amount> --slippage 0.5 --confirm`
