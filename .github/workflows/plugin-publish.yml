@@ -565,54 +565,24 @@ jobs:
                 fi
               fi
 
-              # Strategy: create new release FIRST, then delete old one.
-              # This ensures users always have a working release during transitions.
-              # If the old tag exists, we need to delete it before creating (GitHub requires unique tags).
-              # But we use a temp tag to keep the old release alive until the new one is confirmed.
-
-              # Check if old release exists
-              OLD_RELEASE_EXISTS=false
+              # Strategy:
+              # - Version upgrade (different tag): create new FIRST, old stays until final cleanup
+              # - Same version rebuild (same tag): must delete old first (GitHub requires unique tags)
+              SAME_TAG_EXISTS=false
               if gh release view "$TAG" --repo "${{ github.repository }}" > /dev/null 2>&1; then
-                OLD_RELEASE_EXISTS=true
-                echo "  Existing release found for $TAG — will replace after new release is confirmed"
-              fi
-
-              # Delete old release+tag (required before creating same tag at new commit)
-              if [ "$OLD_RELEASE_EXISTS" = "true" ]; then
+                SAME_TAG_EXISTS=true
+                echo "  Same tag $TAG exists — same-version rebuild, must delete first"
                 gh release delete "$TAG" --repo "${{ github.repository }}" --yes --cleanup-tag 2>/dev/null || true
               fi
 
-              # Create release targeting main branch (not a specific SHA).
-              # Using a SHA fails when auto-commits (registry.json) advance main
-              # between checkout and release creation (HTTP 422: target_commitish invalid).
               if gh release create "$TAG" \
                 --repo "${{ github.repository }}" \
                 --title "$TITLE" \
                 --notes-file "$NOTES_FILE" \
                 --target "main" \
+                --draft \
                 ${BIN}-* checksums.txt 2>&1; then
-                echo "Release created: $TAG"
-
-                # Clean up old VERSION releases for this plugin
-                # New version confirmed → delete all older versions
-                gh release list --repo "${{ github.repository }}" --limit 100 --json tagName --jq '.[].tagName' \
-                  | grep "^plugins/${NAME}@" \
-                  | grep -v "^${TAG}$" \
-                  | while read OLD_VER_TAG; do
-                    echo "  Deleting old version: $OLD_VER_TAG"
-                    gh release delete "$OLD_VER_TAG" --repo "${{ github.repository }}" --yes --cleanup-tag 2>/dev/null || true
-                  done
-
-                # Clean up old NAME releases (plugin rename scenario)
-                OLD_TAG_PATTERN="plugins/${BIN}@"
-                if [ "$OLD_TAG_PATTERN" != "plugins/${NAME}@" ]; then
-                  gh release list --repo "${{ github.repository }}" --limit 100 --json tagName --jq '.[].tagName' \
-                    | grep "^${OLD_TAG_PATTERN}" \
-                    | while read OLD_NAME_TAG; do
-                      echo "  Deleting renamed release: $OLD_NAME_TAG"
-                      gh release delete "$OLD_NAME_TAG" --repo "${{ github.repository }}" --yes --cleanup-tag 2>/dev/null || true
-                    done
-                fi
+                echo "Release created (draft): $TAG"
               else
                 echo "::warning::Release create failed for $TAG"
               fi
@@ -988,22 +958,6 @@ jobs:
             git push origin HEAD:refs/heads/${{ needs.detect.outputs.pr_head_ref || github.ref_name }}
           }
 
-      - name: Un-draft all releases
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          echo "Checking for draft releases to publish..."
-          DRAFTS=$(gh release list --repo "${{ github.repository }}" --limit 200 --json tagName,isDraft --jq '.[] | select(.isDraft) | .tagName')
-          if [ -z "$DRAFTS" ]; then
-            echo "No draft releases found"
-            exit 0
-          fi
-          echo "$DRAFTS" | while read TAG; do
-            echo "Publishing draft: $TAG"
-            gh release edit "$TAG" --repo "${{ github.repository }}" --draft=false 2>&1 || true
-          done
-          echo "Done. All releases published."
-
       # ── Final step: merge feature branch to main ──────────
       - name: Merge PR to main
         if: needs.detect.outputs.pr_number != ''
@@ -1055,6 +1009,51 @@ jobs:
 
           ---
           *Published by Plugin Store CI*"
+
+      # ── Everything succeeded: un-draft releases and clean up old versions ──
+      - name: Un-draft releases and clean up old versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_PLUGINS: ${{ needs.detect.outputs.build_plugins_json }}
+        run: |
+          # Un-draft all draft releases
+          echo "Publishing draft releases..."
+          DRAFTS=$(gh release list --repo "${{ github.repository }}" --limit 200 --json tagName,isDraft --jq '.[] | select(.isDraft) | .tagName')
+          if [ -n "$DRAFTS" ]; then
+            echo "$DRAFTS" | while read TAG; do
+              echo "  Publishing: $TAG"
+              gh release edit "$TAG" --repo "${{ github.repository }}" --draft=false 2>&1 || true
+            done
+          fi
+
+          # Clean up old version releases (new version confirmed + merge succeeded)
+          echo "Cleaning up old version releases..."
+          for PLUGIN_JSON in $(echo "$BUILD_PLUGINS" | jq -c '.[]' 2>/dev/null); do
+            NAME=$(echo "$PLUGIN_JSON" | jq -r '.name')
+            VERSION=$(echo "$PLUGIN_JSON" | jq -r '.version')
+            BIN=$(echo "$PLUGIN_JSON" | jq -r '.binary_name')
+            CURRENT_TAG="plugins/${NAME}@${VERSION}"
+
+            # Delete older version tags for this plugin
+            gh release list --repo "${{ github.repository }}" --limit 100 --json tagName --jq '.[].tagName' \
+              | grep "^plugins/${NAME}@" \
+              | grep -v "^${CURRENT_TAG}$" \
+              | while read OLD_TAG; do
+                echo "  Deleting old version: $OLD_TAG"
+                gh release delete "$OLD_TAG" --repo "${{ github.repository }}" --yes --cleanup-tag 2>/dev/null || true
+              done
+
+            # Clean up renamed plugin tags (if binary_name differs from plugin name)
+            if [ -n "$BIN" ] && [ "$BIN" != "$NAME" ]; then
+              gh release list --repo "${{ github.repository }}" --limit 100 --json tagName --jq '.[].tagName' \
+                | grep "^plugins/${BIN}@" \
+                | while read OLD_TAG; do
+                  echo "  Deleting renamed: $OLD_TAG"
+                  gh release delete "$OLD_TAG" --repo "${{ github.repository }}" --yes --cleanup-tag 2>/dev/null || true
+                done
+            fi
+          done
+          echo "Done."
 
   # ═══════════════════════════════════════════════════════════════
   #  Failure handler: notify on any error, block merge
