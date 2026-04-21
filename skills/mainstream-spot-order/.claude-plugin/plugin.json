@@ -3,8 +3,8 @@
   "description": "Multi-chain DEX spot trading system with 6-signal ensemble, auto-research strategy optimization, and per-pair backtesting across SOL, ETH, BTC, BNB, AVAX, DOGE",
   "version": "1.0.0",
   "author": {
-    "name": "victorlee",
-    "github": "VibeCodeDaddy69"
+    "name": "VibeCodeDaddy",
+    "github": "VibeCodeDaddy"
   },
   "license": "MIT",
   "keywords": [

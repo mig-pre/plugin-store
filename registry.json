@@ -354,7 +354,7 @@
       "version": "1.0.0",
       "description": "Unified macro intelligence feed — reads 7 sources, classifies events, scores sentiment, generates AI insights, exposes signals via HTTP API",
       "author": {
-        "name": "victorlee"
+        "name": "VibeCodeDaddy"
       },
       "category": "trading-strategy",
       "tags": [
@@ -379,7 +379,7 @@
       "version": "1.0.0",
       "description": "Multi-chain DEX spot trading system with 6-signal ensemble, auto-research strategy optimization, and per-pair backtesting across SOL, ETH, BTC, BNB, AVAX, DOGE",
       "author": {
-        "name": "victorlee"
+        "name": "VibeCodeDaddy"
       },
       "category": "trading-strategy",
       "tags": [
@@ -547,7 +547,7 @@
       "version": "1.0.0",
       "description": "One-click multi-launchpad token creation with bundled buy, IPFS metadata, MEV protection across 6 launchpads on Solana and BSC",
       "author": {
-        "name": "victorlee"
+        "name": "VibeCodeDaddy"
       },
       "category": "trading-strategy",
       "tags": [
@@ -1237,7 +1237,7 @@
       "version": "1.0.0",
       "description": "Wallet copy-trade bot -- monitors target Solana wallets and auto-mirrors meme token buys/sells with MC target gating, tiered TP, trailing stop, and 4-tier risk grading",
       "author": {
-        "name": "victorlee"
+        "name": "VibeCodeDaddy"
       },
       "category": "trading-strategy",
       "tags": [
