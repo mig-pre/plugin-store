@@ -1091,6 +1091,14 @@ jobs:
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           FAILED="${{ steps.failed.outputs.failed_jobs }}"
 
+          # Get PR author and reviewers for notification
+          PR_AUTHOR=$(gh pr view "${PR_NUM}" --repo "${{ github.repository }}" --json author --jq '.author.login' || echo "")
+          REVIEWERS=$(gh pr view "${PR_NUM}" --repo "${{ github.repository }}" --json reviews --jq '[.reviews[].author.login] | unique | join(", @")' || echo "")
+
+          MENTIONS=""
+          [ -n "$PR_AUTHOR" ] && MENTIONS="cc @${PR_AUTHOR}"
+          [ -n "$REVIEWERS" ] && MENTIONS="${MENTIONS} @${REVIEWERS}"
+
           BODY="## ❌ Phase 4: Publish Failed
 
           **PR will NOT be merged.** The following job(s) failed:
@@ -1099,7 +1107,9 @@ jobs:
           ${FAILED}
           \`\`\`
 
-          **Action required**: Review the [workflow run](${RUN_URL}) logs, fix the issue, and re-trigger by pushing a fix or re-requesting review.
+          **Action required**: Review the [workflow run](${RUN_URL}) logs, fix the issue, and re-trigger by removing and re-adding the \`approved-for-publish\` label.
+
+          ${MENTIONS}
 
           ---
           *Phase 4 publish failed at $(date -u '+%Y-%m-%d %H:%M:%S UTC')*"
