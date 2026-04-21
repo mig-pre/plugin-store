@@ -1,0 +1,22 @@
+{
+  "name": "market-structure-analyzer",
+  "description": "Crypto market-structure research agent — 24 indicators across derivatives, options (gamma wall, skew), on-chain (MVRV), exchange flows (Dune), and macro sentiment",
+  "version": "2.1.0",
+  "author": {
+    "name": "VibeCodeDaddy",
+    "github": "VibeCodeDaddy69"
+  },
+  "license": "MIT",
+  "keywords": [
+    "bitcoin",
+    "ethereum",
+    "derivatives",
+    "options",
+    "on-chain",
+    "market-structure",
+    "dune-analytics",
+    "gamma-wall",
+    "mvrv"
+  ],
+  "repository": "https://github.com/okx/plugin-store"
+}
