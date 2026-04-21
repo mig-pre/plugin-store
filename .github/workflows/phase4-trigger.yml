@@ -40,17 +40,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          CHECK_NAME="Phase 4: Publish — ${PR_TITLE}"
           CHECK_ID=$(gh api "repos/${{ github.repository }}/check-runs" \
             --method POST \
-            -f name="Phase 4: Publish" \
+            -f name="${CHECK_NAME}" \
             -f head_sha="$HEAD_SHA" \
             -f status="in_progress" \
-            -f output[title]="Phase 4: Publish" \
+            -f output[title]="${CHECK_NAME}" \
             -f output[summary]="Building, publishing, and merging..." \
             --jq '.id')
           echo "check_run_id=${CHECK_ID}" >> "$GITHUB_OUTPUT"
           echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
-          echo "Created check run ${CHECK_ID} on ${HEAD_SHA}"
+          echo "Created check run: ${CHECK_NAME}"
 
       - name: Generate App token
         id: app-token

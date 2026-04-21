@@ -330,19 +330,25 @@ jobs:
 
             const body = `## ${icon} Phase 1: Structure Validation — ${status}\n\n\`\`\`\n${output}\n\`\`\`\n\n${passed ? '→ Proceeding to Phase 2: Build Verification' : '→ Please fix the errors above and push again.'}`;
 
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner, repo: context.repo.repo,
-              issue_number: prNumber,
-            });
-            const botComment = comments.find(c =>
-              c.user.type === 'Bot' && c.body.includes('Phase 1: Structure Validation')
-            );
+            try {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: prNumber,
+              });
+              const botComment = comments.find(c =>
+                c.user.type === 'Bot' && c.body.includes('Phase 1: Structure Validation')
+              );
 
-            const params = { owner: context.repo.owner, repo: context.repo.repo, body };
-            if (botComment) {
-              await github.rest.issues.updateComment({ ...params, comment_id: botComment.id });
-            } else {
-              await github.rest.issues.createComment({ ...params, issue_number: prNumber });
+              const params = { owner: context.repo.owner, repo: context.repo.repo, body };
+              if (botComment) {
+                await github.rest.issues.updateComment({ ...params, comment_id: botComment.id });
+              } else {
+                await github.rest.issues.createComment({ ...params, issue_number: prNumber });
+              }
+              console.log('Phase 1 comment posted successfully');
+            } catch (e) {
+              console.log('Failed to post Phase 1 comment:', e.message);
+              core.warning('Failed to post Phase 1 lint report: ' + e.message);
             }
 
       - name: Fail if lint errors
