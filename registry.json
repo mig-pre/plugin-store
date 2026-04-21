@@ -24,7 +24,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aave-v3-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aave-v3-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "ethereum",
@@ -55,7 +55,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/clanker-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/clanker-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "base"
@@ -87,7 +87,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/compound-v3-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/compound-v3-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "ethereum",
@@ -118,7 +118,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/curve-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/curve-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "ethereum",
@@ -149,7 +149,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/eth-price-demo/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/eth-price-demo/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "ethereum"
@@ -180,7 +180,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/etherfi-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/etherfi-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "ethereum",
@@ -211,7 +211,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/gmx-v2-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/gmx-v2-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "base"
@@ -244,7 +244,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "solana",
@@ -276,7 +276,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-lend-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-lend-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "solana",
@@ -307,7 +307,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-liquidity-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-liquidity-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "solana",
@@ -339,7 +339,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/lido-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/lido-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "ethereum",
@@ -372,7 +372,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/macro-intelligence/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/macro-intelligence/SUMMARY.md",
-      "modify_date": "1776737579"
+      "modify_date": "1776741935"
     },
     {
       "name": "mainstream-spot-order",
@@ -397,7 +397,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/mainstream-spot-order/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/mainstream-spot-order/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "solana",
@@ -434,7 +434,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meme-trench-scanner/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meme-trench-scanner/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "solana",
@@ -465,7 +465,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meteora-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meteora-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "solana",
@@ -498,7 +498,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/morpho-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/morpho-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "ethereum",
@@ -532,7 +532,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/okx-buildx-hackathon-agent-track/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/okx-buildx-hackathon-agent-track/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "base",
@@ -565,7 +565,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/one-click-token-launch/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/one-click-token-launch/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "solana",
@@ -596,7 +596,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/orca-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/orca-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "solana",
@@ -627,7 +627,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-clmm-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-clmm-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "ethereum",
@@ -656,7 +656,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v2-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v2-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "base"
@@ -687,7 +687,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v3-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v3-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "ethereum",
@@ -719,7 +719,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pendle-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pendle-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "ethereum",
@@ -752,7 +752,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/plugin-store/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/plugin-store/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "base"
@@ -785,7 +785,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/polymarket-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/polymarket-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "ethereum",
@@ -816,7 +816,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pump-fun-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pump-fun-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "solana",
@@ -847,7 +847,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/raydium-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/raydium-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "solana",
@@ -882,7 +882,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/smart-money-signal-copy-trade/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/smart-money-signal-copy-trade/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "solana",
@@ -919,7 +919,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/top-rank-tokens-sniper/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/top-rank-tokens-sniper/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "solana",
@@ -951,7 +951,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-ai/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-ai/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "base"
@@ -981,7 +981,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-cca-configurator/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-cca-configurator/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "base"
@@ -1011,7 +1011,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-cca-deployer/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-cca-deployer/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "base"
@@ -1041,7 +1041,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-liquidity-planner/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-liquidity-planner/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "base"
@@ -1072,7 +1072,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-pay-with-any-token/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-pay-with-any-token/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "base"
@@ -1103,7 +1103,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-swap-integration/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-swap-integration/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "base"
@@ -1133,7 +1133,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-swap-planner/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-swap-planner/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "base"
@@ -1163,7 +1163,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-v4-security-foundations/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-v4-security-foundations/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "base"
@@ -1193,7 +1193,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-viem-integration/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-viem-integration/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "base"
@@ -1223,7 +1223,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/velodrome-v2-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/velodrome-v2-plugin/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "base"
@@ -1256,7 +1256,7 @@
       "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/wallet-tracker-mcap/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/wallet-tracker-mcap/SUMMARY.md",
-      "modify_date": "1776737579",
+      "modify_date": "1776741935",
       "extra": {
         "chains": [
           "solana",
