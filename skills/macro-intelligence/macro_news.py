@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Macro Intelligence Skill v1.0 — Unified Macro Intelligence Feed
+Macro Intelligence Skill v2.0 — Unified Macro Intelligence Feed
 Merges perception layers from RWA Alpha + TG Intel.
-Reads news from 3 sources (NewsNow, Polymarket, Telegram),
-classifies macro events, scores sentiment, exposes signals via HTTP API.
+Reads news from 9+ sources, classifies macro events, scores sentiment,
+generates AI insights, exposes signals via HTTP API + WebSocket push.
 No trading logic — intelligence only.
 """
 from __future__ import annotations
@@ -11,11 +11,13 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import queue
 import re
 import sys
 import time
 import threading
 import traceback
+import xml.etree.ElementTree as ET
 from collections import defaultdict
 from datetime import datetime, timezone
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -24,6 +26,8 @@ from urllib.parse import parse_qs, urlparse
 from urllib.request import Request, urlopen
 
 import config as C
+
+_VERSION = "2.0.0"
 
 # ═══════════════════════════════════════════════════════════════════════
 #  GLOBAL STATE
@@ -48,12 +52,43 @@ _stats = {
     "llm_calls": 0,
 }
 
+# ── WebSocket server state ──
+_ws_clients: set = set()
+_ws_client_filters: dict = {}          # websocket -> {direction, min_mag, affects}
+_ws_broadcast_queue: queue.Queue = queue.Queue(maxsize=1000)
+
+# ── Signal accuracy tracking ──
+_accuracy_pending: list[dict] = []     # [{signal_ts, event_type, direction, btc_price, eth_price, check_at: [ts,...]}]
+_accuracy_results: dict = {}           # event_type -> {hits, misses, checks}
+
+# ── Trend detection ──
+_recent_event_types: list[tuple[float, str]] = []  # [(ts, event_type)]
+
+# ── Fuzzy dedup ──
+_recent_texts: list[tuple[float, str]] = []  # [(ts, text)] last 100
+
+# ── RSS state ──
+_rss_seen_guids: dict[str, set] = {}   # feed_url -> set of seen guids
+_rss_last_poll: dict[str, float] = {}  # feed_url -> last poll ts
+
+# ── CryptoPanic state ──
+_cryptopanic_last_ts: float = 0
+
+# ── Signal votes ──
+_signal_votes: dict[str, int] = {}     # signal_key -> net votes
+
 # Compiled regex caches
 _macro_regex: dict[str, list[re.Pattern]] = {}
 _noise_regex: list[re.Pattern] = []
 
 _BASE_DIR = Path(__file__).parent
 _STATE_DIR = _BASE_DIR / C.STATE_DIR
+
+# ── OpenNews article buffer (dual-store: raw articles + signals coexist) ──
+_opennews_articles: list[dict] = []
+_opennews_dedup: set[str] = set()
+_opennews_article_index: dict[str, int] = {}
+_opennews_source_status: dict[str, float] = {}
 
 # ═══════════════════════════════════════════════════════════════════════
 #  LOGGING & PERSISTENCE
@@ -74,6 +109,11 @@ def _save_state():
                 "stats": _stats,
                 "source_status": _source_status,
                 "finnhub_last_id": _finnhub_last_id,
+                "accuracy_results": _accuracy_results,
+                "accuracy_pending": _accuracy_pending[-200:],
+                "signal_votes": _signal_votes,
+                "opennews_articles": _opennews_articles[-C.OPENNEWS_MAX_ARTICLES:],
+                "opennews_source_status": _opennews_source_status,
             }
         with open(_STATE_DIR / "state.json", "w") as f:
             json.dump(data, f, default=str)
@@ -82,6 +122,8 @@ def _save_state():
 
 def _load_state():
     global _signals, _dedup_hashes, _reputation, _polymarket, _stats, _source_status, _finnhub_last_id
+    global _accuracy_results, _accuracy_pending, _signal_votes
+    global _opennews_articles, _opennews_dedup, _opennews_source_status
     p = _STATE_DIR / "state.json"
     if not p.exists():
         return
@@ -99,7 +141,26 @@ def _load_state():
                     _stats[k] = saved_stats[k]
             _source_status = data.get("source_status", {})
             _finnhub_last_id = data.get("finnhub_last_id", 0)
-        _log(f"Loaded state: {len(_signals)} signals, {len(_reputation)} senders")
+            _accuracy_results.update(data.get("accuracy_results", {}))
+            _accuracy_pending.extend(data.get("accuracy_pending", []))
+            _signal_votes.update(data.get("signal_votes", {}))
+            # Restore OpenNews article buffer
+            _opennews_articles = data.get("opennews_articles", [])
+            _opennews_source_status = data.get("opennews_source_status", {})
+            _opennews_dedup.clear()
+            _opennews_dedup.update(a["id"] for a in _opennews_articles if "id" in a)
+            _rebuild_opennews_index()
+        # Backfill token_impacts for legacy signals
+        backfilled = 0
+        for sig in _signals:
+            if "token_impacts" not in sig:
+                sig["token_impacts"] = _compute_token_impacts(
+                    sig.get("event_type", ""), sig.get("direction", "neutral"),
+                    sig.get("magnitude", 0.5), sig.get("tokens", []),
+                )
+                backfilled += 1
+        _log(f"Loaded state: {len(_signals)} signals, {len(_reputation)} senders, {len(_opennews_articles)} opennews articles"
+             f"{f' (backfilled {backfilled} token impacts)' if backfilled else ''}")
     except Exception as e:
         _log(f"load_state error: {e}", "WARN")
 
@@ -113,6 +174,316 @@ def _http_get_json(url: str, timeout: int = 10) -> dict | list:
             return json.loads(resp.read().decode())
     except Exception:
         return {}
+
+# ═══════════════════════════════════════════════════════════════════════
+#  OPENNEWS ARTICLE BUFFER — Raw article storage for dashboard tab
+# ═══════════════════════════════════════════════════════════════════════
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+def _strip_html(s: str) -> str:
+    return _HTML_TAG_RE.sub("", s).strip()
+
+def _clean_ai_rating(ai: dict | None) -> dict | None:
+    if not isinstance(ai, dict):
+        return ai
+    for key in ("summary", "enSummary"):
+        if key in ai and isinstance(ai[key], str):
+            ai[key] = _strip_html(ai[key])
+    return ai
+
+def _normalize_opennews_article(params: dict) -> dict | None:
+    """Standardize a raw WS or REST article into our schema."""
+    news_id = str(params.get("id", params.get("newsId", "")))
+    text = _strip_html(params.get("text", params.get("title", "")))
+    if not news_id or not text:
+        return None
+
+    ai_rating = params.get("aiRating")
+    if ai_rating and not isinstance(ai_rating, dict):
+        ai_rating = None
+
+    coins = params.get("coins", [])
+    if not isinstance(coins, list):
+        coins = []
+
+    return {
+        "id": news_id,
+        "text": text,
+        "newsType": params.get("newsType", "unknown"),
+        "engineType": params.get("engineType", "news"),
+        "link": params.get("link", ""),
+        "coins": coins,
+        "aiRating": _clean_ai_rating(ai_rating),
+        "ts": params.get("ts", int(time.time() * 1000)),
+        "_received_ts": time.time(),
+    }
+
+
+def _ingest_opennews_article(article: dict) -> bool:
+    """Dedup, append to buffer, update source status, queue for broadcast.
+    Returns True if article was new."""
+    aid = article["id"]
+    with _state_lock:
+        if aid in _opennews_dedup:
+            return False
+        _opennews_dedup.add(aid)
+        _opennews_articles.append(article)
+
+        # Update source status
+        src = article.get("newsType", "unknown")
+        _opennews_source_status[src] = time.time()
+
+        # Trim buffer
+        if len(_opennews_articles) > C.OPENNEWS_MAX_ARTICLES:
+            removed = _opennews_articles[:len(_opennews_articles) - C.OPENNEWS_MAX_ARTICLES]
+            del _opennews_articles[:len(_opennews_articles) - C.OPENNEWS_MAX_ARTICLES]
+            for r in removed:
+                _opennews_dedup.discard(r.get("id", ""))
+            _rebuild_opennews_index()
+        else:
+            _opennews_article_index[aid] = len(_opennews_articles) - 1
+
+    # Queue for WS broadcast (tagged so broadcast worker can distinguish)
+    try:
+        _ws_broadcast_queue.put_nowait({
+            "_opennews_article": True,
+            "type": "opennews_article",
+            "data": article,
+        })
+    except queue.Full:
+        pass
+    return True
+
+
+def _update_opennews_ai(news_id: str, ai_rating: dict):
+    """Update an existing article's AI rating in-place and broadcast."""
+    ai_rating = _clean_ai_rating(ai_rating)
+    with _state_lock:
+        idx = _opennews_article_index.get(news_id)
+        if idx is not None and idx < len(_opennews_articles):
+            _opennews_articles[idx]["aiRating"] = ai_rating
+        else:
+            for i in range(len(_opennews_articles) - 1, -1, -1):
+                if _opennews_articles[i].get("id") == news_id:
+                    _opennews_articles[i]["aiRating"] = ai_rating
+                    break
+
+    try:
+        _ws_broadcast_queue.put_nowait({
+            "_opennews_article": True,
+            "type": "opennews_ai_update",
+            "data": {"id": news_id, "aiRating": ai_rating},
+        })
+    except queue.Full:
+        pass
+
+
+def _rebuild_opennews_index():
+    """Rebuild the id->index lookup. Call under _state_lock."""
+    global _opennews_article_index
+    _opennews_article_index = {a["id"]: i for i, a in enumerate(_opennews_articles) if "id" in a}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  OPENNEWS METRICS ENGINE — Analytics for the OpenNews dashboard tab
+# ═══════════════════════════════════════════════════════════════════════
+def _opennews_windowed_articles(window_sec: int = 3600) -> list[dict]:
+    cutoff = time.time() - window_sec
+    with _state_lock:
+        return [a for a in _opennews_articles if a.get("_received_ts", 0) >= cutoff]
+
+def _opennews_score_distribution(articles: list[dict]) -> dict[str, int]:
+    buckets = {"0-20": 0, "20-40": 0, "40-60": 0, "60-80": 0, "80-100": 0}
+    for a in articles:
+        ai = a.get("aiRating")
+        if not isinstance(ai, dict):
+            continue
+        score = ai.get("score", 0)
+        if score < 20:    buckets["0-20"] += 1
+        elif score < 40:  buckets["20-40"] += 1
+        elif score < 60:  buckets["40-60"] += 1
+        elif score < 80:  buckets["60-80"] += 1
+        else:             buckets["80-100"] += 1
+    return buckets
+
+def _opennews_signal_ratios(articles: list[dict]) -> dict:
+    counts = {"long": 0, "short": 0, "neutral": 0}
+    for a in articles:
+        ai = a.get("aiRating")
+        if not isinstance(ai, dict):
+            continue
+        sig = ai.get("signal", "neutral")
+        if sig in counts:
+            counts[sig] += 1
+    total = sum(counts.values())
+    if total == 0:
+        return {"long": 0, "short": 0, "neutral": 0, "total": 0}
+    return {
+        "long": round(counts["long"] / total * 100, 1),
+        "short": round(counts["short"] / total * 100, 1),
+        "neutral": round(counts["neutral"] / total * 100, 1),
+        "total": total,
+    }
+
+def _opennews_top_coins(articles: list[dict], limit: int = 15) -> list[dict]:
+    coin_data: dict[str, dict] = {}
+    for a in articles:
+        coins = a.get("coins", [])
+        ai = a.get("aiRating")
+        score = ai.get("score", 0) if isinstance(ai, dict) else 0
+        signal = ai.get("signal", "neutral") if isinstance(ai, dict) else "neutral"
+        for c in coins:
+            sym = c.get("symbol", "") if isinstance(c, dict) else str(c)
+            if not sym:
+                continue
+            sym = sym.upper()
+            if sym not in coin_data:
+                coin_data[sym] = {"count": 0, "total_score": 0, "signals": defaultdict(int)}
+            coin_data[sym]["count"] += 1
+            coin_data[sym]["total_score"] += score
+            coin_data[sym]["signals"][signal] += 1
+    result = []
+    for sym, d in sorted(coin_data.items(), key=lambda x: x[1]["count"], reverse=True)[:limit]:
+        dominant = max(d["signals"], key=d["signals"].get) if d["signals"] else "neutral"
+        result.append({
+            "symbol": sym, "count": d["count"],
+            "avg_score": round(d["total_score"] / d["count"], 1) if d["count"] else 0,
+            "dominant_signal": dominant,
+        })
+    return result
+
+def _opennews_engine_breakdown(articles: list[dict]) -> dict[str, int]:
+    counts = {et: 0 for et in C.OPENNEWS_ENGINE_TYPES}
+    for a in articles:
+        et = a.get("engineType", "news")
+        counts[et] = counts.get(et, 0) + 1
+    return counts
+
+def _opennews_velocity(articles: list[dict], window_sec: int = 3600) -> dict:
+    if not articles:
+        return {"overall": 0, "by_engine": {et: 0 for et in C.OPENNEWS_ENGINE_TYPES}}
+    hours = max(window_sec / 3600, 0.01)
+    by_engine: dict[str, int] = defaultdict(int)
+    for a in articles:
+        by_engine[a.get("engineType", "news")] += 1
+    return {
+        "overall": round(len(articles) / hours, 1),
+        "by_engine": {et: round(by_engine.get(et, 0) / hours, 1) for et in C.OPENNEWS_ENGINE_TYPES},
+    }
+
+def _opennews_high_score_rate(articles: list[dict]) -> float:
+    scored = [a for a in articles if isinstance(a.get("aiRating"), dict)]
+    if not scored:
+        return 0
+    high = sum(1 for a in scored if a["aiRating"].get("score", 0) >= C.OPENNEWS_HIGH_SCORE_THRESHOLD)
+    return round(high / len(scored) * 100, 1)
+
+def _opennews_avg_score(articles: list[dict]) -> float:
+    scored = [a for a in articles if isinstance(a.get("aiRating"), dict) and a["aiRating"].get("score")]
+    if not scored:
+        return 0
+    return round(sum(a["aiRating"]["score"] for a in scored) / len(scored), 1)
+
+def _opennews_predictions(articles: list[dict]) -> list[dict]:
+    preds = [a for a in articles if a.get("engineType") == "prediction"]
+    preds.sort(key=lambda x: x.get("_received_ts", 0), reverse=True)
+    return preds[:10]
+
+def _opennews_listings(articles: list[dict]) -> list[dict]:
+    items = [a for a in articles if a.get("engineType") == "listing"]
+    items.sort(key=lambda x: x.get("_received_ts", 0), reverse=True)
+    return items[:10]
+
+def _opennews_onchain(articles: list[dict]) -> list[dict]:
+    items = [a for a in articles if a.get("engineType") == "onchain"]
+    items.sort(key=lambda x: x.get("_received_ts", 0), reverse=True)
+    return items[:10]
+
+def _opennews_market_anomalies(articles: list[dict]) -> list[dict]:
+    items = [a for a in articles if a.get("engineType") == "market"]
+    items.sort(key=lambda x: x.get("_received_ts", 0), reverse=True)
+    return items[:10]
+
+def _opennews_meme(articles: list[dict]) -> list[dict]:
+    items = [a for a in articles if a.get("engineType") == "meme"]
+    items.sort(key=lambda x: x.get("_received_ts", 0), reverse=True)
+    return items[:10]
+
+def _opennews_source_health() -> list[dict]:
+    now = time.time()
+    with _state_lock:
+        sources = dict(_opennews_source_status)
+    result = []
+    for name, last_ts in sorted(sources.items()):
+        ago_sec = now - last_ts
+        if ago_sec < C.OPENNEWS_SOURCE_STALE:
+            status = "active"
+        elif ago_sec < C.OPENNEWS_SOURCE_DEAD:
+            status = "stale"
+        else:
+            status = "dead"
+        result.append({"name": name, "status": status, "last_seen_ago": round(ago_sec)})
+    return result
+
+def compute_opennews_metrics(window_sec: int = 3600) -> dict:
+    articles = _opennews_windowed_articles(window_sec)
+    return {
+        "window_sec": window_sec,
+        "article_count": len(articles),
+        "avg_score": _opennews_avg_score(articles),
+        "score_distribution": _opennews_score_distribution(articles),
+        "signal_ratios": _opennews_signal_ratios(articles),
+        "top_coins": _opennews_top_coins(articles),
+        "engine_breakdown": _opennews_engine_breakdown(articles),
+        "velocity": _opennews_velocity(articles, window_sec),
+        "high_score_rate": _opennews_high_score_rate(articles),
+    }
+
+def compute_opennews_intelligence(window_sec: int = 3600) -> dict:
+    articles = _opennews_windowed_articles(window_sec)
+    return {
+        "predictions": _opennews_predictions(articles),
+        "listings": _opennews_listings(articles),
+        "onchain": _opennews_onchain(articles),
+        "market_anomalies": _opennews_market_anomalies(articles),
+        "meme": _opennews_meme(articles),
+    }
+
+def _filter_opennews_articles(
+    engine: str = "", signal: str = "", min_score: int = 0,
+    coin: str = "", q: str = "", limit: int = 100,
+) -> list[dict]:
+    with _state_lock:
+        pool = list(_opennews_articles)
+    result = []
+    q_lower = q.lower() if q else ""
+    coin_upper = coin.upper() if coin else ""
+    for a in reversed(pool):
+        if engine and a.get("engineType") != engine:
+            continue
+        ai = a.get("aiRating")
+        if signal and (not isinstance(ai, dict) or ai.get("signal") != signal):
+            continue
+        if min_score > 0:
+            if not isinstance(ai, dict) or (ai.get("score", 0) or 0) < min_score:
+                continue
+        if coin_upper:
+            coins = a.get("coins", [])
+            coin_syms = [(c.get("symbol", "") if isinstance(c, dict) else str(c)).upper() for c in coins]
+            if coin_upper not in coin_syms:
+                continue
+        if q_lower:
+            text = (a.get("text", "") or "").lower()
+            en_summary = ""
+            if isinstance(ai, dict):
+                en_summary = (ai.get("enSummary", "") or "").lower()
+            if q_lower not in text and q_lower not in en_summary:
+                continue
+        result.append(a)
+        if len(result) >= limit:
+            break
+    return result
+
 
 # ═══════════════════════════════════════════════════════════════════════
 #  NEWS FETCHERS
@@ -285,18 +656,39 @@ def fetch_fred_indicators() -> dict:
 #  6551.io OPENNEWS REST FALLBACK
 # ═══════════════════════════════════════════════════════════════════════
 def fetch_opennews_rest() -> list[dict]:
-    """Fallback: fetch high-score news via 6551.io REST API."""
+    """Fetch articles via 6551.io REST /open/news_search POST.
+    Dual-store: raw articles go to _opennews_articles buffer,
+    high-score articles returned as signal candidates."""
     if not C.OPENNEWS_TOKEN:
         return []
-    url = f"{C.OPENNEWS_API_BASE}/open/free_hot?category=news"
-    data = _http_get_json(url, timeout=10)
-    if not isinstance(data, dict):
+    import urllib.error
+    engine_filter = {et: [] for et in C.OPENNEWS_ENGINE_TYPES}
+    body = json.dumps({"engineTypes": engine_filter, "limit": 50, "hasCoin": False}).encode()
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {C.OPENNEWS_TOKEN}",
+    }
+    req = Request(f"{C.OPENNEWS_API_BASE}/open/news_search",
+                  data=body, headers=headers, method="POST")
+    try:
+        with urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+    except Exception as e:
+        _log(f"OpenNews REST error: {e}", "WARN")
         return []
-    items = data.get("data", data.get("items", []))
+    items = data.get("data", [])
     if not isinstance(items, list):
         return []
+    if items:
+        with _state_lock:
+            _source_status["opennews_rest"] = time.time()
     results = []
     for item in items:
+        # Dual-store: ingest every article into raw buffer
+        article = _normalize_opennews_article(item)
+        if article:
+            _ingest_opennews_article(article)
+        # High-score articles also become signal candidates
         score = item.get("aiRating", {}).get("score", 0) if isinstance(item.get("aiRating"), dict) else 0
         if score < C.OPENNEWS_MIN_SCORE:
             continue
@@ -305,7 +697,7 @@ def fetch_opennews_rest() -> list[dict]:
         if not text:
             continue
         results.append({
-            "text": text,
+            "text": _strip_html(text),
             "source": item.get("newsType", "opennews"),
             "score": score,
             "signal": item.get("aiRating", {}).get("signal", "neutral") if isinstance(item.get("aiRating"), dict) else "neutral",
@@ -359,6 +751,148 @@ def fetch_price_tickers() -> dict:
             }
 
     return results
+
+# ═══════════════════════════════════════════════════════════════════════
+#  CRYPTOPANIC NEWS FETCHER
+# ═══════════════════════════════════════════════════════════════════════
+def fetch_cryptopanic_news() -> list[dict]:
+    """Fetch news from CryptoPanic API with community vote data."""
+    if not C.CRYPTOPANIC_TOKEN:
+        return []
+    filt = C.CRYPTOPANIC_FILTER
+    url = f"{C.CRYPTOPANIC_BASE}?auth_token={C.CRYPTOPANIC_TOKEN}&public=true"
+    if filt and filt != "all":
+        url += f"&filter={filt}"
+    data = _http_get_json(url, timeout=10)
+    if not isinstance(data, dict):
+        return []
+    results_list = data.get("results", [])
+    if not isinstance(results_list, list):
+        return []
+    articles = []
+    for item in results_list[:20]:
+        title = item.get("title", "")
+        if not title:
+            continue
+        # Parse source timestamp
+        created_at = item.get("created_at", "")
+        src_ts = 0.0
+        if created_at:
+            try:
+                # ISO 8601: "2025-04-17T10:30:00Z"
+                from datetime import datetime as _dt
+                dt = _dt.fromisoformat(created_at.replace("Z", "+00:00"))
+                src_ts = dt.timestamp()
+            except Exception:
+                pass
+        # Extract community votes
+        votes = item.get("votes", {})
+        positive = votes.get("positive", 0) if isinstance(votes, dict) else 0
+        negative = votes.get("negative", 0) if isinstance(votes, dict) else 0
+        important = votes.get("important", 0) if isinstance(votes, dict) else 0
+        source_info = item.get("source", {})
+        source_name = source_info.get("title", "cryptopanic") if isinstance(source_info, dict) else "cryptopanic"
+        articles.append({
+            "title": title,
+            "source": source_name,
+            "source_ts": src_ts,
+            "votes_positive": positive,
+            "votes_negative": negative,
+            "votes_important": important,
+        })
+    return articles
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  RSS / ATOM FEED FETCHER
+# ═══════════════════════════════════════════════════════════════════════
+def _parse_rss_date(date_str: str) -> float:
+    """Try common RSS/Atom date formats. Returns unix timestamp or 0."""
+    formats = [
+        "%a, %d %b %Y %H:%M:%S %z",      # RSS 2.0: "Thu, 17 Apr 2025 10:30:00 +0000"
+        "%a, %d %b %Y %H:%M:%S %Z",       # RSS 2.0 with TZ name
+        "%Y-%m-%dT%H:%M:%S%z",             # Atom / ISO 8601
+        "%Y-%m-%dT%H:%M:%SZ",              # Atom without offset
+        "%Y-%m-%d %H:%M:%S",               # Fallback
+    ]
+    for fmt in formats:
+        try:
+            dt = datetime.strptime(date_str.strip(), fmt)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.timestamp()
+        except (ValueError, TypeError):
+            continue
+    return 0.0
+
+
+def fetch_rss_feed(feed_config: dict) -> list[dict]:
+    """Fetch and parse an RSS 2.0 or Atom feed. Returns list of articles."""
+    url = feed_config.get("url", "")
+    label = feed_config.get("label", url[:40])
+    if not url:
+        return []
+
+    try:
+        req = Request(url, headers={"User-Agent": "MacroIntelligence/2.0"})
+        with urlopen(req, timeout=10) as resp:
+            raw = resp.read()
+    except Exception as e:
+        _log(f"RSS fetch error ({label}): {e}", "WARN")
+        return []
+
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError as e:
+        _log(f"RSS parse error ({label}): {e}", "WARN")
+        return []
+
+    # Initialize seen guids for this feed
+    if url not in _rss_seen_guids:
+        _rss_seen_guids[url] = set()
+    seen = _rss_seen_guids[url]
+
+    articles = []
+    ns = {"atom": "http://www.w3.org/2005/Atom"}
+
+    # Try RSS 2.0 format first
+    items = root.findall(".//item")
+    if items:
+        for item in items[:20]:
+            title_el = item.find("title")
+            title = title_el.text.strip() if title_el is not None and title_el.text else ""
+            guid_el = item.find("guid")
+            link_el = item.find("link")
+            guid = (guid_el.text if guid_el is not None and guid_el.text else
+                    link_el.text if link_el is not None and link_el.text else title)
+            if not title or guid in seen:
+                continue
+            seen.add(guid)
+            pub_el = item.find("pubDate")
+            src_ts = _parse_rss_date(pub_el.text) if pub_el is not None and pub_el.text else 0.0
+            articles.append({"title": title, "source": label, "source_ts": src_ts})
+    else:
+        # Try Atom format
+        entries = root.findall("atom:entry", ns) or root.findall("entry")
+        for entry in (entries or [])[:20]:
+            title_el = entry.find("atom:title", ns) or entry.find("title")
+            title = title_el.text.strip() if title_el is not None and title_el.text else ""
+            id_el = entry.find("atom:id", ns) or entry.find("id")
+            guid = id_el.text if id_el is not None and id_el.text else title
+            if not title or guid in seen:
+                continue
+            seen.add(guid)
+            pub_el = (entry.find("atom:published", ns) or entry.find("published") or
+                      entry.find("atom:updated", ns) or entry.find("updated"))
+            src_ts = _parse_rss_date(pub_el.text) if pub_el is not None and pub_el.text else 0.0
+            articles.append({"title": title, "source": label, "source_ts": src_ts})
+
+    # Cap seen guids per feed
+    if len(seen) > 500:
+        _rss_seen_guids[url] = set(list(seen)[-500:])
+
+    return articles
+
 
 # ═══════════════════════════════════════════════════════════════════════
 #  NOISE FILTER (Telegram only)
@@ -677,6 +1211,52 @@ def _extract_tokens(text: str) -> list[str]:
     return sorted(all_tickers)
 
 # ═══════════════════════════════════════════════════════════════════════
+#  TOKEN IMPACT ENGINE
+# ═══════════════════════════════════════════════════════════════════════
+def _compute_token_impacts(event_type: str, direction: str, magnitude: float,
+                           extracted_tokens: list[str]) -> list[dict]:
+    """Compute per-token impact scores from event type and extracted tokens.
+
+    Returns list of {symbol, impact, direction} sorted by abs(impact) desc.
+    """
+    impacts = {}  # symbol → impact score
+
+    # 1. Map from event type (high confidence — curated correlations)
+    base_map = C.TOKEN_IMPACT_MAP.get(event_type, [])
+    if not base_map and direction != "neutral":
+        # Unknown event type but has direction → use generic crypto correlation
+        base_map = C.TOKEN_IMPACT_GENERIC
+        if direction == "bearish":
+            base_map = [(sym, -abs(score)) for sym, score in base_map]
+
+    for sym, base_score in base_map:
+        impacts[sym] = round(base_score * magnitude, 3)
+
+    # 2. Extracted tokens not already covered get directional score
+    for tok in extracted_tokens:
+        tok_up = tok.upper()
+        if tok_up in impacts or tok_up in C.TICKER_NOISE_WORDS:
+            continue
+        # Assign based on direction with lower confidence
+        if direction == "bullish":
+            impacts[tok_up] = round(magnitude * 0.45, 3)
+        elif direction == "bearish":
+            impacts[tok_up] = round(-magnitude * 0.45, 3)
+        else:
+            impacts[tok_up] = 0.0
+
+    # 3. Convert to sorted list
+    result = []
+    for sym, score in sorted(impacts.items(), key=lambda x: abs(x[1]), reverse=True):
+        result.append({
+            "symbol": sym,
+            "impact": round(score, 2),
+            "direction": "bullish" if score > 0.01 else "bearish" if score < -0.01 else "neutral",
+        })
+    return result[:8]  # Cap at 8 tokens max
+
+
+# ═══════════════════════════════════════════════════════════════════════
 #  REPUTATION SYSTEM
 # ═══════════════════════════════════════════════════════════════════════
 def _update_sender_rep(sender_id: str, event_type: str):
@@ -729,10 +1309,12 @@ def _decay_reputations():
 def process_signal(text: str, source_type: str, source_name: str,
                    sender: str = "", group_category: str = "",
                    is_reply: bool = False, is_forward_from_bot: bool = False,
-                   is_deep_reply: bool = False) -> dict | None:
+                   is_deep_reply: bool = False,
+                   source_ts: float = 0.0) -> dict | None:
     """
     Unified signal processing pipeline.
-    source_type: "newsnow" | "polymarket" | "telegram"
+    source_type: "newsnow" | "polymarket" | "telegram" | "opennews" | "finnhub" | "fred" | "cryptopanic" | "rss"
+    source_ts: original publication timestamp (for latency tracking)
     Returns UnifiedSignal dict or None if filtered.
     """
     with _state_lock:
@@ -744,18 +1326,19 @@ def process_signal(text: str, source_type: str, source_name: str,
             _update_sender_rep(sender, "unclassified")
             return None
 
-    # 2. Dedup (cross-source)
+    # 2. Dedup — exact MD5 match
     if _is_duplicate(text):
+        return None
+
+    # 2b. Fuzzy dedup — Jaccard similarity
+    if _is_fuzzy_duplicate(text):
         return None
 
     # 3. Classify
     classification = classify_text(text, source_type)
     if classification["event_type"] == "unclassified" and classification["magnitude"] == 0.0:
-        # For TG, still count unclassified; for news, skip
         if source_type != "telegram":
             return None
-        # For TG, keep if it passed noise filter (might be useful context)
-        # but don't emit as a signal
         _update_sender_rep(sender, "unclassified")
         return None
 
@@ -770,9 +1353,19 @@ def process_signal(text: str, source_type: str, source_name: str,
     if sender:
         _update_sender_rep(sender, classification["event_type"])
         sender_rep = _get_sender_rep(sender)
-        # High-rep senders get magnitude boost
         if sender_rep >= C.REPUTATION_HIGH_SIGNAL:
             classification["magnitude"] = min(1.0, classification["magnitude"] * 1.3)
+
+    # 6b. Trend detection — boost urgency/magnitude if trending
+    urgency = classification.get("urgency", 0.5)
+    magnitude = classification["magnitude"]
+    trend_meta = None
+    if classification["event_type"] != "unclassified":
+        ub, mb, trend_meta = _detect_trend(classification["event_type"], urgency, magnitude)
+        urgency = min(1.0, urgency + ub)
+        magnitude = min(1.0, magnitude + mb)
+        classification["urgency"] = urgency
+        classification["magnitude"] = magnitude
 
     # 7. Generate AI insight (for classified signals only)
     insight = ""
@@ -785,6 +1378,7 @@ def process_signal(text: str, source_type: str, source_name: str,
 
     # 8. Build signal
     now = time.time()
+    latency_ms = int((now - source_ts) * 1000) if source_ts > 0 else 0
     signal = {
         "ts": int(now),
         "ts_human": datetime.now().strftime("%m-%d %H:%M:%S"),
@@ -803,9 +1397,17 @@ def process_signal(text: str, source_type: str, source_name: str,
         "sender_rep": round(sender_rep, 2),
         "classify_method": classification["classify_method"],
         "group_category": group_category or ("http_news" if source_type == "newsnow" else source_type),
+        "source_ts": source_ts if source_ts > 0 else 0,
+        "latency_ms": latency_ms,
     }
 
-    # 8. Store
+    # 8b. Token impact analysis — map event to specific crypto tokens
+    signal["token_impacts"] = _compute_token_impacts(
+        signal["event_type"], signal["direction"],
+        signal["magnitude"], tokens,
+    )
+
+    # 9. Store
     with _state_lock:
         _signals.append(signal)
         if len(_signals) > C.MAX_SIGNALS_KEPT:
@@ -815,7 +1417,54 @@ def process_signal(text: str, source_type: str, source_name: str,
 
     _log(f"SIGNAL [{source_type}] {classification['event_type']} "
          f"{classification['direction']} mag={classification['magnitude']:.2f} "
-         f"from={source_name} method={classification['classify_method']}")
+         f"from={source_name} method={classification['classify_method']}"
+         f"{f' latency={latency_ms}ms' if latency_ms > 0 else ''}")
+
+    # 10. WebSocket broadcast
+    try:
+        _ws_broadcast_queue.put_nowait(signal)
+    except queue.Full:
+        pass
+
+    # 11. Webhook push
+    _webhook_push(signal)
+
+    # 12. Accuracy tracking
+    _record_accuracy_checkpoint(signal)
+
+    # 13. Emit trend meta-signal (if 3rd occurrence detected in step 6b)
+    if trend_meta:
+        now_ts = time.time()
+        meta_signal = {
+            "ts": int(now_ts),
+            "ts_human": datetime.now().strftime("%m-%d %H:%M:%S"),
+            "source_type": source_type,
+            "source_name": "trend_detector",
+            "event_type": trend_meta["event_type"],
+            "direction": trend_meta["direction"],
+            "magnitude": round(trend_meta["magnitude"], 2),
+            "urgency": round(trend_meta["urgency"], 2),
+            "affects": trend_meta["affects"],
+            "tokens": [],
+            "sentiment": 0.0,
+            "text": trend_meta["text"],
+            "insight": "",
+            "sender": "trend_detector",
+            "sender_rep": 0.0,
+            "classify_method": "trend",
+            "group_category": "macro",
+            "source_ts": 0,
+            "latency_ms": 0,
+        }
+        with _state_lock:
+            _signals.append(meta_signal)
+            _stats["signals_produced"] += 1
+        try:
+            _ws_broadcast_queue.put_nowait(meta_signal)
+        except queue.Full:
+            pass
+        _webhook_push(meta_signal)
+        _log(f"TREND [{trend_meta['event_type']}] {trend_meta['text']}")
 
     return signal
 
@@ -825,7 +1474,7 @@ def process_signal(text: str, source_type: str, source_name: str,
 def _news_collector_loop():
     """Background thread: polls NewsNow + Polymarket + Finnhub + FRED + OpenNews REST on intervals."""
     global _polymarket, _fear_greed, _fred_indicators, _price_tickers
-    _log("NewsNow + Polymarket + Finnhub + FRED collector started")
+    _log("NewsNow + Polymarket + Finnhub + FRED + CryptoPanic + RSS collector started")
     news_last = 0
     poly_last = 0
     fng_last = 0
@@ -833,6 +1482,7 @@ def _news_collector_loop():
     fred_last = 0
     opennews_rest_last = 0
     prices_last = 0
+    cryptopanic_last = 0
 
     while True:
         try:
@@ -845,11 +1495,17 @@ def _news_collector_loop():
                 with _state_lock:
                     _stats["news_fetches"] += 1
                 for h in headlines:
+                    # Parse pubDate for latency tracking
+                    src_ts = 0.0
+                    raw_ts = h.get("ts", "")
+                    if isinstance(raw_ts, (int, float)) and raw_ts > 1e9:
+                        src_ts = float(raw_ts)
                     process_signal(
                         text=h["title"],
                         source_type="newsnow",
                         source_name=h["source"],
                         group_category="http_news",
+                        source_ts=src_ts,
                     )
                 if headlines:
                     _log(f"NewsNow: fetched {len(headlines)} headlines")
@@ -910,11 +1566,13 @@ def _news_collector_loop():
                 finnhub_last = now
                 articles = fetch_finnhub_news()
                 for a in articles:
+                    src_ts = float(a.get("ts", 0)) if a.get("ts") else 0.0
                     process_signal(
                         text=a["title"],
                         source_type="finnhub",
                         source_name=a.get("source", "finnhub"),
                         group_category="http_news",
+                        source_ts=src_ts,
                     )
                 if articles:
                     _log(f"Finnhub: fetched {len(articles)} articles")
@@ -940,9 +1598,8 @@ def _news_collector_loop():
                                     group_category="macro_data",
                                 )
 
-            # 6551.io OpenNews REST fallback (only if WebSocket is down)
+            # 6551.io OpenNews REST (always poll — WS returns 403 on free tier)
             if (C.OPENNEWS_ENABLED and C.OPENNEWS_TOKEN
-                    and not _opennews_ws_alive
                     and now - opennews_rest_last >= C.OPENNEWS_POLL_SEC):
                 opennews_rest_last = now
                 articles = fetch_opennews_rest()
@@ -954,11 +1611,61 @@ def _news_collector_loop():
                         group_category="opennews",
                     )
                 if articles:
-                    _log(f"OpenNews REST fallback: fetched {len(articles)} articles")
+                    _log(f"OpenNews REST: fetched {len(articles)} signal articles ({len(_opennews_articles)} in buffer)")
 
-            # Periodic save + reputation decay
+            # CryptoPanic
+            if (C.CRYPTOPANIC_ENABLED and C.CRYPTOPANIC_TOKEN
+                    and now - cryptopanic_last >= C.CRYPTOPANIC_POLL_SEC):
+                cryptopanic_last = now
+                cp_articles = fetch_cryptopanic_news()
+                for a in cp_articles:
+                    # Use community votes to boost magnitude
+                    vote_hint = ""
+                    pos = a.get("votes_positive", 0)
+                    neg = a.get("votes_negative", 0)
+                    imp = a.get("votes_important", 0)
+                    if pos + neg + imp > 0:
+                        vote_hint = f" [votes: +{pos}/-{neg} imp:{imp}]"
+                    process_signal(
+                        text=a["title"] + vote_hint,
+                        source_type="cryptopanic",
+                        source_name=a.get("source", "cryptopanic"),
+                        group_category="crypto_news",
+                        source_ts=a.get("source_ts", 0),
+                    )
+                if cp_articles:
+                    with _state_lock:
+                        _source_status["cryptopanic"] = now
+                    _log(f"CryptoPanic: fetched {len(cp_articles)} articles")
+
+            # RSS feeds
+            if C.RSS_ENABLED and C.RSS_FEEDS:
+                for feed_cfg in C.RSS_FEEDS:
+                    feed_url = feed_cfg.get("url", "")
+                    poll_sec = feed_cfg.get("poll_sec", C.RSS_DEFAULT_POLL_SEC)
+                    last_poll = _rss_last_poll.get(feed_url, 0)
+                    if now - last_poll >= poll_sec:
+                        _rss_last_poll[feed_url] = now
+                        rss_articles = fetch_rss_feed(feed_cfg)
+                        category = feed_cfg.get("category", "crypto_news")
+                        for a in rss_articles:
+                            process_signal(
+                                text=a["title"],
+                                source_type="rss",
+                                source_name=a.get("source", "rss"),
+                                group_category=category,
+                                source_ts=a.get("source_ts", 0),
+                            )
+                        if rss_articles:
+                            label = feed_cfg.get("label", feed_url[:30])
+                            with _state_lock:
+                                _source_status[f"rss:{label}"] = now
+                            _log(f"RSS ({label}): fetched {len(rss_articles)} articles")
+
+            # Periodic save + reputation decay + accuracy check
             _save_state()
             _decay_reputations()
+            _check_accuracy()
 
         except Exception as e:
             _log(f"News collector error: {e}", "ERROR")
@@ -1059,6 +1766,7 @@ async def _telethon_monitor():
         chat_id = event.chat_id
         category, chat_name = chat_categories.get(chat_id, ("general", "unknown"))
 
+        tg_source_ts = event.date.timestamp() if event.date else 0.0
         process_signal(
             text=text,
             source_type="telegram",
@@ -1068,6 +1776,7 @@ async def _telethon_monitor():
             is_reply=is_reply,
             is_forward_from_bot=is_forward_from_bot,
             is_deep_reply=is_deep_reply,
+            source_ts=tg_source_ts,
         )
 
     _log(f"Telethon: monitoring {len(resolved_chats)} chats")
@@ -1141,6 +1850,11 @@ async def _opennews_monitor():
                         engine_type = params.get("engineType", "")
                         link = params.get("link", "")
 
+                        # Dual-store: raw article buffer for OpenNews tab
+                        article = _normalize_opennews_article(params)
+                        if article:
+                            _ingest_opennews_article(article)
+
                         if text and news_id:
                             pending[news_id] = {
                                 "text": text,
@@ -1148,6 +1862,7 @@ async def _opennews_monitor():
                                 "engineType": engine_type,
                                 "link": link,
                                 "coins": params.get("coins", []),
+                                "arrival_ts": time.time(),
                             }
                             # Evict old pending entries (keep last 200)
                             if len(pending) > 200:
@@ -1164,6 +1879,10 @@ async def _opennews_monitor():
                         signal = ai_rating.get("signal", "neutral")
                         en_summary = ai_rating.get("enSummary", "")
 
+                        # Dual-store: update raw article buffer
+                        if news_id and isinstance(ai_rating, dict):
+                            _update_opennews_ai(news_id, ai_rating)
+
                         article = pending.pop(news_id, None)
                         if article and score >= C.OPENNEWS_MIN_SCORE:
                             display_text = en_summary or article["text"]
@@ -1174,6 +1893,7 @@ async def _opennews_monitor():
                                 source_type="opennews",
                                 source_name=article["newsType"],
                                 group_category="opennews",
+                                source_ts=article.get("arrival_ts", 0),
                             )
                             _log(f"OpenNews WS: score={score} signal={signal} src={article['newsType']}")
 
@@ -1199,6 +1919,326 @@ def _start_opennews_thread():
     t = threading.Thread(target=_run, daemon=True, name="opennews_ws")
     t.start()
     return t
+
+# ═══════════════════════════════════════════════════════════════════════
+#  WEBSOCKET SERVER (real-time signal push)
+# ═══════════════════════════════════════════════════════════════════════
+async def _ws_handler(websocket):
+    """Handle a single WebSocket client connection."""
+    _ws_clients.add(websocket)
+    _ws_client_filters[websocket] = {}
+    _log(f"WS: client connected ({len(_ws_clients)} total)")
+    try:
+        async for raw in websocket:
+            try:
+                msg = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            action = msg.get("action", "")
+            if action == "subscribe":
+                _ws_client_filters[websocket] = {
+                    "direction": msg.get("direction", ""),
+                    "min_mag": float(msg.get("min_mag", 0)),
+                    "affects": msg.get("affects", []),
+                }
+                await websocket.send(json.dumps({"status": "subscribed", "filters": _ws_client_filters[websocket]}))
+            elif action == "ping":
+                await websocket.send(json.dumps({"status": "pong"}))
+    except Exception:
+        pass
+    finally:
+        _ws_clients.discard(websocket)
+        _ws_client_filters.pop(websocket, None)
+        _log(f"WS: client disconnected ({len(_ws_clients)} total)")
+
+
+def _ws_signal_matches(signal: dict, filters: dict) -> bool:
+    """Check if a signal matches a client's subscription filters."""
+    if not filters:
+        return True
+    if filters.get("direction") and signal.get("direction") != filters["direction"]:
+        return False
+    if filters.get("min_mag", 0) > 0 and signal.get("magnitude", 0) < filters["min_mag"]:
+        return False
+    if filters.get("affects"):
+        sig_affects = set(signal.get("affects", []))
+        if not sig_affects.intersection(filters["affects"]):
+            return False
+    return True
+
+
+async def _ws_broadcast_worker():
+    """Pull signals from queue and broadcast to matching WS clients."""
+    import asyncio
+    while True:
+        try:
+            item = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: _ws_broadcast_queue.get(timeout=1)
+            )
+        except queue.Empty:
+            continue
+        except Exception:
+            await asyncio.sleep(0.5)
+            continue
+
+        # OpenNews article broadcasts go to ALL clients (no signal filter matching)
+        if item.get("_opennews_article"):
+            payload = json.dumps({"type": item["type"], "data": item["data"]}, default=str)
+            dead = set()
+            for ws in list(_ws_clients):
+                try:
+                    await ws.send(payload)
+                except Exception:
+                    dead.add(ws)
+            for ws in dead:
+                _ws_clients.discard(ws)
+                _ws_client_filters.pop(ws, None)
+        else:
+            # Regular signal broadcast with filter matching
+            signal = item
+            payload = json.dumps({"type": "signal", "data": signal}, default=str)
+            dead = set()
+            for ws in list(_ws_clients):
+                filters = _ws_client_filters.get(ws, {})
+                if not _ws_signal_matches(signal, filters):
+                    continue
+                try:
+                    await ws.send(payload)
+                except Exception:
+                    dead.add(ws)
+            for ws in dead:
+                _ws_clients.discard(ws)
+                _ws_client_filters.pop(ws, None)
+
+
+async def _ws_server_loop():
+    """Run WebSocket server + broadcast worker."""
+    import asyncio
+    try:
+        import websockets
+    except ImportError:
+        _log("WS server: websockets not installed — disabled", "WARN")
+        return
+
+    server = await websockets.serve(
+        _ws_handler, "0.0.0.0", C.WS_PORT,
+        ping_interval=C.WS_PING_INTERVAL,
+        ping_timeout=C.WS_PING_TIMEOUT,
+        max_size=2**16,
+    )
+    _log(f"WS server listening on :{C.WS_PORT}")
+    broadcast_task = asyncio.create_task(_ws_broadcast_worker())
+    try:
+        await asyncio.Future()  # run forever
+    finally:
+        broadcast_task.cancel()
+        server.close()
+
+
+def _start_ws_server_thread():
+    """Start WebSocket server in a dedicated daemon thread."""
+    import asyncio
+    def _run():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(_ws_server_loop())
+        except Exception as e:
+            _log(f"WS server thread error: {e}", "ERROR")
+            traceback.print_exc()
+    t = threading.Thread(target=_run, daemon=True, name="ws_server")
+    t.start()
+    return t
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  WEBHOOK PUSH (fire-and-forget POST)
+# ═══════════════════════════════════════════════════════════════════════
+def _webhook_push(signal: dict):
+    """POST signal JSON to configured webhook URLs (non-blocking, daemon thread)."""
+    if not C.WEBHOOK_URLS:
+        return
+    # Filter by magnitude
+    if signal.get("magnitude", 0) < C.WEBHOOK_MIN_MAGNITUDE:
+        return
+    # Filter by event type
+    if C.WEBHOOK_EVENTS and signal.get("event_type") not in C.WEBHOOK_EVENTS:
+        return
+
+    payload = json.dumps(signal, default=str).encode()
+
+    def _post(url):
+        try:
+            req = Request(url, data=payload, method="POST",
+                          headers={"Content-Type": "application/json",
+                                   "User-Agent": "MacroIntelligence/2.0"})
+            with urlopen(req, timeout=C.WEBHOOK_TIMEOUT_SEC):
+                pass
+        except Exception as e:
+            _log(f"Webhook POST to {url[:50]} failed: {e}", "WARN")
+
+    for url in C.WEBHOOK_URLS:
+        threading.Thread(target=_post, args=(url,), daemon=True).start()
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  SIGNAL ACCURACY TRACKING
+# ═══════════════════════════════════════════════════════════════════════
+def _record_accuracy_checkpoint(signal: dict):
+    """Record BTC/ETH price at signal time for later accuracy check."""
+    if not C.ACCURACY_ENABLED:
+        return
+    direction = signal.get("direction")
+    if direction not in ("bullish", "bearish"):
+        return
+    with _state_lock:
+        btc = _price_tickers.get("BTC", {}).get("price", 0)
+        eth = _price_tickers.get("ETH", {}).get("price", 0)
+    if not btc:
+        return
+    now = time.time()
+    check_at = [now + h * 3600 for h in C.ACCURACY_CHECK_HOURS]
+    _accuracy_pending.append({
+        "signal_ts": signal["ts"],
+        "event_type": signal["event_type"],
+        "direction": direction,
+        "btc_price": btc,
+        "eth_price": eth,
+        "check_at": check_at,
+    })
+    # Cap pending list
+    if len(_accuracy_pending) > 500:
+        _accuracy_pending[:] = _accuracy_pending[-500:]
+
+
+def _check_accuracy():
+    """Background check: compare current prices to signal-time prices."""
+    if not C.ACCURACY_ENABLED or not _accuracy_pending:
+        return
+    now = time.time()
+    with _state_lock:
+        btc_now = _price_tickers.get("BTC", {}).get("price", 0)
+        eth_now = _price_tickers.get("ETH", {}).get("price", 0)
+    if not btc_now:
+        return
+
+    still_pending = []
+    for entry in _accuracy_pending:
+        remaining_checks = []
+        for check_ts in entry["check_at"]:
+            if now >= check_ts:
+                # Evaluate accuracy
+                direction = entry["direction"]
+                btc_moved_up = btc_now > entry["btc_price"]
+                hit = (direction == "bullish" and btc_moved_up) or \
+                      (direction == "bearish" and not btc_moved_up)
+                et = entry["event_type"]
+                with _state_lock:
+                    if et not in _accuracy_results:
+                        _accuracy_results[et] = {"hits": 0, "misses": 0, "checks": 0}
+                    _accuracy_results[et]["checks"] += 1
+                    if hit:
+                        _accuracy_results[et]["hits"] += 1
+                    else:
+                        _accuracy_results[et]["misses"] += 1
+            else:
+                remaining_checks.append(check_ts)
+        if remaining_checks:
+            entry["check_at"] = remaining_checks
+            still_pending.append(entry)
+    _accuracy_pending[:] = still_pending
+
+
+def get_accuracy() -> dict:
+    """Return hit rates by event_type and overall."""
+    with _state_lock:
+        results = {}
+        total_hits = 0
+        total_checks = 0
+        for et, data in _accuracy_results.items():
+            checks = data["checks"]
+            hits = data["hits"]
+            rate = hits / checks if checks > 0 else 0
+            results[et] = {"hits": hits, "misses": data["misses"],
+                           "checks": checks, "hit_rate": round(rate, 3)}
+            total_hits += hits
+            total_checks += checks
+        overall_rate = total_hits / total_checks if total_checks > 0 else 0
+        return {"by_event_type": results, "overall_hit_rate": round(overall_rate, 3),
+                "total_checks": total_checks}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  TREND DETECTION
+# ═══════════════════════════════════════════════════════════════════════
+def _detect_trend(event_type: str, urgency: float, magnitude: float) -> tuple[float, float, dict | None]:
+    """Check for trending event types (3+ in last hour).
+    Returns (urgency_boost, magnitude_boost, meta_signal_or_None)."""
+    now = time.time()
+    hour_ago = now - 3600
+
+    # Add current event
+    _recent_event_types.append((now, event_type))
+
+    # Prune old entries
+    _recent_event_types[:] = [(ts, et) for ts, et in _recent_event_types if ts > hour_ago]
+
+    # Count occurrences of this event type in last hour
+    count = sum(1 for ts, et in _recent_event_types if et == event_type)
+
+    if count >= 3:
+        urgency_boost = 0.2
+        magnitude_boost = 0.1
+        meta_signal = None
+        if count == 3:
+            # Emit synthetic trend signal on the 3rd occurrence
+            meta_signal = {
+                "event_type": f"trend_{event_type}",
+                "text": f"Trend detected: {event_type} appeared {count} times in the last hour",
+                "direction": "bullish" if event_type in C.MACRO_PLAYBOOK and
+                             C.MACRO_PLAYBOOK[event_type].get("direction") == "bullish" else "bearish",
+                "magnitude": 0.8,
+                "urgency": 0.9,
+                "affects": C.MACRO_PLAYBOOK.get(event_type, {}).get("affects", []),
+            }
+        return (urgency_boost, magnitude_boost, meta_signal)
+    return (0, 0, None)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  FUZZY DEDUP (Jaccard similarity)
+# ═══════════════════════════════════════════════════════════════════════
+def _jaccard_similarity(text_a: str, text_b: str) -> float:
+    """Compute Jaccard similarity between tokenized texts."""
+    tokens_a = set(re.findall(r'\w+', text_a.lower()))
+    tokens_b = set(re.findall(r'\w+', text_b.lower()))
+    if not tokens_a or not tokens_b:
+        return 0.0
+    intersection = tokens_a & tokens_b
+    union = tokens_a | tokens_b
+    return len(intersection) / len(union)
+
+
+def _is_fuzzy_duplicate(text: str) -> bool:
+    """Check if text is too similar to recent signals (Jaccard)."""
+    if not C.DEDUP_FUZZY_ENABLED:
+        return False
+    now = time.time()
+    window = C.DEDUP_WINDOW_HOURS * 3600
+
+    # Prune old entries
+    _recent_texts[:] = [(ts, t) for ts, t in _recent_texts if now - ts < window]
+
+    for _, prev_text in _recent_texts[-100:]:
+        if _jaccard_similarity(text, prev_text) >= C.DEDUP_FUZZY_THRESHOLD:
+            return True
+
+    _recent_texts.append((now, text))
+    # Cap at 100
+    if len(_recent_texts) > 100:
+        _recent_texts[:] = _recent_texts[-100:]
+    return False
+
 
 # ═══════════════════════════════════════════════════════════════════════
 #  PUBLIC API — query functions
@@ -1290,12 +2330,52 @@ def get_source_breakdown() -> dict:
 # ═══════════════════════════════════════════════════════════════════════
 #  DASHBOARD HTTP SERVER
 # ═══════════════════════════════════════════════════════════════════════
+def _diverse_recent_signals(max_total: int = 0, per_source: int = 0) -> list:
+    """Return recent signals with per-source diversity quotas.
+
+    Ensures minority sources (Finnhub, Polymarket, etc.) aren't buried
+    by high-volume sources (OpenNews).
+    """
+    if max_total <= 0:
+        max_total = getattr(C, "DASHBOARD_MAX_SIGNALS", 80)
+    if per_source <= 0:
+        per_source = getattr(C, "DASHBOARD_SOURCE_QUOTA", 5)
+
+    # Group signals by source_type (newest first)
+    by_source: dict[str, list] = {}
+    for s in reversed(_signals):
+        src = s.get("source_type", "unknown")
+        by_source.setdefault(src, []).append(s)
+
+    # Phase 1: Guarantee quota per source
+    result = []
+    used_ts = set()
+    for src, sigs in by_source.items():
+        for s in sigs[:per_source]:
+            result.append(s)
+            used_ts.add(s["ts"])
+
+    # Phase 2: Fill remaining slots by recency
+    remaining = max_total - len(result)
+    if remaining > 0:
+        for s in reversed(_signals):
+            if s["ts"] not in used_ts:
+                result.append(s)
+                remaining -= 1
+                if remaining <= 0:
+                    break
+
+    # Sort by timestamp descending (newest first)
+    result.sort(key=lambda s: s["ts"], reverse=True)
+    return result[:max_total]
+
+
 def _dashboard_api_data() -> dict:
     """Full dashboard state."""
     now = time.time()
     sent = get_sentiment(6)
     with _state_lock:
-        recent = list(reversed(_signals[-50:]))
+        recent = _diverse_recent_signals()
         stats_copy = dict(_stats)
         sources = dict(_source_status)
     return {
@@ -1314,6 +2394,12 @@ def _dashboard_api_data() -> dict:
         "fear_greed": _fear_greed,
         "fred_indicators": _fred_indicators,
         "price_tickers": _price_tickers,
+        "opennews": {
+            "article_count": len(_opennews_articles),
+            "avg_score": _opennews_avg_score(_opennews_windowed_articles(3600)),
+            "velocity": _opennews_velocity(_opennews_windowed_articles(3600), 3600).get("overall", 0),
+            "ws_alive": _opennews_ws_alive,
+        },
     }
 
 class _DashboardHandler(SimpleHTTPRequestHandler):
@@ -1381,6 +2467,78 @@ class _DashboardHandler(SimpleHTTPRequestHandler):
             self._json_response(get_event_counts(float(_p("hours", "6"))))
         elif path == "/api/summary":
             self._json_response(get_signals_summary(float(_p("hours", "6"))))
+        elif path == "/api/health":
+            now = time.time()
+            with _state_lock:
+                last_sig_ts = _signals[-1]["ts"] if _signals else 0
+                sig_total = len(_signals)
+                sources = dict(_source_status)
+            self._json_response({
+                "status": "ok",
+                "version": _VERSION,
+                "uptime_sec": int(now - _stats.get("start_ts", now)),
+                "last_signal_ts": last_sig_ts,
+                "last_signal_ago_sec": int(now - last_sig_ts) if last_sig_ts else None,
+                "signals_total": sig_total,
+                "ws_clients": len(_ws_clients),
+                "sources": {k: {"last_seen": int(v), "ago_sec": int(now - v)}
+                            for k, v in sources.items()},
+                "telethon_active": _telethon_available,
+                "opennews_ws_alive": _opennews_ws_alive,
+                "opennews_article_count": len(_opennews_articles),
+            })
+        elif path == "/api/accuracy":
+            self._json_response(get_accuracy())
+        elif path == "/api/opennews/state":
+            window = int(_p("window", "3600"))
+            with _state_lock:
+                recent = list(_opennews_articles[-100:])
+            recent.reverse()
+            self._json_response({
+                "articles": recent,
+                "metrics": compute_opennews_metrics(window),
+                "intelligence": compute_opennews_intelligence(window),
+                "source_health": _opennews_source_health(),
+                "ws_alive": _opennews_ws_alive,
+            })
+        elif path == "/api/opennews/articles":
+            arts = _filter_opennews_articles(
+                engine=_p("engine", ""),
+                signal=_p("signal", ""),
+                min_score=int(_p("min_score", "0")),
+                coin=_p("coin", ""),
+                q=_p("q", ""),
+                limit=int(_p("limit", "100")),
+            )
+            self._json_response(arts)
+        elif path == "/api/opennews/metrics":
+            window = int(_p("window", "3600"))
+            self._json_response(compute_opennews_metrics(window))
+        elif path == "/api/opennews/sources":
+            self._json_response(_opennews_source_health())
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+        content_len = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(content_len) if content_len else b""
+
+        if path == "/api/vote":
+            try:
+                data = json.loads(body) if body else {}
+                key = data.get("signal_key", "")
+                vote = int(data.get("vote", 0))  # +1 or -1
+                if key and vote in (1, -1):
+                    with _state_lock:
+                        _signal_votes[key] = _signal_votes.get(key, 0) + vote
+                    self._json_response({"status": "ok", "net_votes": _signal_votes.get(key, 0)})
+                else:
+                    self._json_response({"error": "need signal_key and vote (+1/-1)"}, 400)
+            except Exception as e:
+                self._json_response({"error": str(e)}, 400)
         else:
             self.send_response(404)
             self.end_headers()
@@ -1388,7 +2546,7 @@ class _DashboardHandler(SimpleHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
@@ -1445,14 +2603,24 @@ def main():
     _load_state()
     _stats["start_ts"] = time.time()
 
-    _log("=" * 50)
-    _log("Macro Intelligence Skill v1.0 — Intelligence Feed")
-    _log(f"Dashboard: http://localhost:{C.DASHBOARD_PORT}")
-    _log(f"Telethon: {'available' if _telethon_available else 'NOT installed'}")
-    _log(f"OpenNews: {'enabled' if C.OPENNEWS_ENABLED and C.OPENNEWS_TOKEN else 'disabled'}")
-    _log(f"Finnhub:  {'enabled' if C.FINNHUB_ENABLED and C.FINNHUB_API_KEY else 'disabled'}")
-    _log(f"FRED:     {'enabled' if C.FRED_ENABLED and C.FRED_API_KEY else 'disabled'}")
-    _log("=" * 50)
+    _log("=" * 60)
+    _log(f"Macro Intelligence Skill v{_VERSION} — Intelligence Feed")
+    _log(f"Dashboard:   http://localhost:{C.DASHBOARD_PORT}")
+    _log(f"WebSocket:   {'ws://localhost:' + str(C.WS_PORT) if C.WS_ENABLED else 'disabled'}")
+    _log(f"Telethon:    {'available' if _telethon_available else 'NOT installed'}")
+    _log(f"OpenNews:    {'enabled' if C.OPENNEWS_ENABLED and C.OPENNEWS_TOKEN else 'disabled'}")
+    _log(f"Finnhub:     {'enabled' if C.FINNHUB_ENABLED and C.FINNHUB_API_KEY else 'disabled'}")
+    _log(f"FRED:        {'enabled' if C.FRED_ENABLED and C.FRED_API_KEY else 'disabled'}")
+    _log(f"CryptoPanic: {'enabled' if C.CRYPTOPANIC_ENABLED and C.CRYPTOPANIC_TOKEN else 'disabled'}")
+    _log(f"RSS feeds:   {len(C.RSS_FEEDS)} configured" if C.RSS_ENABLED else "RSS: disabled")
+    _log(f"Webhooks:    {len(C.WEBHOOK_URLS)} configured" if C.WEBHOOK_URLS else "Webhooks: none")
+    _log(f"Accuracy:    {'enabled' if C.ACCURACY_ENABLED else 'disabled'}")
+    _log(f"Fuzzy dedup: {'enabled' if C.DEDUP_FUZZY_ENABLED else 'disabled'}")
+    _log("=" * 60)
+
+    # Start WebSocket server (if enabled)
+    if C.WS_ENABLED:
+        _start_ws_server_thread()
 
     # Start news collector thread
     news_thread = threading.Thread(target=_news_collector_loop, daemon=True, name="news_collector")

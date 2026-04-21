@@ -1,9 +1,9 @@
 schema_version: 1
 name: "macro-intelligence"
-version: "1.0.0"
-description: "Unified macro intelligence feed — reads 7 sources, classifies events, scores sentiment, generates AI insights, exposes signals via HTTP API"
+version: "2.0.0"
+description: "Unified macro intelligence feed — reads 9+ sources, classifies events, scores sentiment, generates AI insights, exposes signals via HTTP API + WebSocket push + webhooks"
 author:
-  name: "victorlee"
+  name: "VibeCodeDaddy"
   github: "VibeCodeDaddy69"
 license: MIT
 category: trading-strategy
@@ -14,6 +14,11 @@ tags:
   - signals
   - fred
   - finnhub
+  - websocket
+  - webhook
+  - rss
+  - cryptopanic
+  - real-time
 
 components:
   skill:
