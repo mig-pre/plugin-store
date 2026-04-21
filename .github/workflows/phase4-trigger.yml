@@ -28,6 +28,18 @@ jobs:
       github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
     steps:
+      - name: Check sender is maintainer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SENDER="${{ github.event.sender.login }}"
+          PERM=$(gh api "repos/${{ github.repository }}/collaborators/${SENDER}/permission" --jq '.permission' 2>/dev/null || echo "none")
+          echo "Sender: ${SENDER}, Permission: ${PERM}"
+          if [[ "$PERM" != "admin" && "$PERM" != "maintain" ]]; then
+            echo "::error::${SENDER} (${PERM}) is not a maintainer. Only admin/maintain can trigger publish."
+            exit 1
+          fi
+
       - name: Create check run (in_progress)
         id: check
         env:
