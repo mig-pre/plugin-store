@@ -21,10 +21,10 @@
           "dir": "skills/aave-v3-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/aave-v3-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aave-v3-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aave-v3-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "ethereum",
@@ -35,7 +35,7 @@
       }
     },
     {
-      "name": "clanker-plugin",
+      "name": "clanker",
       "version": "0.2.4",
       "description": "Deploy and manage Clanker ERC-20 tokens on Base and Arbitrum — launch tokens, search by creator, and claim LP fee rewards",
       "author": {
@@ -52,10 +52,10 @@
           "dir": "skills/clanker-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/clanker-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/clanker-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/clanker-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "base"
@@ -65,7 +65,7 @@
       }
     },
     {
-      "name": "compound-v3-plugin",
+      "name": "compound-v3",
       "version": "0.2.6",
       "description": "Compound V3 (Comet) lending plugin: supply collateral, borrow/repay the base asset, and claim COMP rewards",
       "author": {
@@ -84,10 +84,10 @@
           "dir": "skills/compound-v3-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/compound-v3-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/compound-v3-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/compound-v3-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "ethereum",
@@ -98,7 +98,7 @@
       }
     },
     {
-      "name": "curve-plugin",
+      "name": "curve",
       "version": "0.2.7",
       "description": "Curve DEX plugin — swap stablecoins, add/remove liquidity, query pools and APY across Ethereum, Arbitrum, Base, Polygon, and BSC.",
       "author": {
@@ -115,10 +115,10 @@
           "dir": "skills/curve-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/curve-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/curve-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/curve-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "ethereum",
@@ -146,10 +146,10 @@
           "dir": "skills/eth-price-demo"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/eth-price-demo",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/eth-price-demo/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/eth-price-demo/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "ethereum"
@@ -159,7 +159,7 @@
       }
     },
     {
-      "name": "etherfi-plugin",
+      "name": "etherfi",
       "version": "0.2.9",
       "description": "Liquid restaking on Ethereum — deposit ETH to receive eETH, wrap eETH to weETH (ERC-4626), and check positions with APY",
       "author": {
@@ -177,10 +177,10 @@
           "dir": "skills/etherfi-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/etherfi-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/etherfi-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/etherfi-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "ethereum",
@@ -191,7 +191,7 @@
       }
     },
     {
-      "name": "gmx-v2-plugin",
+      "name": "gmx-v2",
       "version": "0.2.6",
       "description": "Trade perpetuals and spot on GMX V2 — open/close leveraged positions, place limit/stop orders, add/remove GM pool liquidity, query markets and positions",
       "author": {
@@ -208,10 +208,10 @@
           "dir": "skills/gmx-v2-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/gmx-v2-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/gmx-v2-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/gmx-v2-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "base"
@@ -221,7 +221,7 @@
       }
     },
     {
-      "name": "hyperliquid-plugin",
+      "name": "hyperliquid",
       "version": "0.3.6",
       "description": "Hyperliquid on-chain perpetuals DEX — check positions, get market prices, place and cancel perpetual orders on Hyperliquid L1 (chain_id 999).",
       "author": {
@@ -241,10 +241,10 @@
           "dir": "skills/hyperliquid-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/hyperliquid-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "solana",
@@ -256,7 +256,7 @@
       }
     },
     {
-      "name": "kamino-lend-plugin",
+      "name": "kamino-lend",
       "version": "0.1.3",
       "description": "Supply, borrow, and manage positions on Kamino Lend — the leading Solana lending protocol",
       "author": {
@@ -273,10 +273,10 @@
           "dir": "skills/kamino-lend-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/kamino-lend-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-lend-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-lend-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "solana",
@@ -287,7 +287,7 @@
       }
     },
     {
-      "name": "kamino-liquidity-plugin",
+      "name": "kamino-liquidity",
       "version": "0.1.2",
       "description": "Kamino Liquidity KVault earn vaults on Solana. Deposit tokens to earn yield, withdraw shares, and track positions.",
       "author": {
@@ -304,10 +304,10 @@
           "dir": "skills/kamino-liquidity-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/kamino-liquidity-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-liquidity-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-liquidity-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "solana",
@@ -318,7 +318,7 @@
       }
     },
     {
-      "name": "lido-plugin",
+      "name": "lido",
       "version": "0.2.7",
       "description": "Stake ETH with Lido liquid staking protocol to receive stETH",
       "author": {
@@ -336,10 +336,10 @@
           "dir": "skills/lido-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/lido-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/lido-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/lido-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "ethereum",
@@ -369,10 +369,10 @@
           "dir": "skills/macro-intelligence"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/macro-intelligence",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/macro-intelligence/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/macro-intelligence/SUMMARY.md",
-      "modify_date": "1776679885"
+      "modify_date": "1776737579"
     },
     {
       "name": "mainstream-spot-order",
@@ -394,10 +394,10 @@
           "dir": "skills/mainstream-spot-order"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/mainstream-spot-order",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/mainstream-spot-order/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/mainstream-spot-order/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "solana",
@@ -431,10 +431,10 @@
           "dir": "skills/meme-trench-scanner"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/meme-trench-scanner",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meme-trench-scanner/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meme-trench-scanner/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "solana",
@@ -445,7 +445,7 @@
       }
     },
     {
-      "name": "meteora-plugin",
+      "name": "meteora",
       "version": "0.3.7",
       "description": "Meteora DLMM plugin for Solana — search liquidity pools, get swap quotes, view user positions, execute token swaps, add and remove liquidity",
       "author": {
@@ -462,10 +462,10 @@
           "dir": "skills/meteora-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/meteora-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meteora-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meteora-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "solana",
@@ -476,7 +476,7 @@
       }
     },
     {
-      "name": "morpho-plugin",
+      "name": "morpho",
       "version": "0.2.5",
       "description": "Supply, borrow and earn yield on Morpho — a permissionless lending protocol with $5B+ TVL. Trigger phrases: supply to morpho, deposit to morpho vault, borrow from morpho, repay morpho loan, morpho health factor, my morpho positions, morpho interest rates, claim morpho rewards, morpho markets, metamorpho vaults.",
       "author": {
@@ -495,10 +495,10 @@
           "dir": "skills/morpho-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/morpho-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/morpho-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/morpho-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "ethereum",
@@ -529,10 +529,10 @@
           "dir": "skills/okx-buildx-hackathon-agent-track"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/okx-buildx-hackathon-agent-track",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/okx-buildx-hackathon-agent-track/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/okx-buildx-hackathon-agent-track/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "base",
@@ -562,10 +562,10 @@
           "dir": "skills/one-click-token-launch"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/one-click-token-launch",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/one-click-token-launch/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/one-click-token-launch/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "solana",
@@ -593,10 +593,10 @@
           "dir": "skills/orca-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/orca-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/orca-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/orca-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "solana",
@@ -607,7 +607,7 @@
       }
     },
     {
-      "name": "pancakeswap-clmm-plugin",
+      "name": "pancakeswap-clmm",
       "version": "0.1.3",
       "description": "PancakeSwap V3 CLMM farming plugin — stake LP NFTs into MasterChefV3, harvest CAKE rewards, collect swap fees across BSC, Ethereum, Base, and Arbitrum. Trigger phrases: stake LP NFT, farm CAKE, harvest CAKE rewards, collect fees, unfarm position, PancakeSwap farming, view positions.",
       "author": {
@@ -624,10 +624,10 @@
           "dir": "skills/pancakeswap-clmm-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/pancakeswap-clmm-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-clmm-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-clmm-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "ethereum",
@@ -638,7 +638,7 @@
       }
     },
     {
-      "name": "pancakeswap-v2-plugin",
+      "name": "pancakeswap-v2",
       "version": "0.2.4",
       "description": "Swap tokens and manage liquidity on PancakeSwap V2 (xyk AMM) on BSC, Base, and Arbitrum. Triggers: swap pancakeswap v2, add/remove liquidity pancake, pcs v2 quote, check pancake pair.",
       "author": {
@@ -653,10 +653,10 @@
           "dir": "skills/pancakeswap-v2-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/pancakeswap-v2-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v2-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v2-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "base"
@@ -666,7 +666,7 @@
       }
     },
     {
-      "name": "pancakeswap-v3-plugin",
+      "name": "pancakeswap-v3",
       "version": "1.0.4",
       "description": "Swap tokens and manage liquidity on PancakeSwap V3 on BNB Chain, Base, and Arbitrum",
       "author": {
@@ -684,10 +684,10 @@
           "dir": "skills/pancakeswap-v3-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/pancakeswap-v3-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v3-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v3-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "ethereum",
@@ -716,10 +716,10 @@
           "dir": "skills/pendle-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/pendle-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pendle-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pendle-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "ethereum",
@@ -749,10 +749,10 @@
           "dir": "skills/plugin-store"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/plugin-store",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/plugin-store/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/plugin-store/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "base"
@@ -782,10 +782,10 @@
           "dir": "skills/polymarket-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/polymarket-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/polymarket-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/polymarket-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "ethereum",
@@ -796,7 +796,7 @@
       }
     },
     {
-      "name": "pump-fun-plugin",
+      "name": "pump-fun",
       "version": "0.1.4",
       "description": "Buy and sell tokens on pump.fun bonding curves on Solana mainnet",
       "author": {
@@ -813,10 +813,10 @@
           "dir": "skills/pump-fun-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/pump-fun-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pump-fun-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pump-fun-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "solana",
@@ -827,7 +827,7 @@
       }
     },
     {
-      "name": "raydium-plugin",
+      "name": "raydium",
       "version": "0.1.6",
       "description": "Raydium AMM plugin for token swaps, price queries, and pool info on Solana mainnet. Trigger phrases: swap on raydium, raydium swap, raydium price, raydium pool, get swap quote raydium, raydium dex, swap solana raydium.",
       "author": {
@@ -844,10 +844,10 @@
           "dir": "skills/raydium-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/raydium-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/raydium-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/raydium-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "solana",
@@ -879,10 +879,10 @@
           "dir": "skills/smart-money-signal-copy-trade"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/smart-money-signal-copy-trade",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/smart-money-signal-copy-trade/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/smart-money-signal-copy-trade/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "solana",
@@ -916,10 +916,10 @@
           "dir": "skills/top-rank-tokens-sniper"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/top-rank-tokens-sniper",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/top-rank-tokens-sniper/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/top-rank-tokens-sniper/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "solana",
@@ -948,10 +948,10 @@
           "dir": "skills/uniswap-ai"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-ai",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-ai/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-ai/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "base"
@@ -978,10 +978,10 @@
           "dir": "skills/uniswap-cca-configurator"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-cca-configurator",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-cca-configurator/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-cca-configurator/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "base"
@@ -1008,10 +1008,10 @@
           "dir": "skills/uniswap-cca-deployer"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-cca-deployer",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-cca-deployer/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-cca-deployer/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "base"
@@ -1038,10 +1038,10 @@
           "dir": "skills/uniswap-liquidity-planner"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-liquidity-planner",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-liquidity-planner/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-liquidity-planner/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "base"
@@ -1069,10 +1069,10 @@
           "dir": "skills/uniswap-pay-with-any-token"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-pay-with-any-token",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-pay-with-any-token/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-pay-with-any-token/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "base"
@@ -1100,10 +1100,10 @@
           "dir": "skills/uniswap-swap-integration"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-swap-integration",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-swap-integration/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-swap-integration/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "base"
@@ -1130,10 +1130,10 @@
           "dir": "skills/uniswap-swap-planner"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-swap-planner",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-swap-planner/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-swap-planner/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "base"
@@ -1160,10 +1160,10 @@
           "dir": "skills/uniswap-v4-security-foundations"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-v4-security-foundations",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-v4-security-foundations/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-v4-security-foundations/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "base"
@@ -1190,10 +1190,10 @@
           "dir": "skills/uniswap-viem-integration"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/uniswap-viem-integration",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-viem-integration/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/uniswap-viem-integration/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "base"
@@ -1203,7 +1203,7 @@
       }
     },
     {
-      "name": "velodrome-v2-plugin",
+      "name": "velodrome-v2",
       "version": "0.1.3",
       "description": "Swap tokens and manage classic AMM (volatile/stable) LP positions on Velodrome V2 on Optimism",
       "author": {
@@ -1220,10 +1220,10 @@
           "dir": "skills/velodrome-v2-plugin"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/velodrome-v2-plugin",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/velodrome-v2-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/velodrome-v2-plugin/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "base"
@@ -1253,10 +1253,10 @@
           "dir": "skills/wallet-tracker-mcap"
         }
       },
-      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/wallet-tracker-mcap",
+      "github_link": "https://github.com/okx/plugin-store",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/wallet-tracker-mcap/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/wallet-tracker-mcap/SUMMARY.md",
-      "modify_date": "1776679885",
+      "modify_date": "1776737579",
       "extra": {
         "chains": [
           "solana",
