@@ -5,7 +5,7 @@ Polymarket is a prediction market protocol on Polygon where users trade YES/NO o
 ## Prerequisites
 - onchainos CLI installed and logged in with a Polygon address (chain 137)
 - USDC.e on Polygon for trading (≥ $5 recommended for a first test trade)
-- POL for gas in EOA mode (default; each buy/sell does an on-chain approve) — skip with one-time POLY_PROXY setup
+- Recommended: run `setup-proxy` once for gasless trading (Polymarket's relayer pays gas). Fallback EOA mode needs POL on Polygon for every buy/sell approval
 - Accessible region — Polymarket blocks the US and OFAC-sanctioned jurisdictions
 
 ## Quick Start
