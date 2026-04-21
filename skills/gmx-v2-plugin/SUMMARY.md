@@ -1,13 +1,13 @@
-**Overview**
+## Overview
 
 GMX V2 is a decentralized perpetuals and spot exchange with leveraged positions and GM pool liquidity on Arbitrum and Avalanche. This skill lets you open/close long/short positions, place limit / stop-loss / take-profit orders, add/remove GM pool liquidity, check positions/orders/prices, and claim funding fees.
 
-**Prerequisites**
+## Prerequisites
 - onchainos CLI installed and logged in
 - ETH for execution fees on Arbitrum (chain 42161, default) or AVAX on Avalanche (43114)
 - USDC (≥ $10 recommended) on the target chain as collateral
 
-**Quick Start**
+## Quick Start
 1. Check your state and get a guided next step: `gmx-v2 quickstart` (Arbitrum default; use `gmx-v2 --chain avalanche quickstart` for Avalanche)
 2. If you see `status: no_funds` / `needs_fee` / `needs_collateral` — fund the wallet address shown in the output (ETH/AVAX for fees + USDC as collateral)
 3. Browse active markets with liquidity and rates: `gmx-v2 --chain arbitrum list-markets`
