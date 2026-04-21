@@ -965,15 +965,23 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           PR_NUM="${{ needs.detect.outputs.pr_number }}"
+          REPO="${{ github.repository }}"
           echo "All CI work complete. Merging PR #${PR_NUM} to main..."
-          gh pr merge "${PR_NUM}" --merge \
-            --repo "${{ github.repository }}" \
-            --subject "Merge PR #${PR_NUM}: publish ${{ needs.detect.outputs.changed_plugins }}" \
-            || {
-              echo "::error::Failed to merge PR #${PR_NUM}. Check branch protection settings."
-              exit 1
-            }
-          echo "PR #${PR_NUM} merged to main successfully."
+
+          for attempt in 1 2 3; do
+            if gh pr merge "${PR_NUM}" --merge \
+              --repo "$REPO" \
+              --subject "Merge PR #${PR_NUM}: publish ${{ needs.detect.outputs.changed_plugins }}"; then
+              echo "PR #${PR_NUM} merged to main successfully."
+              exit 0
+            fi
+            echo "Merge attempt ${attempt}/3 failed — updating PR branch and retrying..."
+            gh api "repos/${REPO}/pulls/${PR_NUM}/update-branch" --method PUT 2>/dev/null || true
+            sleep 10
+          done
+
+          echo "::error::Failed to merge PR #${PR_NUM} after 3 attempts."
+          exit 1
 
       - name: Update check run (success)
         if: needs.detect.outputs.pr_number != '' && inputs.check_run_id != ''
