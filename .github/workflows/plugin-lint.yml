@@ -251,6 +251,29 @@ jobs:
           EXIT_CODE=$?
           set -e
 
+          # Check dependent_plugin references exist in registry (strategy plugins only)
+          PLUGIN_DIR="${{ needs.collect.outputs.plugin_dir }}"
+          YAML_FILE="${PLUGIN_DIR}/plugin.yaml"
+          CATEGORY=$(yq '.category // ""' "$YAML_FILE" 2>/dev/null || echo "")
+          DEP_COUNT=$(yq '.dependent_plugin | length' "$YAML_FILE" 2>/dev/null || echo "0")
+          if [ "$CATEGORY" = "strategy" ] && [ "$DEP_COUNT" -gt 0 ]; then
+            echo "Strategy plugin detected — checking dependent_plugin..."
+            REGISTRY=$(curl -sSL --max-time 10 \
+              "https://raw.githubusercontent.com/okx/plugin-store/main/registry.json" 2>/dev/null || echo '{"plugins":[]}')
+            REG_NAMES=$(echo "$REGISTRY" | jq -r '.plugins[].name' 2>/dev/null)
+
+            for i in $(seq 0 $((DEP_COUNT - 1))); do
+              DEP_NAME=$(yq ".dependent_plugin[$i].name" "$YAML_FILE" 2>/dev/null)
+              if ! echo "$REG_NAMES" | grep -qx "$DEP_NAME"; then
+                DEP_MSG="  E160: dependent_plugin '${DEP_NAME}' not found in registry"
+                OUTPUT=$(printf '%s\n%s' "$OUTPUT" "$DEP_MSG")
+                EXIT_CODE=1
+              else
+                echo "  ✓ ${DEP_NAME} found in registry"
+              fi
+            done
+          fi
+
           # Append name uniqueness result
           if [ "${{ steps.name_check.outputs.duplicate }}" = "true" ]; then
             DUPE_MSG="  E034: name '${{ needs.collect.outputs.plugin_name }}' already exists in registry"

@@ -227,11 +227,44 @@ Check the SUMMARY.md file:
 
 If the character count exceeds 17,000, mark this as a **🔴 Critical** issue and recommend the reviewer **reject this plugin**. The SUMMARY.md must be concise.
 
-## 10. Recommendations
+## 10. Strategy Attribution Check
+
+**IMPORTANT: If the plugin does NOT have `category: "strategy"` AND a `dependent_plugin` field in plugin.yaml, DO NOT output this section at all — no heading, no "N/A", nothing. Completely omit Section 10 from your report. Only include this section for strategy plugins.**
+
+This plugin is a **trading strategy** — it does not connect to chains/wallets directly, but calls other trading plugins (declared in `dependent_plugin`) to execute orders. Every write operation call to a dependent plugin MUST include `--strategy <strategy-name>` for attribution tracking.
+
+### Dependent Plugin Declarations
+
+| Declared Plugin | Exists in Registry | Version Compatible |
+|----------------|-------------------|-------------------|
+[List each entry from `dependent_plugin` in plugin.yaml. Check if the plugin name exists in the current registry.]
+
+### Strategy Attribution Scan
+
+Scan ALL source code files (.py, .ts, .js, .rs, .sh) for calls to dependent plugins. For each call:
+
+| File | Line | Command | Has --strategy | Write Operation |
+|------|------|---------|:--------------:|:---------------:|
+[List every subprocess/exec/Command call that invokes a declared dependent plugin.]
+
+**Rules:**
+- Write operations WITHOUT `--strategy`: mark as **🔴 Critical** — reviewer must reject
+- Read-only operations without `--strategy`: **✅ OK**
+- Lines with `# plugin-store-lint: skip-strategy-check` comment: **✅ Whitelisted**
+
+### Sensitive Data Check (Strategy-specific)
+
+| Check | Result |
+|-------|--------|
+| Hardcoded private keys (`0x` + 64 hex chars) | [✅ / ❌] |
+| Hardcoded RPC URLs (should use env vars) | [✅ / ❌] |
+| Plaintext API keys | [✅ / ❌] |
+
+## 11. Recommendations
 
 [Numbered list of actionable improvements, ordered by priority]
 
-## 11. Reviewer Summary
+## 12. Reviewer Summary
 
 **One-line verdict**: [concise summary for the human reviewer]
 

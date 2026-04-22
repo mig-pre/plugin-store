@@ -413,6 +413,23 @@ jobs:
               echo '```'
             fi
             echo ""
+
+            # Flag strategy plugins for AI review
+            CATEGORY=$(yq '.category // ""' "$YAML_FILE" 2>/dev/null || echo "")
+            HAS_DEPS=$(yq '.dependent_plugin // "" | length' "$YAML_FILE" 2>/dev/null || echo "0")
+            if [ "$CATEGORY" = "strategy" ] && [ "$HAS_DEPS" -gt 0 ]; then
+              echo "## ⚠️ STRATEGY PLUGIN DETECTED"
+              echo ""
+              echo "This is a **trading strategy** plugin with declared dependent plugins."
+              echo "Apply Section 10 (Strategy Attribution Check) in your review."
+              echo ""
+              echo "### Declared dependent_plugin:"
+              echo '```yaml'
+              yq '.dependent_plugin' "$YAML_FILE" 2>/dev/null || echo "  (parse error)"
+              echo '```'
+              echo ""
+            fi
+
             SUMMARY_FILE=$(find "${PLUGIN_DIR}" -name "SUMMARY.md" -type f | head -1)
             if [ -n "$SUMMARY_FILE" ] && [ -f "$SUMMARY_FILE" ]; then
               SUMMARY_CHARS=$(wc -c < "$SUMMARY_FILE" | tr -d ' ')
