@@ -201,11 +201,26 @@ Check if any combination of triggered rules forms a toxic flow (attack chain):
 - 🟡 Important: [should fix]
 - 🔵 Minor: [nice to have]
 
-## 8. Recommendations
+## 8. SUMMARY.md Review
+
+Check the SUMMARY.md file:
+
+| Check | Result |
+|-------|--------|
+| File exists | [✅ / ❌] |
+| Written in English | [✅ / ❌] |
+| Has "## 1. Overview" section | [✅ / ❌] |
+| Has "## 2. Prerequisites" section | [✅ / ❌] |
+| Has "## 3. Quick Start" section | [✅ / ❌] |
+| Character count ≤ 17,000 | [✅ X chars / ❌ X chars — **REJECT: exceeds 17,000 limit**] |
+
+If the character count exceeds 17,000, mark this as a **🔴 Critical** issue and recommend the reviewer **reject this plugin**. The SUMMARY.md must be concise.
+
+## 9. Recommendations
 
 [Numbered list of actionable improvements, ordered by priority]
 
-## 9. Reviewer Summary
+## 10. Reviewer Summary
 
 **One-line verdict**: [concise summary for the human reviewer]
 
