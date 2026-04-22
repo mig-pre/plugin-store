@@ -218,7 +218,7 @@ If the character count exceeds 17,000, mark this as a **🔴 Critical** issue an
 
 ## 9. Strategy Attribution Check
 
-**Only apply this section if the plugin has `category: "strategy"` AND a `dependent_plugin` field in plugin.yaml. Skip entirely for non-strategy plugins.**
+**IMPORTANT: If the plugin does NOT have `category: "strategy"` AND a `dependent_plugin` field in plugin.yaml, DO NOT output this section at all — no heading, no "N/A", nothing. Completely omit Section 9 from your report. Only include this section for strategy plugins.**
 
 This plugin is a **trading strategy** — it does not connect to chains/wallets directly, but calls other trading plugins (declared in `dependent_plugin`) to execute orders. Every write operation call to a dependent plugin MUST include `--strategy <strategy-name>` for attribution tracking.
 
