@@ -212,11 +212,26 @@ Both SKILL.md and SUMMARY.md **must be written in English**. Check the primary l
 
 If either file is NOT primarily in English, mark it with ❌ and flag it as a **🔴 Critical** issue. Minor non-English content (e.g., token names, protocol-specific terms) is acceptable, but the body text must be English.
 
-## 9. Recommendations
+## 9. SUMMARY.md Review
+
+Check the SUMMARY.md file:
+
+| Check | Result |
+|-------|--------|
+| File exists | [✅ / ❌] |
+| Written in English | [✅ / ❌] |
+| Has "## 1. Overview" section | [✅ / ❌] |
+| Has "## 2. Prerequisites" section | [✅ / ❌] |
+| Has "## 3. Quick Start" section | [✅ / ❌] |
+| Character count ≤ 17,000 | [✅ X chars / ❌ X chars — **REJECT: exceeds 17,000 limit**] |
+
+If the character count exceeds 17,000, mark this as a **🔴 Critical** issue and recommend the reviewer **reject this plugin**. The SUMMARY.md must be concise.
+
+## 10. Recommendations
 
 [Numbered list of actionable improvements, ordered by priority]
 
-## 10. Reviewer Summary
+## 11. Reviewer Summary
 
 **One-line verdict**: [concise summary for the human reviewer]
 
