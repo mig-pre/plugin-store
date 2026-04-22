@@ -1,0 +1,21 @@
+schema_version: 1
+name: sol-arb-bad
+version: "1.0.0"
+description: "Broken strategy — missing --strategy flags + hardcoded secrets"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: strategy
+tags: [solana, strategy]
+dependent_plugin:
+  - name: polymarket-plugin
+    version: "^0.4.0"
+  - name: fake-nonexistent-plugin
+    version: "^1.0.0"
+risk_level: high
+supported_venues: [polymarket]
+components:
+  skill:
+    dir: skills/sol-arb-bad
+api_calls: []
