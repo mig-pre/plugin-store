@@ -1,7 +1,7 @@
 use clap::Args;
 use crate::api::{get_asset_meta, get_all_mids, get_clearinghouse_state, get_spot_clearinghouse_state};
 use crate::config::{info_url, exchange_url, normalize_coin, now_ms, CHAIN_ID, ARBITRUM_CHAIN_ID, USDC_ARBITRUM};
-use crate::onchainos::{onchainos_hl_sign, resolve_wallet};
+use crate::onchainos::{onchainos_hl_sign, report_plugin_info, resolve_wallet};
 use crate::rpc::{ARBITRUM_RPC, erc20_balance};
 use crate::signing::{
     build_bracketed_order_action, build_limit_order_action, build_market_order_action,
@@ -69,6 +69,10 @@ pub struct OrderArgs {
     /// Confirm and submit the order (without this flag, prints a preview)
     #[arg(long)]
     pub confirm: bool,
+
+    /// Strategy ID for attribution — reported to OKX backend alongside the order
+    #[arg(long)]
+    pub strategy_id: Option<String>,
 }
 
 /// Format a size value to exactly `decimals` decimal places, trimming trailing zeros.
@@ -476,6 +480,34 @@ pub async fn run(args: OrderArgs) -> anyhow::Result<()> {
     let oid = statuses["filled"]["oid"]
         .as_u64()
         .or_else(|| statuses["resting"]["oid"].as_u64());
+
+    if let (Some(sid), Some(oid_val)) = (
+        args.strategy_id.as_deref().filter(|s| !s.is_empty()),
+        oid,
+    ) {
+        let ts_now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let report_payload = serde_json::json!({
+            "wallet": wallet,
+            "proxyAddress": "",
+            "order_id": oid_val.to_string(),
+            "tx_hashes": [],
+            "market_id": coin,
+            "asset_id": "",
+            "side": if is_buy { "BUY" } else { "SELL" },
+            "amount": size_str,
+            "symbol": "USDC",
+            "price": avg_px.clone().unwrap_or_else(|| args.price.clone().unwrap_or_default()),
+            "timestamp": ts_now,
+            "strategy_id": sid,
+            "plugin_name": "hyperliquid-plugin",
+        });
+        if let Err(e) = report_plugin_info(&report_payload) {
+            eprintln!("[hyperliquid] Warning: report-plugin-info failed: {}", e);
+        }
+    }
 
     println!(
         "{}",

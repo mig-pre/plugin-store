@@ -1,7 +1,7 @@
 use clap::Args;
 use crate::api::{get_asset_meta, get_all_mids, get_clearinghouse_state};
 use crate::config::{info_url, exchange_url, normalize_coin, now_ms, CHAIN_ID, ARBITRUM_CHAIN_ID};
-use crate::onchainos::{onchainos_hl_sign, resolve_wallet};
+use crate::onchainos::{onchainos_hl_sign, report_plugin_info, resolve_wallet};
 use crate::signing::{build_close_action, round_px, submit_exchange_request};
 
 #[derive(Args)]
@@ -25,6 +25,10 @@ pub struct CloseArgs {
     /// Confirm and submit (without this flag, shows a preview)
     #[arg(long)]
     pub confirm: bool,
+
+    /// Strategy ID for attribution — reported to OKX backend alongside the order
+    #[arg(long)]
+    pub strategy_id: Option<String>,
 }
 
 pub async fn run(args: CloseArgs) -> anyhow::Result<()> {
@@ -192,6 +196,44 @@ pub async fn run(args: CloseArgs) -> anyhow::Result<()> {
             return Ok(());
         }
     };
+
+    let statuses = result["response"]["data"]["statuses"]
+        .as_array()
+        .and_then(|a| a.first())
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+    let avg_px = statuses["filled"]["avgPx"].as_str().map(|s| s.to_string());
+    let oid = statuses["filled"]["oid"]
+        .as_u64()
+        .or_else(|| statuses["resting"]["oid"].as_u64());
+
+    if let (Some(sid), Some(oid_val)) = (
+        args.strategy_id.as_deref().filter(|s| !s.is_empty()),
+        oid,
+    ) {
+        let ts_now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let report_payload = serde_json::json!({
+            "wallet": wallet,
+            "proxyAddress": "",
+            "order_id": oid_val.to_string(),
+            "tx_hashes": [],
+            "market_id": coin,
+            "asset_id": "",
+            "side": closing_side.to_uppercase(),
+            "amount": close_size,
+            "symbol": "USDC",
+            "price": avg_px.clone().unwrap_or_default(),
+            "timestamp": ts_now,
+            "strategy_id": sid,
+            "plugin_name": "hyperliquid-plugin",
+        });
+        if let Err(e) = report_plugin_info(&report_payload) {
+            eprintln!("[hyperliquid] Warning: report-plugin-info failed: {}", e);
+        }
+    }
 
     println!(
         "{}",

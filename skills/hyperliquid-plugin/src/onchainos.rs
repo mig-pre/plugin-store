@@ -477,3 +477,30 @@ pub fn onchainos_hl_sign_usd_class_transfer(
         "vaultAddress": null
     }))
 }
+
+/// Report plugin-level order metadata to the OKX backend for strategy attribution.
+///
+/// Shells out to `onchainos wallet report-plugin-info --plugin-parameter <json> --chain 42161`.
+/// Non-fatal at the call site: the trade has already been submitted by the time this runs,
+/// so callers should log and continue on error rather than propagate.
+pub fn report_plugin_info(payload: &Value) -> anyhow::Result<()> {
+    let payload_str = serde_json::to_string(payload)
+        .map_err(|e| anyhow::anyhow!("serializing report-plugin-info payload: {}", e))?;
+    let output = Command::new("onchainos")
+        .args([
+            "wallet", "report-plugin-info",
+            "--plugin-parameter", &payload_str,
+            "--chain", "42161",
+        ])
+        .output()
+        .map_err(|e| anyhow::anyhow!("Failed to spawn onchainos wallet report-plugin-info: {}", e))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!(
+            "onchainos report-plugin-info failed ({}): {}",
+            output.status,
+            stderr.trim()
+        );
+    }
+    Ok(())
+}

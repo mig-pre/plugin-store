@@ -1,7 +1,7 @@
 ---
 name: hyperliquid-plugin
 description: Hyperliquid DEX — trade perps & spot, deposit from Arbitrum, withdraw to Arbitrum, transfer between perp and spot accounts, manage gas on HyperEVM.
-version: "0.3.7"
+version: "0.3.8"
 author: GeoGu360
 tags:
   - perps
@@ -26,7 +26,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/hyperliquid-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.3.7"
+LOCAL_VER="0.3.8"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -99,7 +99,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/hyperliquid-plugin@0.3.7/hyperliquid-plugin-${TARGET}${EXT}" -o ~/.local/bin/.hyperliquid-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/hyperliquid-plugin@0.3.8/hyperliquid-plugin-${TARGET}${EXT}" -o ~/.local/bin/.hyperliquid-plugin-core${EXT}
 chmod +x ~/.local/bin/.hyperliquid-plugin-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -107,7 +107,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/hyperliquid-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.3.7" > "$HOME/.plugin-store/managed/hyperliquid-plugin"
+echo "0.3.8" > "$HOME/.plugin-store/managed/hyperliquid-plugin"
 ```
 
 ### Report install (auto-injected, runs once)
@@ -127,7 +127,7 @@ if [ ! -f "$REPORT_FLAG" ]; then
   # Report to Vercel stats
   curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
     -H "Content-Type: application/json" \
-    -d '{"name":"hyperliquid-plugin","version":"0.3.7"}' >/dev/null 2>&1 || true
+    -d '{"name":"hyperliquid-plugin","version":"0.3.8"}' >/dev/null 2>&1 || true
   # Report to OKX API (with HMAC-signed device token)
   curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
     -H "Content-Type: application/json" \
@@ -444,6 +444,9 @@ All prices (trigger + worst-fill limit) are automatically rounded to the coin's 
 - Both are reduce-only market trigger orders with 10% slippage tolerance
 - If entry partially fills, children activate proportionally
 
+**Strategy attribution (`--strategy-id`):**
+When `--strategy-id <id>` is provided (non-empty), the plugin calls `onchainos wallet report-plugin-info` after the order succeeds with a JSON payload containing `wallet`, `proxyAddress` (empty for HL), `order_id` (HL `oid`), `tx_hashes` (empty at submit time), `market_id` (coin), `asset_id` (empty), `side`, `amount`, `symbol` (`USDC`), `price`, `timestamp`, `strategy_id`, `plugin_name: hyperliquid-plugin`. Omit or pass `""` to skip. Failures log to stderr and do not affect the trade result.
+
 ---
 
 ### 4. `close` — Market-Close an Open Position
@@ -474,6 +477,9 @@ hyperliquid close --coin BTC --size 0.005 --confirm
 ```
 
 **Display:** `coin`, `side`, `size`, `result` status.
+
+**Strategy attribution (`--strategy-id`):**
+Same behavior as `order` — when provided and non-empty, the plugin reports the close order to the OKX backend via `onchainos wallet report-plugin-info`. `side` is the close direction (closing a long → `SELL`, closing a short → `BUY`). Omit to skip.
 
 ---
 
@@ -957,6 +963,10 @@ All data returned by `hyperliquid positions`, `hyperliquid prices`, and exchange
 ---
 
 ## Changelog
+
+### v0.3.8 (2026-04-22)
+
+- **feat**: Strategy attribution reporting — `order` and `close` each accept an optional `--strategy-id <id>`. When provided and non-empty, the plugin invokes `onchainos wallet report-plugin-info` after the order succeeds with a JSON payload containing `wallet`, `proxyAddress` (empty for HL), `order_id` (HL `oid` as string), `tx_hashes` (empty array — HL does not produce an on-chain tx hash at submit time; the settlement `hash` is available later via `userFillsByTime` lookup by `oid`), `market_id` (coin symbol), `asset_id` (empty), `side` (`BUY`/`SELL`), `amount`, `symbol` (`USDC`, the collateral asset), `price`, `timestamp`, `strategy_id`, `plugin_name: hyperliquid-plugin`. Omitting the flag skips reporting entirely. Report failures log to stderr as warnings and do not affect the trade result.
 
 ### v0.3.6 (2026-04-17)
 
