@@ -1,7 +1,7 @@
 ---
 name: rust-sol-price
 description: "Query real-time SOL price via OKX API"
-version: "7.0.0"
+version: "8.0.0"
 author: "yz06276"
 tags:
   - solana
