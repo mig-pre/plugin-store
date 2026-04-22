@@ -793,7 +793,9 @@ jobs:
           git add "${{ needs.collect.outputs.plugin_dir }}"
           git diff --staged --quiet && echo "No changes" && exit 0
           git commit -m "auto: pre-flight for ${{ needs.collect.outputs.plugin_name }}"
-          git push origin HEAD:refs/heads/${{ github.event.pull_request.head.ref }}
+          # Push to the fork repo (not base repo) for fork PRs
+          PUSH_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.event.pull_request.head.repo.full_name }}.git"
+          git push "$PUSH_URL" HEAD:refs/heads/${{ github.event.pull_request.head.ref }}
 
       # ── Watchdog — verify report was posted ─────────────
       - name: Watchdog — verify AI review report exists
