@@ -164,6 +164,7 @@ impl PluginYaml {
 /// Valid categories for plugins.
 pub const VALID_CATEGORIES: &[&str] = &[
     "trading-strategy",
+    "strategy",
     "defi-protocol",
     "analytics",
     "utility",
