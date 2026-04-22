@@ -1,0 +1,19 @@
+schema_version: 1
+name: sol-arb-good
+version: "1.0.0"
+description: "SOL arbitrage — valid strategy with correct --strategy flags"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: strategy
+tags: [solana, strategy]
+dependent_plugin:
+  - name: raydium-plugin
+    version: "^0.2.0"
+risk_level: medium
+supported_venues: [raydium]
+components:
+  skill:
+    dir: skills/sol-arb-good
+api_calls: []
