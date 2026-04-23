@@ -192,8 +192,8 @@ jobs:
       - name: Check if PR author is OKX org member
         id: org_check
         run: |
-          AUTHOR="${{ github.event.pull_request.user.login }}"
-          HEAD_REPO="${{ github.event.pull_request.head.repo.full_name }}"
+          AUTHOR="$PR_AUTHOR"
+          HEAD_REPO="$PR_HEAD_REPO"
 
           # Method 1: PR comes from okx/ org repo (direct push)
           if echo "$HEAD_REPO" | grep -q "^okx/"; then

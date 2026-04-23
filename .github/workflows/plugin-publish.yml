@@ -88,6 +88,8 @@ jobs:
         id: detect
         env:
           GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           # workflow_dispatch with rebuild_all: treat ALL plugins as changed
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.rebuild_all }}" = "true" ]; then
@@ -103,7 +105,7 @@ jobs:
           fi
 
           # Resolve PR info from event or workflow_dispatch input
-          PR_NUM="${{ github.event.pull_request.number || inputs.pr_number }}"
+          PR_NUM="${PR_NUMBER:-${{ inputs.pr_number }}}"
           if [ -n "$PR_NUM" ]; then
             # Get PR head ref via API (needs GH_TOKEN)
             PR_INFO=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefName,headRepositoryOwner --jq '{ref: .headRefName, owner: .headRepositoryOwner.login}' || echo '{}')
@@ -116,7 +118,7 @@ jobs:
             echo "Resolved PR #${PR_NUM}: ${PR_HEAD_REPO}:${PR_HEAD}"
           fi
 
-          BASE_REF="${{ github.event.pull_request.base.ref || 'main' }}"
+          BASE_REF="${PR_BASE_REF:-main}"
           git fetch origin "${BASE_REF}" 2>/dev/null || true
           CHANGED=$(git diff --name-only "origin/${BASE_REF}...HEAD" -- 'skills/' || true)
           if [ -z "$CHANGED" ]; then
