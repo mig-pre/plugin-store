@@ -112,12 +112,8 @@ jobs:
                   if tag in lower_content:
                       tags.append(tag)
 
-              # Detect category
-              category = "utility"
-              if any(t in tags for t in ["trading", "signal", "scanner", "sniper"]):
-                  category = "trading-strategy"
-              elif any(t in tags for t in ["defi"]):
-                  category = "defi-protocol"
+              # Read category from plugin.yaml (authoritative source)
+              category = pjson.get("category", "utility")
 
               # Detect chains
               chains = []

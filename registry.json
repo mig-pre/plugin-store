@@ -9,7 +9,7 @@
       "author": {
         "name": "OKX"
       },
-      "category": "defi-protocol",
+      "category": "defi",
       "tags": [
         "ethereum",
         "defi"
@@ -41,7 +41,7 @@
       "author": {
         "name": "GeoGu360"
       },
-      "category": "defi-protocol",
+      "category": "defi",
       "tags": [
         "trading"
       ],
@@ -71,7 +71,7 @@
       "author": {
         "name": "skylavis-sky"
       },
-      "category": "defi-protocol",
+      "category": "defi",
       "tags": [
         "ethereum",
         "signal",
@@ -104,7 +104,7 @@
       "author": {
         "name": "GeoGu360"
       },
-      "category": "defi-protocol",
+      "category": "trading",
       "tags": [
         "ethereum"
       ],
@@ -165,7 +165,7 @@
       "author": {
         "name": "GeoGu360"
       },
-      "category": "defi-protocol",
+      "category": "defi",
       "tags": [
         "ethereum",
         "defi"
@@ -197,7 +197,7 @@
       "author": {
         "name": "GeoGu360"
       },
-      "category": "defi-protocol",
+      "category": "trading",
       "tags": [
         "trading"
       ],
@@ -227,7 +227,7 @@
       "author": {
         "name": "GeoGu360"
       },
-      "category": "defi-protocol",
+      "category": "trading",
       "tags": [
         "solana",
         "ethereum",
@@ -262,7 +262,7 @@
       "author": {
         "name": "GeoGu360"
       },
-      "category": "defi-protocol",
+      "category": "defi",
       "tags": [
         "solana"
       ],
@@ -293,7 +293,7 @@
       "author": {
         "name": "GeoGu360"
       },
-      "category": "defi-protocol",
+      "category": "defi",
       "tags": [
         "solana"
       ],
@@ -324,7 +324,7 @@
       "author": {
         "name": "GeoGu360"
       },
-      "category": "defi-protocol",
+      "category": "defi",
       "tags": [
         "ethereum",
         "defi"
@@ -356,7 +356,7 @@
       "author": {
         "name": "VibeCodeDaddy"
       },
-      "category": "trading-strategy",
+      "category": "trading",
       "tags": [
         "trading",
         "signal",
@@ -381,7 +381,7 @@
       "author": {
         "name": "VibeCodeDaddy"
       },
-      "category": "trading-strategy",
+      "category": "trading",
       "tags": [
         "solana",
         "trading",
@@ -414,7 +414,7 @@
       "author": {
         "name": "yz06276"
       },
-      "category": "trading-strategy",
+      "category": "trading",
       "tags": [
         "solana",
         "trading",
@@ -451,7 +451,7 @@
       "author": {
         "name": "OKX"
       },
-      "category": "defi-protocol",
+      "category": "defi",
       "tags": [
         "solana"
       ],
@@ -482,7 +482,7 @@
       "author": {
         "name": "GeoGu360"
       },
-      "category": "defi-protocol",
+      "category": "defi",
       "tags": [
         "ethereum",
         "trading",
@@ -515,7 +515,7 @@
       "author": {
         "name": "OKX"
       },
-      "category": "utility",
+      "category": "others",
       "tags": [
         "trading",
         "defi",
@@ -549,7 +549,7 @@
       "author": {
         "name": "VibeCodeDaddy"
       },
-      "category": "trading-strategy",
+      "category": "trading",
       "tags": [
         "solana",
         "trading",
@@ -582,7 +582,7 @@
       "author": {
         "name": "skylavis-sky"
       },
-      "category": "trading-strategy",
+      "category": "trading",
       "tags": [
         "solana"
       ],
@@ -613,7 +613,7 @@
       "author": {
         "name": "OKX"
       },
-      "category": "defi-protocol",
+      "category": "defi",
       "tags": [
         "ethereum"
       ],
@@ -644,7 +644,7 @@
       "author": {
         "name": "skylavis-sky"
       },
-      "category": "defi-protocol",
+      "category": "defi",
       "tags": [],
       "type": "community-developer",
       "components": {
@@ -672,7 +672,7 @@
       "author": {
         "name": "GeoGu360"
       },
-      "category": "defi-protocol",
+      "category": "trading",
       "tags": [
         "ethereum",
         "defi"
@@ -704,7 +704,7 @@
       "author": {
         "name": "OKX"
       },
-      "category": "defi-protocol",
+      "category": "defi",
       "tags": [
         "ethereum",
         "trading"
@@ -768,7 +768,7 @@
       "author": {
         "name": "skylavis-sky"
       },
-      "category": "defi-protocol",
+      "category": "prediction",
       "tags": [
         "ethereum",
         "trading",
@@ -802,7 +802,7 @@
       "author": {
         "name": "skylavis-sky"
       },
-      "category": "defi-protocol",
+      "category": "trading",
       "tags": [
         "solana"
       ],
@@ -833,7 +833,7 @@
       "author": {
         "name": "OKX"
       },
-      "category": "defi-protocol",
+      "category": "trading",
       "tags": [
         "solana"
       ],
@@ -864,7 +864,7 @@
       "author": {
         "name": "yz06276"
       },
-      "category": "trading-strategy",
+      "category": "trading",
       "tags": [
         "solana",
         "trading",
@@ -899,7 +899,7 @@
       "author": {
         "name": "yz06276"
       },
-      "category": "trading-strategy",
+      "category": "trading",
       "tags": [
         "solana",
         "trading",
@@ -936,7 +936,7 @@
       "author": {
         "name": "Uniswap"
       },
-      "category": "defi-protocol",
+      "category": "trading",
       "tags": [
         "trading",
         "defi"
@@ -967,7 +967,7 @@
       "author": {
         "name": "Uniswap Labs"
       },
-      "category": "defi-protocol",
+      "category": "defi",
       "tags": [
         "defi"
       ],
@@ -997,7 +997,7 @@
       "author": {
         "name": "Uniswap Labs"
       },
-      "category": "defi-protocol",
+      "category": "defi",
       "tags": [
         "defi"
       ],
@@ -1027,7 +1027,7 @@
       "author": {
         "name": "Uniswap Labs"
       },
-      "category": "defi-protocol",
+      "category": "defi",
       "tags": [
         "defi"
       ],
@@ -1057,7 +1057,7 @@
       "author": {
         "name": "Uniswap Labs"
       },
-      "category": "defi-protocol",
+      "category": "defi",
       "tags": [
         "trading",
         "defi"
@@ -1088,7 +1088,7 @@
       "author": {
         "name": "Uniswap Labs"
       },
-      "category": "defi-protocol",
+      "category": "trading",
       "tags": [
         "trading",
         "defi"
@@ -1119,7 +1119,7 @@
       "author": {
         "name": "Uniswap Labs"
       },
-      "category": "defi-protocol",
+      "category": "trading",
       "tags": [
         "defi"
       ],
@@ -1149,7 +1149,7 @@
       "author": {
         "name": "Uniswap Labs"
       },
-      "category": "security",
+      "category": "dev_tools",
       "tags": [
         "defi"
       ],
@@ -1179,7 +1179,7 @@
       "author": {
         "name": "Uniswap Labs"
       },
-      "category": "utility",
+      "category": "dev_tools",
       "tags": [
         "defi"
       ],
@@ -1209,7 +1209,7 @@
       "author": {
         "name": "GeoGu360"
       },
-      "category": "defi-protocol",
+      "category": "defi",
       "tags": [
         "defi"
       ],
@@ -1239,7 +1239,7 @@
       "author": {
         "name": "VibeCodeDaddy"
       },
-      "category": "trading-strategy",
+      "category": "trading",
       "tags": [
         "solana",
         "trading",
