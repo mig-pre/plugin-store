@@ -231,7 +231,7 @@ If the character count exceeds 17,000, mark this as a **🔴 Critical** issue an
 
 **IMPORTANT: If the plugin does NOT have `category: "strategy"` AND a `dependent_plugin` field in plugin.yaml, DO NOT output this section at all — no heading, no "N/A", nothing. Completely omit Section 10 from your report. Only include this section for strategy plugins.**
 
-This plugin is a **trading strategy** — it does not connect to chains/wallets directly, but calls other trading plugins (declared in `dependent_plugin`) to execute orders. Every write operation call to a dependent plugin MUST include `--strategy <strategy-name>` for attribution tracking.
+This plugin is a **trading strategy** — it does not connect to chains/wallets directly, but calls other trading plugins (declared in `dependent_plugin`) to execute orders. Every write operation call to a dependent plugin MUST include `--strategy-id <strategy-name>` for attribution tracking.
 
 ### Dependent Plugin Declarations
 
@@ -243,13 +243,13 @@ This plugin is a **trading strategy** — it does not connect to chains/wallets 
 
 Scan ALL source code files (.py, .ts, .js, .rs, .sh) for calls to dependent plugins. For each call:
 
-| File | Line | Command | Has --strategy | Write Operation |
+| File | Line | Command | Has --strategy-id-id | Write Operation |
 |------|------|---------|:--------------:|:---------------:|
 [List every subprocess/exec/Command call that invokes a declared dependent plugin.]
 
 **Rules:**
-- Write operations WITHOUT `--strategy`: mark as **🔴 Critical** — reviewer must reject
-- Read-only operations without `--strategy`: **✅ OK**
+- Write operations WITHOUT `--strategy-id`: mark as **🔴 Critical** — reviewer must reject
+- Read-only operations without `--strategy-id`: **✅ OK**
 - Lines with `# plugin-store-lint: skip-strategy-check` comment: **✅ Whitelisted**
 
 ### Sensitive Data Check (Strategy-specific)
