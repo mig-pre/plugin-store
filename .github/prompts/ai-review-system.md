@@ -220,9 +220,9 @@ Check the SUMMARY.md file:
 |-------|--------|
 | File exists | [✅ / ❌] |
 | Written in English | [✅ / ❌] |
-| Has "## 1. Overview" section | [✅ / ❌] |
-| Has "## 2. Prerequisites" section | [✅ / ❌] |
-| Has "## 3. Quick Start" section | [✅ / ❌] |
+| Has Overview section | [✅ / ❌] |
+| Has Prerequisites section | [✅ / ❌] |
+| Has Quick Start section | [✅ / ❌] |
 | Character count ≤ 17,000 | [✅ X chars / ❌ X chars — **REJECT: exceeds 17,000 limit**] |
 
 If the character count exceeds 17,000, mark this as a **🔴 Critical** issue and recommend the reviewer **reject this plugin**. The SUMMARY.md must be concise.

@@ -1044,9 +1044,9 @@ fn check_summary_md(plugin: &PluginYaml, dir: &Path, diags: &mut Vec<LintDiag>) 
 
         // Check required sections
         let required_sections: &[(&str, &str)] = &[
-            ("overview", "## 1. Overview"),
-            ("prerequisites", "## 2. Prerequisites"),
-            ("quick start", "## 3. Quick Start"),
+            ("overview", "## Overview"),
+            ("prerequisites", "## Prerequisites"),
+            ("quick start", "## Quick Start"),
         ];
 
         for (keyword, expected) in required_sections {

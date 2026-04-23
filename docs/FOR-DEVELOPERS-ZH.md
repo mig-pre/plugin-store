@@ -726,7 +726,7 @@ onchainos market price --address <TOKEN_ADDRESS> --chain solana
 ```markdown
 # <plugin-name>
 
-## 1. Overview
+## Overview
 
 <一句话概括该平台/协议是什么。>
 
@@ -738,7 +738,7 @@ Core operations:
 
 Tags: `defi` `ethereum` `swap` `lending`
 
-## 2. Prerequisites
+## Prerequisites
 
 - <IP/地区限制，例如 "No IP restrictions" 或 "US users excluded">
 - <支持的链，例如 "Ethereum, Base, Arbitrum, Polygon">
@@ -746,7 +746,7 @@ Tags: `defi` `ethereum` `swap` `lending`
 - <所需工具，例如 "onchainos CLI installed and authenticated">
 - <其他前置条件>
 
-## 3. Quick Start
+## Quick Start
 
 <用通俗语言引导用户完成基本流程，描述关键步骤、模式或选项。>
 
@@ -760,7 +760,7 @@ Tags: `defi` `ethereum` `swap` `lending`
 ```markdown
 # polymarket-plugin
 
-## 1. Overview
+## Overview
 
 Polymarket is a decentralized prediction market platform on Polygon where users trade
 outcome shares on real-world events.
@@ -775,7 +775,7 @@ Core operations:
 
 Tags: `prediction-market` `polygon` `trading` `polymarket`
 
-## 2. Prerequisites
+## Prerequisites
 
 - US users are restricted from trading on Polymarket
 - Supported chain: Polygon (MATIC)
@@ -783,7 +783,7 @@ Tags: `prediction-market` `polygon` `trading` `polymarket`
 - onchainos CLI installed and authenticated
 - A funded wallet with USDC.e on Polygon
 
-## 3. Quick Start
+## Quick Start
 
 1. **选择交易模式**
    直连模式：直接用你的钱包下单，最简单直接。买入时 Agent 会自动完成授权，需少量 POL 作为手续费。
@@ -807,7 +807,7 @@ Tags: `prediction-market` `polygon` `trading` `polymarket`
 ### 关键规则
 
 - **语言**: SUMMARY.md 必须用**英文**编写。
-- **章节**: 三个章节（`## 1. Overview`、`## 2. Prerequisites`、`## 3. Quick Start`）全部必需。
+- **章节**: 三个章节（`## Overview`、`## Prerequisites`、`## Quick Start`）全部必需。
 - **标签**: 使用行内代码块（`` `tag-name` ``）展示标签，放在 Overview 章节末尾。
 - **位置**: SUMMARY.md 必须与 SKILL.md 放在同一目录。
 

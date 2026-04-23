@@ -741,7 +741,7 @@ Every plugin **must** include a `SUMMARY.md` file in the same directory as `SKIL
 ```markdown
 # <plugin-name>
 
-## 1. Overview
+## Overview
 
 <One sentence describing what this platform/protocol is.>
 
@@ -753,7 +753,7 @@ Core operations:
 
 Tags: `defi` `ethereum` `swap` `lending`
 
-## 2. Prerequisites
+## Prerequisites
 
 - <IP/region restrictions, e.g., "No IP restrictions" or "US users excluded">
 - <Supported chains, e.g., "Ethereum, Base, Arbitrum, Polygon">
@@ -761,7 +761,7 @@ Tags: `defi` `ethereum` `swap` `lending`
 - <Required tools, e.g., "onchainos CLI installed and authenticated">
 - <Any other setup steps>
 
-## 3. Quick Start
+## Quick Start
 
 <Walk users through the basic workflow in plain language. Describe the key steps,
 modes, or options. Use numbered lists or bold headings for each step.>
@@ -830,9 +830,74 @@ Tags: `prediction-market` `polygon` `trading` `polymarket`
 ### Key Rules
 
 - **Language**: SUMMARY.md must be written in English.
-- **Sections**: All three sections (`## 1. Overview`, `## 2. Prerequisites`, `## 3. Quick Start`) are required.
+- **Sections**: All three sections (`## Overview`, `## Prerequisites`, `## Quick Start`) are required.
 - **Tags**: Display tags using inline code blocks (`` `tag-name` ``), placed at the end of the Overview section.
 - **Placement**: SUMMARY.md must be in the same directory as SKILL.md.
+
+---
+
+## Submitting Strategy Plugins
+
+A **strategy plugin** (`category: strategy`) does not connect to chains/wallets directly. Instead, it calls existing trading plugins (e.g., polymarket-plugin, raydium-plugin) to execute orders. Strategy authors can be attributed and incentivized for trades generated through their strategies.
+
+### plugin.yaml for Strategy Plugins
+
+```yaml
+schema_version: 1
+name: my-arb-strategy
+version: "1.0.0"
+description: "Arbitrage between Raydium and Orca"
+author:
+  name: "alice"
+  github: "alice"
+license: MIT
+category: strategy              # Must be "strategy"
+tags:
+  - solana
+  - arbitrage
+
+dependent_plugin:                # Required — declares which plugins this strategy calls
+  - name: raydium-plugin
+    version: "^0.2.0"
+  - name: orca-plugin
+    version: "^0.6.0"
+
+risk_level: high                 # Informational — shown to users
+supported_venues:                # Informational — for search/filtering
+  - raydium
+  - orca
+
+components:
+  skill:
+    dir: skills/my-arb-strategy
+
+api_calls: []
+```
+
+### --strategy Flag Requirement
+
+All **write operations** (buy, sell, swap, order, send) to dependent plugins **must** include `--strategy <strategy-name>` for attribution tracking:
+
+```python
+# ✅ Correct — write operation with --strategy
+subprocess.run(["raydium-plugin", "swap", "--from", "USDC", "--to", "SOL",
+                "--amount", "10", "--strategy", "my-arb-strategy", "--confirm"])
+
+# ✅ Correct — read-only operation, no --strategy needed
+subprocess.run(["raydium-plugin", "quote", "--token", "SOL"])
+
+# ❌ Wrong — write operation WITHOUT --strategy (AI review will reject)
+subprocess.run(["raydium-plugin", "swap", "--from", "USDC", "--to", "SOL",
+                "--amount", "10", "--confirm"])
+```
+
+### CI Checks for Strategy Plugins
+
+| Phase | Check | Failure |
+|-------|-------|---------|
+| Phase 1 | `dependent_plugin[].name` exists in registry (E160) | PR blocked |
+| Phase 3 | AI scans all write operations for `--strategy` flag | Flagged as Critical |
+| Phase 3 | No hardcoded private keys, RPC URLs, or API keys | Flagged as Critical |
 
 ---
 
