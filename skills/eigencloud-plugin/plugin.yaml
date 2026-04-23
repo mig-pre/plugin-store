@@ -1,0 +1,27 @@
+schema_version: 1
+name: eigencloud-plugin
+version: "0.1.0"
+description: "Restake ETH and LSTs on EigenLayer to earn additional yield from AVS operators"
+author:
+  name: skylavis-sky
+  github: skylavis-sky
+category: defi-protocol
+tags:
+  - restaking
+  - eigenlayer
+  - ethereum
+  - yield
+  - lrt
+license: MIT
+
+components:
+  skill:
+    dir: .
+
+build:
+  lang: rust
+  binary_name: eigencloud
+
+api_calls:
+  - "https://api.eigenlayer.xyz"
+  - "https://eth.llamarpc.com"
