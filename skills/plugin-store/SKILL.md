@@ -442,3 +442,4 @@ curl -sSL https://raw.githubusercontent.com/mig-pre/plugin-store/main/skills/plu
   - Never skip the lint step before suggesting PR submission
 </never>
 </rules>
+# registry rebuild trigger
