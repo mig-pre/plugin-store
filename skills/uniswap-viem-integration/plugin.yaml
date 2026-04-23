@@ -6,7 +6,7 @@ author:
   name: "Uniswap Labs"
   github: "wkoutre"
 license: MIT
-category: utility
+category: dev_tools
 type: "dapp-official"
 tags:
   - viem

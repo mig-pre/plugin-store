@@ -5,7 +5,7 @@ description: "Trade perpetuals on Hyperliquid — check positions, get prices, p
 author:
   name: GeoGu360
   github: GeoGu360
-category: defi-protocol
+category: trading
 tags:
   - perpetuals
   - trading

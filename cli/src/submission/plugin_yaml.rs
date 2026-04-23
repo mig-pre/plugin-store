@@ -163,14 +163,16 @@ impl PluginYaml {
 
 /// Valid categories for plugins.
 pub const VALID_CATEGORIES: &[&str] = &[
-    "trading-strategy",
     "strategy",
-    "defi-protocol",
-    "analytics",
+    "defi",
+    "game",
+    "prediction",
+    "data_tools",
+    "dev_tools",
+    "others",
     "utility",
-    "security",
-    "wallet",
-    "nft",
+    "trading",
+    "trading-strategy",
 ];
 
 /// Valid build languages (all compile to binary via our CI).

@@ -6,7 +6,7 @@ author:
   name: "Uniswap Labs"
   github: "wkoutre"
 license: MIT
-category: security
+category: dev_tools
 type: "dapp-official"
 tags:
   - uniswap
