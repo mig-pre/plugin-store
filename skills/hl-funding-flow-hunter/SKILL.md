@@ -48,11 +48,13 @@ hyperliquid quickstart
 ### Scan Funding and Flow
 
 ```bash
-python3 skills/hl-funding-flow-hunter/scripts/scan_funding.py --top 5
+python3 ./scripts/scan_funding.py --top 5
 ```
 
+Run this command from the `hl-funding-flow-hunter` skill directory. If the agent is operating from a plugin-store checkout, use `python3 skills/hl-funding-flow-hunter/scripts/scan_funding.py --top 5` instead.
+
 **When to use**: When the user asks for funding candidates, flow opportunities, or a low-leverage Hyperliquid perp setup.
-**Output**: JSON with ranked candidates, suggested side, funding, volume, open interest, score, and risk flags.
+**Output**: JSON with ranked candidates, suggested side, funding, volume, open interest base, open interest notional, score, and risk flags.
 **Safety**: This command is read-only and does not prepare or submit orders.
 
 ### Get Current Price
@@ -134,7 +136,7 @@ Use this workflow when the user asks for a funding or flow strategy:
 1. Run the scanner:
 
 ```bash
-python3 skills/hl-funding-flow-hunter/scripts/scan_funding.py --top 5
+python3 ./scripts/scan_funding.py --top 5
 ```
 
 2. Present the top candidates with:
@@ -144,7 +146,7 @@ python3 skills/hl-funding-flow-hunter/scripts/scan_funding.py --top 5
 - funding rate
 - estimated annualized funding
 - 24h volume
-- open interest
+- open interest base and open interest notional
 - score
 - risk flags
 
@@ -170,7 +172,7 @@ python3 skills/hl-funding-flow-hunter/scripts/scan_funding.py --top 5
 ```text
 Top candidate: <COIN>
 Suggested side: SELL
-Reason: positive funding, sufficient volume, acceptable open interest
+Reason: positive funding, sufficient volume, acceptable open interest notional
 Leverage: 2x isolated
 Estimated notional: <USDC>
 Estimated margin: <USDC>
@@ -192,7 +194,7 @@ Reply confirm to dry-run, alternatives to see more candidates, or skip.
 - Default to 1-2x leverage; do not exceed 3x.
 - Suggested single-coin margin cap: 20% of account equity.
 - Suggested session risk budget: 5% of account equity.
-- Exclude or warn on low 24h volume, low open interest, thin liquidity, or fast funding reversals.
+- Exclude or warn on low 24h volume, low open interest notional, thin liquidity, or fast funding reversals.
 - Always run a dry-run before live execution.
 - Never support unlimited autonomous trading.
 - Never ask for private keys, seed phrases, API secrets, or email OTP codes.
@@ -205,7 +207,7 @@ User: "Find the best Hyperliquid funding setup under 500 USDC margin."
 
 Agent:
 
-1. Runs `python3 skills/hl-funding-flow-hunter/scripts/scan_funding.py --top 5`.
+1. Runs `python3 ./scripts/scan_funding.py --top 5` from the skill directory.
 2. Shows the top 3 candidates and risk flags.
 3. Asks the user to choose one.
 4. Gets current price and calculates size.
