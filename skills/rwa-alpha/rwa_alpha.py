@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-rwa_alpha.py — RWA Alpha v1.1 (Real World Asset Intelligence Trading Skill)
+rwa_alpha.py — RWA Alpha (Real World Asset Intelligence Trading Skill)
 融合 NewsNow 宏观事件驱动 + Polymarket 概率确认 + 链上 DEX 执行的 RWA 交易策略。
 
 用法:
@@ -128,6 +128,11 @@ def load_positions():
     if os.path.exists(fp):
         try:
             with open(fp) as f: positions = json.load(f)
+            # Migrate: add has_nav field if missing (backward compat)
+            for sym, pos in positions.items():
+                if "has_nav" not in pos:
+                    token = C.RWA_UNIVERSE.get(sym, {})
+                    pos["has_nav"] = token.get("has_nav", pos.get("asset_backed", False))
             log(f"Loaded {len(positions)} positions from disk")
         except Exception: positions = {}
 
@@ -177,10 +182,8 @@ def get_token_price(sym: str) -> dict:
     if not token:
         return {}
 
-    # Try each enabled chain
+    # Try each chain the token is on (not limited to ENABLED_CHAINS — read-only)
     for chain in token.get("chains", []):
-        if chain not in C.ENABLED_CHAINS:
-            continue
         addr = token.get("addresses", {}).get(chain, "")
         if not addr:
             continue
@@ -189,12 +192,13 @@ def get_token_price(sym: str) -> dict:
             price = float(pi.get("price", pi.get("usdPrice", 0)) or 0)
             if price > 0:
                 return {
-                    "price":     price,
-                    "mc":        float(pi.get("marketCap", pi.get("fdv", 0)) or 0),
-                    "volume_24h": float(pi.get("volume24h", pi.get("volume", 0)) or 0),
-                    "liquidity": float(pi.get("liquidity", 0) or 0),
-                    "chain":     chain,
-                    "address":   addr,
+                    "price":          price,
+                    "mc":             float(pi.get("marketCap", pi.get("fdv", 0)) or 0),
+                    "volume_24h":     float(pi.get("volume24H", pi.get("volume24h", pi.get("volume", 0))) or 0),
+                    "liquidity":      float(pi.get("liquidity", 0) or 0),
+                    "priceChange24H": float(pi.get("priceChange24H", 0) or 0),
+                    "chain":          chain,
+                    "address":        addr,
                 }
         except Exception:
             continue
@@ -218,20 +222,102 @@ def get_wallet_balance(chain: str) -> float:
 
 # ── Token Price & NAV Monitor ──────────────────────────────────────────
 
-def refresh_price_cache():
-    """Refresh price data for all tokens in the RWA universe."""
-    for sym, token in C.RWA_UNIVERSE.items():
-        # Skip non-enabled categories based on strategy mode
-        if C.STRATEGY_MODE == "yield_optimizer" and not token["asset_backed"]:
-            continue
+_tier_assignments = {}  # sym -> tier (0, 1, 2), reassigned periodically
+_tier_last_reassign = 0
 
+def _assign_tiers():
+    """Assign polling tiers: 0=held, 1=native+top20, 2=rest."""
+    global _tier_assignments, _tier_last_reassign
+    tiers = {}
+    # Tier 0: held positions
+    with pos_lock:
+        held = set(positions.keys())
+    for sym in held:
+        tiers[sym] = 0
+    # Tier 1: native RWA + top 20 by cached liquidity
+    for sym in getattr(C, "NATIVE_RWA_SYMBOLS", []):
+        if sym not in tiers:
+            tiers[sym] = 1
+    # Top 20 by liquidity from cache
+    with cache_lock:
+        liq_ranked = sorted(
+            ((s, c.get("liquidity", 0)) for s, c in price_cache.items() if s not in tiers),
+            key=lambda x: x[1], reverse=True
+        )
+    for sym, _ in liq_ranked[:20]:
+        if sym not in tiers:
+            tiers[sym] = 1
+    # Tier 2: everything else
+    for sym in C.RWA_UNIVERSE:
+        if sym not in tiers:
+            tiers[sym] = 2
+    _tier_assignments = tiers
+    _tier_last_reassign = time.time()
+
+
+def _fetch_batch(symbols: list):
+    """Fetch prices for a batch of symbols using threads."""
+    from concurrent.futures import ThreadPoolExecutor
+    batch_size = getattr(C, "POLL_BATCH_SIZE", 10)
+    def _fetch_one(sym):
+        token = C.RWA_UNIVERSE.get(sym)
+        if not token:
+            return
+        if C.STRATEGY_MODE == "yield_optimizer" and not token.get("asset_backed"):
+            return
         data = get_token_price(sym)
         if data and data.get("price", 0) > 0:
             with cache_lock:
-                price_cache[sym] = {
-                    **data,
-                    "updated_ts": time.time(),
-                }
+                price_cache[sym] = {**data, "updated_ts": time.time()}
+    with ThreadPoolExecutor(max_workers=batch_size) as pool:
+        pool.map(_fetch_one, symbols)
+
+
+_initial_fetch_done = False
+
+def refresh_price_cache():
+    """Tiered price polling: Tier 0 (60s) → Tier 1 (5min) → Tier 2 (30min)."""
+    global _tier_last_reassign, _initial_fetch_done
+    now = time.time()
+
+    # Reassign tiers every 30 min or on first run
+    if now - _tier_last_reassign > 1800 or not _tier_assignments:
+        _assign_tiers()
+
+    # On startup, bulk fetch ALL tokens (no tier limits)
+    if not _initial_fetch_done:
+        _initial_fetch_done = True
+        all_syms = list(C.RWA_UNIVERSE.keys())
+        log(f"🚀 Initial bulk fetch: {len(all_syms)} tokens...")
+        _fetch_batch(all_syms)
+        log(f"✅ Initial fetch done: {len(price_cache)} tokens with data")
+        return
+
+    tier_0_sec = getattr(C, "POLL_TIER_0_SEC", 60)
+    tier_1_sec = getattr(C, "POLL_TIER_1_SEC", 300)
+    tier_2_sec = getattr(C, "POLL_TIER_2_SEC", 1800)
+
+    t0, t1, t2 = [], [], []
+    for sym, tier in _tier_assignments.items():
+        with cache_lock:
+            last = price_cache.get(sym, {}).get("updated_ts", 0)
+        age = now - last
+        if tier == 0 and age >= tier_0_sec:
+            t0.append(sym)
+        elif tier == 1 and age >= tier_1_sec:
+            t1.append(sym)
+        elif tier == 2 and age >= tier_2_sec:
+            t2.append(sym)
+
+    # Always fetch tier 0 immediately
+    if t0:
+        _fetch_batch(t0)
+    # Tier 1 next
+    if t1:
+        _fetch_batch(t1)
+    # Tier 2: batched, cap at 50 per cycle to avoid API spam
+    if t2:
+        _fetch_batch(t2[:50])
 
 
 def get_nav_premium(sym: str) -> float:
@@ -244,7 +330,7 @@ def get_nav_premium(sym: str) -> float:
     Returns value in decimal (e.g., 0.003 = 0.3% premium).
     """
     token = C.RWA_UNIVERSE.get(sym, {})
-    if not token.get("asset_backed"):
+    if not token.get("has_nav", False):
         return 0.0
 
     with cache_lock:
@@ -312,6 +398,9 @@ _MACRO_KEYWORDS = {
     "sec_rwa_negative":      [r"(?i)sec.*(?:reject|block|sue|crack).*(?:rwa|tokeniz|asset)", r"(?i)rwa.*(?:监管|打压|利空)"],
     "credit_expansion":      [r"(?i)credit\s+(eas|expan|boom)", r"(?i)lending\s+(grow|expan|boom)", r"(?i)信贷.*扩张"],
     "credit_tightening":     [r"(?i)credit\s+(tight|crunch|default)", r"(?i)lending\s+(crisis|default|freeze)", r"(?i)信贷.*收紧"],
+    "equity_market_rally":   [r"(?i)(stocks?|equit|nasdaq|s&p)\s+(rally|surge|breakout|boom|record)", r"(?i)(美股|纳斯达克|标普).*(?:暴涨|创新高|大涨)"],
+    "equity_market_crash":   [r"(?i)(stocks?|equit|nasdaq|s&p)\s+(crash|plunge|selloff|collapse|tank)", r"(?i)(美股|纳斯达克|标普).*(?:暴跌|崩盘|大跌)"],
+    "sp500_breakout":        [r"(?i)s&?p\s*500\s*(ath|record|break|all.time|high)", r"(?i)标普.*新高"],
 }
 
 # Simple sentiment keywords (FinBERT-lite)
@@ -433,7 +522,9 @@ _LLM_EVENT_TYPES = ", ".join(sorted(set([
     "fed_cut_expected", "fed_cut_surprise", "fed_hold_hawkish", "fed_hike",
     "cpi_hot", "cpi_cool", "gold_breakout", "gold_selloff",
     "geopolitical_escalation", "ondo_yield_increase", "maker_dsr_up",
-    "sec_rwa_positive", "sec_rwa_negative", "none",
+    "sec_rwa_positive", "sec_rwa_negative",
+    "equity_market_rally", "equity_market_crash", "sp500_breakout",
+    "credit_expansion", "credit_tightening", "none",
 ])))
 
 _LLM_SYSTEM_PROMPT = f"""You classify financial headlines into macro event types for an RWA (Real World Asset) trading system.
@@ -539,44 +630,72 @@ def refresh_news_cache():
 # ── Macro Event Detection ─────────────────────────────────────────────
 
 # Macro playbook: event_type -> action mapping
+def _resolve_playbook_targets(categories: list, limit: int = 20) -> list:
+    """Resolve category names → concrete symbols, capped by limit, sorted by cached liquidity."""
+    syms = []
+    for sym, token in C.RWA_UNIVERSE.items():
+        if token.get("category") in categories:
+            # Must have at least one enabled chain
+            if any(c in C.ENABLED_CHAINS for c in token.get("chains", [])):
+                with cache_lock:
+                    liq = price_cache.get(sym, {}).get("liquidity", 0)
+                syms.append((sym, liq))
+    syms.sort(key=lambda x: x[1], reverse=True)
+    return [s for s, _ in syms[:limit]]
+
+def _symbols_by_category(*categories) -> list:
+    """Get symbols from universe matching any of the given categories."""
+    return [sym for sym, t in C.RWA_UNIVERSE.items() if t.get("category") in categories]
+
 MACRO_PLAYBOOK = {
     "fed_cut_expected": {
-        "action": "buy", "targets": ["USDY", "OUSG", "bIB01"],
+        "action": "buy", "target_categories": ["treasury"],
+        "targets": ["USDY", "OUSG", "bIB01"],  # fallback if category resolution empty
         "conviction": 0.60, "urgency": "session",
         "rationale": "Rate cut in line → higher demand for locked-in treasury yield",
     },
     "fed_cut_surprise": {
-        "action": "strong_buy", "targets": ["USDY", "OUSG", "ONDO", "bIB01", "PENDLE"],
+        "action": "strong_buy", "target_categories": ["treasury", "yield_protocol"],
+        "targets": ["USDY", "OUSG", "ONDO", "bIB01", "PENDLE"],
         "conviction": 0.85, "urgency": "immediate",
         "rationale": "Surprise cut → bond rally → NAV appreciation + narrative pump + yield repricing",
     },
     "fed_hold_hawkish": {
-        "action": "rotate", "sell": ["ONDO", "CFG", "PLUME", "OM", "PENDLE"], "buy": ["USDY"],
+        "action": "rotate",
+        "sell_categories": ["rwa_gov", "rwa_infra", "yield_protocol"],
+        "sell": ["ONDO", "CFG", "PLUME", "OM", "PENDLE"],
+        "buy": ["USDY"],
         "conviction": 0.70, "urgency": "session",
         "rationale": "Hawkish hold → risk-off for governance, flight to yield safety",
     },
     "fed_hike": {
-        "action": "sell_risk", "sell": ["ONDO", "CFG", "MPL", "PLUME", "OM", "GFI", "TRU", "PENDLE"],
+        "action": "sell_risk",
+        "sell_categories": ["rwa_gov", "rwa_infra", "rwa_credit", "yield_protocol"],
+        "sell": ["ONDO", "CFG", "MPL", "PLUME", "OM", "GFI", "TRU", "PENDLE"],
         "conviction": 0.80, "urgency": "immediate",
         "rationale": "Surprise hike → sell risk assets, rates higher for longer",
     },
     "cpi_hot": {
-        "action": "buy", "targets": ["PAXG", "XAUT"],
+        "action": "buy", "target_categories": ["gold"],
+        "targets": ["PAXG", "XAUT"],
         "conviction": 0.75, "urgency": "session",
         "rationale": "Hot CPI → inflation fear → gold bid",
     },
     "cpi_cool": {
-        "action": "buy", "targets": ["OUSG", "USDY", "bIB01"],
+        "action": "buy", "target_categories": ["treasury"],
+        "targets": ["OUSG", "USDY", "bIB01"],
         "conviction": 0.70, "urgency": "session",
         "rationale": "Cool CPI → rate cut expectations → treasury rally",
     },
     "gold_breakout": {
-        "action": "buy", "targets": ["PAXG", "XAUT"],
+        "action": "buy", "target_categories": ["gold"],
+        "targets": ["PAXG", "XAUT"],
         "conviction": 0.80, "urgency": "immediate",
         "rationale": "Gold ATH breakout + potential PAXG NAV discount = alpha",
     },
     "geopolitical_escalation": {
-        "action": "buy", "targets": ["PAXG"],
+        "action": "buy", "target_categories": ["gold"],
+        "targets": ["PAXG"],
         "conviction": 0.65, "urgency": "session",
         "rationale": "Safe haven flow → gold + treasuries",
     },
@@ -591,29 +710,58 @@ MACRO_PLAYBOOK = {
         "rationale": "Higher DSR → sDAI more attractive vs alternatives",
     },
     "sec_rwa_positive": {
-        "action": "buy", "targets": ["ONDO", "CFG", "MPL", "PLUME", "OM", "GFI", "TRU"],
+        "action": "buy",
+        "target_categories": ["rwa_gov", "rwa_infra", "rwa_credit"],
+        "targets": ["ONDO", "CFG", "MPL", "PLUME", "OM", "GFI", "TRU"],
         "conviction": 0.60, "urgency": "session",
         "rationale": "Regulatory clarity → institutional inflow narrative for all RWA tokens",
     },
     "sec_rwa_negative": {
-        "action": "sell_risk", "sell": ["ONDO", "CFG", "PLUME", "OM"],
+        "action": "sell_risk",
+        "sell_categories": ["rwa_gov", "rwa_infra"],
+        "sell": ["ONDO", "CFG", "PLUME", "OM"],
         "conviction": 0.75, "urgency": "immediate",
         "rationale": "Regulatory crackdown → governance/infra tokens hit, assets unaffected",
     },
     "gold_selloff": {
-        "action": "sell_risk", "sell": ["PAXG", "XAUT"],
+        "action": "sell_risk", "sell_categories": ["gold"],
+        "sell": ["PAXG", "XAUT"],
         "conviction": 0.65, "urgency": "session",
         "rationale": "Gold dropping → risk of NAV discount on gold-backed tokens",
     },
     "credit_expansion": {
-        "action": "buy", "targets": ["GFI", "TRU", "MPL"],
+        "action": "buy", "target_categories": ["rwa_credit"],
+        "targets": ["GFI", "TRU", "MPL"],
         "conviction": 0.60, "urgency": "session",
         "rationale": "Credit easing/expansion → lending protocols benefit",
     },
     "credit_tightening": {
-        "action": "sell_risk", "sell": ["GFI", "TRU", "MPL"],
+        "action": "sell_risk", "sell_categories": ["rwa_credit"],
+        "sell": ["GFI", "TRU", "MPL"],
         "conviction": 0.70, "urgency": "session",
         "rationale": "Credit tightening/defaults → lending protocol risk",
+    },
+    # ── Equity market events (NEW) ──
+    "equity_market_rally": {
+        "action": "buy",
+        "target_categories": ["xstock", "ondo_tokenized", "stablestock"],
+        "targets": [],
+        "conviction": 0.60, "urgency": "session",
+        "rationale": "Broad equity rally → tokenized stock demand spills over to on-chain",
+    },
+    "equity_market_crash": {
+        "action": "sell_risk",
+        "sell_categories": ["xstock", "ondo_tokenized", "stablestock", "leveraged"],
+        "sell": [],
+        "conviction": 0.80, "urgency": "immediate",
+        "rationale": "Equity crash → tokenized stocks drop with underlying, leveraged ETFs amplify",
+    },
+    "sp500_breakout": {
+        "action": "buy",
+        "target_categories": ["ondo_tokenized", "xstock"],
+        "targets": [],
+        "conviction": 0.65, "urgency": "session",
+        "rationale": "S&P 500 breakout → momentum into tokenized index/equity products",
     },
 }
 
@@ -720,7 +868,8 @@ def detect_macro_events() -> list:
             })
 
     # ── Source 3: On-chain price action (gold + volume) ──
-    for gold_sym in ("PAXG", "XAUT"):
+    gold_syms = _symbols_by_category("gold") or ["PAXG", "XAUT"]
+    for gold_sym in gold_syms:
         with cache_lock:
             cached = price_cache.get(gold_sym, {})
         if not cached:
@@ -760,7 +909,10 @@ def detect_macro_events() -> list:
         })
 
     # Volume spikes on governance tokens
-    for gov_sym in ("ONDO", "CFG", "MPL", "PENDLE", "PLUME", "OM", "GFI", "TRU"):
+    gov_syms = _symbols_by_category("rwa_gov", "yield_protocol", "rwa_infra", "rwa_credit")
+    if not gov_syms:
+        gov_syms = ["ONDO", "CFG", "MPL", "PENDLE", "PLUME", "OM", "GFI", "TRU"]
+    for gov_sym in gov_syms:
         if C.STRATEGY_MODE == "yield_optimizer":
             continue
         with cache_lock:
@@ -855,8 +1007,8 @@ def rank_yield_opportunities() -> list:
     """
     candidates = []
     for sym, token in C.RWA_UNIVERSE.items():
-        if not token.get("asset_backed"):
-            continue  # Skip governance tokens for yield ranking
+        if not token.get("has_nav", False):
+            continue  # Skip non-NAV tokens for yield ranking
 
         with cache_lock:
             cached = price_cache.get(sym, {})
@@ -925,12 +1077,17 @@ def compose_signal(events: list) -> list:
             continue
 
         if action in ("buy", "strong_buy"):
-            for target in playbook.get("targets", []):
-                # Check if target is in enabled universe
+            # Resolve targets: category-based or explicit list
+            targets = playbook.get("targets", [])
+            if playbook.get("target_categories"):
+                cat_targets = _resolve_playbook_targets(playbook["target_categories"])
+                if cat_targets:
+                    targets = cat_targets
+            for target in targets:
                 token = C.RWA_UNIVERSE.get(target)
                 if not token:
                     continue
-                if C.STRATEGY_MODE == "yield_optimizer" and not token["asset_backed"]:
+                if C.STRATEGY_MODE == "yield_optimizer" and not token.get("asset_backed"):
                     continue
 
                 signals.append({
@@ -1108,9 +1265,9 @@ def risk_check_signal(signal: dict) -> tuple:
         if route.get("liquidity", 0) < C.MIN_LIQUIDITY_USD:
             return False, f"LOW_LIQ ${route.get('liquidity', 0):,.0f} < ${C.MIN_LIQUIDITY_USD:,.0f}"
 
-        # NAV premium check for asset-backed tokens
+        # NAV premium check for NAV-trackable tokens only
         token = C.RWA_UNIVERSE.get(sym, {})
-        if token.get("asset_backed"):
+        if token.get("has_nav", False):
             nav_p = get_nav_premium(sym)
             if nav_p * 10000 > C.MAX_NAV_PREMIUM_BPS:
                 return False, f"NAV_PREMIUM {nav_p*100:.2f}% too high"
@@ -1160,7 +1317,7 @@ def execute_buy(sym: str, signal: dict):
         else:
             # Quote
             try:
-                r = _onchainos("dex", "quote", "--chain", chain_name,
+                r = _onchainos("swap", "quote", "--chain", chain_name,
                                "--from", stable_addr, "--to", token_addr,
                                "--amount", amount_raw)
                 quote = _cli_data(r)
@@ -1177,7 +1334,7 @@ def execute_buy(sym: str, signal: dict):
             # Swap
             try:
                 wallet_addr = WALLET_ADDRESSES.get(chain, "")
-                r = _onchainos("dex", "swap", "--chain", chain_name,
+                r = _onchainos("swap", "swap", "--chain", chain_name,
                                "--from", stable_addr, "--to", token_addr,
                                "--amount", amount_raw,
                                "--slippage", str(int(C.SLIPPAGE_BUY)),
@@ -1235,6 +1392,7 @@ def execute_buy(sym: str, signal: dict):
             "conviction":    signal.get("conviction", 0),
             "category":      C.RWA_UNIVERSE.get(sym, {}).get("category", ""),
             "asset_backed":  C.RWA_UNIVERSE.get(sym, {}).get("asset_backed", False),
+            "has_nav":       C.RWA_UNIVERSE.get(sym, {}).get("has_nav", False),
             "tx_hash":       tx_hash,
         }
 
@@ -1307,7 +1465,7 @@ def execute_sell(sym: str, sell_pct: float, reason: str):
         else:
             try:
                 wallet_addr = WALLET_ADDRESSES.get(chain, "")
-                r = _onchainos("dex", "swap", "--chain", chain_name,
+                r = _onchainos("swap", "swap", "--chain", chain_name,
                                "--from", token_addr, "--to", stable_addr,
                                "--amount", str(sell_amount),
                                "--slippage", str(int(C.SLIPPAGE_SELL)),
@@ -1462,10 +1620,11 @@ def check_positions():
                 positions[sym]["peak_price"] = peak_price
                 positions[sym]["peak_pnl_pct"] = round(peak_pnl, 2)
 
+        has_nav = pos.get("has_nav", pos.get("asset_backed", False))
         is_asset = pos.get("asset_backed", False)
 
-        # ── Exit logic for ASSET-BACKED tokens ──
-        if is_asset:
+        # ── Exit logic for NAV-trackable tokens (treasury, gold, defi_yield) ──
+        if has_nav:
             # NAV premium take-profit
             nav_p = get_nav_premium(sym)
             if nav_p * 10000 > C.TP_NAV_PREMIUM_BPS and C.TP_NAV_PREMIUM_BPS > 0:
@@ -1490,7 +1649,6 @@ def check_positions():
                     )
                     if best["alpha_score"] - current_score > 0.15:
                         execute_sell(sym, 1.0, f"YIELD_ROTATE→{best['sym']}")
-                        # Buy the replacement after sell completes
                         rotate_signal = {
                             "action": "buy", "sym": best["sym"],
                             "conviction": 0.65,
@@ -1504,7 +1662,27 @@ def check_positions():
                         ).start()
                         continue
 
-        # ── Exit logic for GOVERNANCE tokens ──
+        # ── Exit logic for TOKENIZED EQUITIES (asset_backed + no NAV) ──
+        elif is_asset and not has_nav:
+            tp = getattr(C, "TP_EQUITY_PCT", 15)
+            sl = getattr(C, "SL_EQUITY_PCT", -8)
+            if pnl_pct >= tp:
+                execute_sell(sym, 1.0, f"TP_EQUITY({pnl_pct:+.1f}%)")
+                continue
+            if pnl_pct <= sl:
+                execute_sell(sym, 1.0, f"SL_EQUITY({pnl_pct:+.1f}%)")
+                continue
+            # Trailing stop for equities
+            if peak_pnl >= C.TRAILING_ACTIVATE:
+                drop = peak_pnl - pnl_pct
+                with pos_lock:
+                    if sym in positions:
+                        positions[sym]["trailing_active"] = True
+                if drop >= C.TRAILING_DROP:
+                    execute_sell(sym, 1.0, f"TRAIL_EQ({peak_pnl:+.1f}%→{pnl_pct:+.1f}%)")
+                    continue
+
+        # ── Exit logic for GOVERNANCE / utility tokens ──
         else:
             # Take profit
             if pnl_pct >= C.TP_GOVERNANCE_PCT:
@@ -1697,6 +1875,37 @@ def _dashboard_api_data() -> dict:
     }
 
 
+_cached_universe_json = ""
+
+def _build_universe_json():
+    """Build /api/universe response — token list with categories + enabled chains."""
+    tokens = {}
+    for sym, token in C.RWA_UNIVERSE.items():
+        addr = ""
+        for chain in token.get("chains", []):
+            a = token.get("addresses", {}).get(chain, "")
+            if a:
+                addr = a
+                break
+        tokens[sym] = {
+            "name":         token.get("name", sym),
+            "cat":          token.get("category", ""),
+            "backed":       token.get("asset_backed", False),
+            "has_nav":      token.get("has_nav", False),
+            "source":       token.get("source", "csv"),
+            "chains":       token.get("chains", []),
+            "addr":         addr,
+            "logo":         token.get("logo", ""),
+        }
+    return json.dumps({
+        "tokens":     tokens,
+        "categories": C.CATEGORY_NAMES,
+        "chains":     list(C.CHAIN_CONFIG.keys()),
+        "enabled":    C.ENABLED_CHAINS,
+        "count":      len(tokens),
+    })
+
+
 class DashboardHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/state":
@@ -1705,6 +1914,15 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(_cached_api_json.encode())
+        elif self.path == "/api/universe":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            global _cached_universe_json
+            if not _cached_universe_json:
+                _cached_universe_json = _build_universe_json()
+            self.wfile.write(_cached_universe_json.encode())
         elif self.path == "/" or self.path == "/index.html":
             html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard.html")
             if os.path.exists(html_path):
@@ -1730,7 +1948,7 @@ def start_dashboard():
     try:
         class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
             daemon_threads = True
-        server = ThreadedHTTPServer(("0.0.0.0", C.DASHBOARD_PORT), DashboardHandler)
+        server = ThreadedHTTPServer(("127.0.0.1", C.DASHBOARD_PORT), DashboardHandler)
         log(f"🌐 Dashboard: http://localhost:{C.DASHBOARD_PORT}")
         server.serve_forever()
     except Exception as e:
@@ -1844,7 +2062,7 @@ def interactive_setup():
     """
     print()
     print("=" * 60)
-    print("  🏛️  RWA Alpha v1.1 — Real World Asset Intelligence")
+    print("  🏛️  RWA Alpha — Real World Asset Intelligence")
     print("  ── Setup from config / env ──")
     print("=" * 60)
     print()
@@ -1905,7 +2123,7 @@ def main():
 
     print()
     print("=" * 60)
-    print("  🏛️  RWA Alpha v1.1 — Real World Asset Intelligence")
+    print("  🏛️  RWA Alpha — Real World Asset Intelligence")
     print("=" * 60)
     print()
 
@@ -1947,7 +2165,10 @@ def main():
         if any(c in C.ENABLED_CHAINS for c in t.get("chains", []))
         and (C.STRATEGY_MODE != "yield_optimizer" or t.get("asset_backed"))
     ]
-    print(f"  代币池:     {', '.join(active_tokens)}")
+    from collections import Counter as _Counter
+    _cat_counts = _Counter(C.RWA_UNIVERSE[s].get("category", "") for s in active_tokens)
+    print(f"  代币池:     {len(active_tokens)} tokens loaded ({len(C.RWA_UNIVERSE)} universe)")
+    print(f"  类别:       {', '.join(f'{c}({n})' for c, n in _cat_counts.most_common())}")
     print(f"  Dashboard:  http://localhost:{C.DASHBOARD_PORT}")
     print()
     print("─" * 60)

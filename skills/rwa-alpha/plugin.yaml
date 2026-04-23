@@ -26,5 +26,6 @@ components:
 api_calls:
   - "news.google.com"
   - "gamma-api.polymarket.com"
+  - "api.anthropic.com"
 
 type: community-developer
