@@ -172,7 +172,6 @@ pub const VALID_CATEGORIES: &[&str] = &[
     "others",
     "utility",
     "trading",
-    "trading-strategy",
 ];
 
 /// Valid build languages (all compile to binary via our CI).
