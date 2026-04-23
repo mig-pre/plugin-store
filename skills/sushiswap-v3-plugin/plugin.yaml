@@ -1,0 +1,27 @@
+schema_version: 1
+name: sushiswap-v3-plugin
+version: "0.1.0"
+description: "Swap tokens and manage concentrated liquidity positions on SushiSwap V3 across multiple chains"
+author:
+  name: skylavis-sky
+  github: skylavis-sky
+category: defi-protocol
+tags:
+  - sushiswap
+  - clmm
+  - swap
+  - multi-chain
+  - defi
+license: MIT
+
+components:
+  skill:
+    dir: .
+
+build:
+  lang: rust
+  binary_name: sushiswap-v3
+
+api_calls:
+  - "https://api.sushi.com"
+  - "https://eth.llamarpc.com"
