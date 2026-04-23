@@ -1,0 +1,30 @@
+schema_version: 1
+name: puffer-plugin
+version: "0.1.0"
+description: Liquid restaking on Puffer Finance (Ethereum) — deposit ETH to mint pufETH (ERC-4626 nLRT), choose between instant 1-step withdraw (1% fee) or 2-step queued withdraw (~14d, no fee), and check positions/rate
+author:
+  name: GeoGu360
+  github: GeoGu360
+category: defi-protocol
+tags:
+- liquid-staking
+- restaking
+- eigenlayer
+- pufeth
+- puffer
+- ethereum
+- erc4626
+license: MIT
+components:
+  skill:
+    dir: .
+build:
+  lang: rust
+  binary_name: puffer-plugin
+chain:
+  name: ethereum
+  chain_id: 1
+api_calls:
+- ethereum-rpc.publicnode.com
+- yields.llama.fi
+- coins.llama.fi
