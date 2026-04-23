@@ -4,6 +4,8 @@
 
 `hl-pulse` is a Hyperliquid intraday trading skill for liquid perp markets that offers either one clean setup in `pulse` mode or staged entries and exits in `ladder` mode while making stop-loss and max-loss explicit before execution.
 
+The default first step is a dry-run preview: the skill scans, sizes, and presents the trade plan before any live order is allowed.
+
 Core operations:
 
 - Scan BTC, ETH, SOL, and other liquid Hyperliquid perp markets for one clean intraday setup
