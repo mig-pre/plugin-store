@@ -1,15 +1,15 @@
 # macro-intelligence
 
-## 1. Overview
+## Overview
 Unified macro intelligence feed that reads 7 sources (NewsNow, Polymarket, OpenNews, Finnhub, Telegram, FRED, Fear & Greed), classifies events with regex + LLM, scores sentiment, and exposes filtered signals via HTTP API for downstream trading skills. Features 24+ event types with bilingual patterns, a Token Impact Engine mapping macro signals to crypto tokens, and a neon-glass terminal dashboard. Read-only intelligence feed — no trading logic.
 
-## 2. Prerequisites
+## Prerequisites
 - Python 3.8+
 - No pip dependencies required (Python stdlib only)
 - Optional: Finnhub API key (`FINNHUB_API_KEY`), Telegram bot token (`TELEGRAM_BOT_TOKEN`) — sources degrade gracefully without API keys
 - Optional: `ANTHROPIC_API_KEY` for LLM-powered headline classification
 
-## 3. Quick Start
+## Quick Start
 ```bash
 # Start the macro intelligence server
 cd skills/macro-intelligence
