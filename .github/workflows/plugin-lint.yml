@@ -9,11 +9,18 @@
 
 name: "Phase 1: Structure Validation"
 
+# ═══════════════════════════════════════════════════════════════════
+# TEMPORARILY DISABLED — pending CI code review.
+# Auto-trigger on PR is commented out; only manual dispatch remains.
+# To re-enable: uncomment the `pull_request_target` block below and
+# remove the `workflow_dispatch` entry.
+# ═══════════════════════════════════════════════════════════════════
 on:
-  pull_request_target:
-    paths:
-      - 'skills/**'
-    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+  # pull_request_target:
+  #   paths:
+  #     - 'skills/**'
+  #   types: [opened, synchronize, reopened]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

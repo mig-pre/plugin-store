@@ -16,6 +16,12 @@
 
 name: "Phase 4: Publish"
 
+# ═══════════════════════════════════════════════════════════════════
+# TEMPORARILY DISABLED — pending CI code review.
+# Phase 4 is workflow_dispatch only, so no automatic trigger exists.
+# This notice confirms it is intentionally left non-automated; only
+# authorised maintainers can run it manually from the Actions tab.
+# ═══════════════════════════════════════════════════════════════════
 on:
   # Triggered by phase4-trigger.yml (approve → dispatch) or manually
   workflow_dispatch:
