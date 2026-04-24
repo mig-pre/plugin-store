@@ -223,6 +223,15 @@
       }
     },
     {
+      "name": "pmbasket",
+      "description": "Natural-language event baskets on Polymarket: one sentence of intent becomes a liquidity-filtered, risk-capped basket placed through Polymarket CLOB via polymarket-plugin.",
+      "source": "./skills/pmbasket",
+      "category": "utility",
+      "author": {
+        "name": "dddd86971-cloud"
+      }
+    },
+    {
       "name": "polymarket-plugin",
       "description": "Trade prediction markets on Polymarket — buy and sell YES/NO outcome tokens on Polygon",
       "source": "./skills/polymarket-plugin",
