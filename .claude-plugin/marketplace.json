@@ -16,7 +16,7 @@
       }
     },
     {
-      "name": "clanker",
+      "name": "clanker-plugin",
       "description": "Deploy and manage Clanker ERC-20 tokens on Base and Arbitrum — launch tokens, search by creator, and claim LP fee rewards",
       "source": "./skills/clanker-plugin",
       "category": "utility",
@@ -25,7 +25,7 @@
       }
     },
     {
-      "name": "compound-v3",
+      "name": "compound-v3-plugin",
       "description": "Compound V3 (Comet) lending plugin: supply collateral, borrow/repay the base asset, and claim COMP rewards",
       "source": "./skills/compound-v3-plugin",
       "category": "utility",
@@ -34,7 +34,7 @@
       }
     },
     {
-      "name": "curve",
+      "name": "curve-plugin",
       "description": "Curve DEX plugin — swap stablecoins, add/remove liquidity, query pools and APY across Ethereum, Arbitrum, Base, Polygon, and BSC.",
       "source": "./skills/curve-plugin",
       "category": "utility",
@@ -43,7 +43,7 @@
       }
     },
     {
-      "name": "etherfi",
+      "name": "etherfi-plugin",
       "description": "Liquid restaking on Ethereum — deposit ETH to receive eETH, wrap eETH to weETH (ERC-4626), and check positions with APY",
       "source": "./skills/etherfi-plugin",
       "category": "utility",
@@ -52,7 +52,7 @@
       }
     },
     {
-      "name": "gmx-v2",
+      "name": "gmx-v2-plugin",
       "description": "Trade perpetuals and spot on GMX V2 — open/close leveraged positions, place limit/stop orders, add/remove GM pool liquidity, query markets and positions",
       "source": "./skills/gmx-v2-plugin",
       "category": "utility",
@@ -70,7 +70,7 @@
       }
     },
     {
-      "name": "hyperliquid",
+      "name": "hyperliquid-plugin",
       "description": "Hyperliquid on-chain perpetuals DEX — check positions, get market prices, place and cancel perpetual orders on Hyperliquid L1 (chain_id 999).",
       "source": "./skills/hyperliquid-plugin",
       "category": "utility",
@@ -79,7 +79,7 @@
       }
     },
     {
-      "name": "kamino-lend",
+      "name": "kamino-lend-plugin",
       "description": "Supply, borrow, and manage positions on Kamino Lend — the leading Solana lending protocol",
       "source": "./skills/kamino-lend-plugin",
       "category": "utility",
@@ -88,7 +88,7 @@
       }
     },
     {
-      "name": "kamino-liquidity",
+      "name": "kamino-liquidity-plugin",
       "description": "Kamino Liquidity KVault earn vaults on Solana. Deposit tokens to earn yield, withdraw shares, and track positions.",
       "source": "./skills/kamino-liquidity-plugin",
       "category": "utility",
@@ -97,7 +97,7 @@
       }
     },
     {
-      "name": "lido",
+      "name": "lido-plugin",
       "description": "Stake ETH with Lido liquid staking protocol to receive stETH",
       "source": "./skills/lido-plugin",
       "category": "utility",
@@ -151,7 +151,7 @@
       }
     },
     {
-      "name": "meteora",
+      "name": "meteora-plugin",
       "description": "Meteora DLMM plugin for Solana — search liquidity pools, get swap quotes, view user positions, execute token swaps, add and remove liquidity",
       "source": "./skills/meteora-plugin",
       "category": "utility",
@@ -160,7 +160,7 @@
       }
     },
     {
-      "name": "morpho",
+      "name": "morpho-plugin",
       "description": "Supply, borrow and earn yield on Morpho — a permissionless lending protocol with $5B+ TVL. Trigger phrases: supply to morpho, deposit to morpho vault, borrow from morpho, repay morpho loan, morpho health factor, my morpho positions, morpho interest rates, claim morpho rewards, morpho markets, metamorpho vaults.",
       "source": "./skills/morpho-plugin",
       "category": "utility",
@@ -190,13 +190,13 @@
       "name": "orca-plugin",
       "description": "Concentrated liquidity AMM on Solana — swap tokens and query pools via the Whirlpools CLMM program",
       "source": "./skills/orca-plugin",
-      "category": "trading-strategy",
+      "category": "utility",
       "author": {
         "name": "skylavis-sky"
       }
     },
     {
-      "name": "pancakeswap-clmm",
+      "name": "pancakeswap-clmm-plugin",
       "description": "PancakeSwap V3 CLMM farming plugin — stake LP NFTs into MasterChefV3, harvest CAKE rewards, collect swap fees across BSC, Ethereum, Base, and Arbitrum. Trigger phrases: stake LP NFT, farm CAKE, harvest CAKE rewards, collect fees, unfarm position, PancakeSwap farming, view positions.",
       "source": "./skills/pancakeswap-clmm-plugin",
       "category": "utility",
@@ -205,7 +205,7 @@
       }
     },
     {
-      "name": "pancakeswap-v2",
+      "name": "pancakeswap-v2-plugin",
       "description": "Swap tokens and manage liquidity on PancakeSwap V2 (xyk AMM) on BSC, Base, and Arbitrum. Triggers: swap pancakeswap v2, add/remove liquidity pancake, pcs v2 quote, check pancake pair.",
       "source": "./skills/pancakeswap-v2-plugin",
       "category": "utility",
@@ -214,7 +214,7 @@
       }
     },
     {
-      "name": "pancakeswap-v3",
+      "name": "pancakeswap-v3-plugin",
       "description": "Swap tokens and manage liquidity on PancakeSwap V3 on BNB Chain, Base, and Arbitrum",
       "source": "./skills/pancakeswap-v3-plugin",
       "category": "utility",
@@ -277,7 +277,7 @@
       }
     },
     {
-      "name": "pump-fun",
+      "name": "pump-fun-plugin",
       "description": "Buy and sell tokens on pump.fun bonding curves on Solana mainnet",
       "source": "./skills/pump-fun-plugin",
       "category": "utility",
@@ -286,7 +286,7 @@
       }
     },
     {
-      "name": "raydium",
+      "name": "raydium-plugin",
       "description": "Raydium AMM plugin for token swaps, price queries, and pool info on Solana mainnet. Trigger phrases: swap on raydium, raydium swap, raydium price, raydium pool, get swap quote raydium, raydium dex, swap solana raydium.",
       "source": "./skills/raydium-plugin",
       "category": "utility",
@@ -403,7 +403,7 @@
       }
     },
     {
-      "name": "velodrome-v2",
+      "name": "velodrome-v2-plugin",
       "description": "Swap tokens and manage classic AMM (volatile/stable) LP positions on Velodrome V2 on Optimism",
       "source": "./skills/velodrome-v2-plugin",
       "category": "utility",
