@@ -1,0 +1,31 @@
+schema_version: 1
+name: surf-ai-crypto
+version: "1.0.0"
+description: "Crypto data brain for AI agents — 83+ commands across 14 domains: prices, wallets, social, DeFi, on-chain SQL, prediction markets across 40+ chains via natural language."
+author:
+  name: "asksurf-ai"
+  github: "hughzhou-gif"
+license: MIT
+category: analytics
+type: community-developer
+github_link: "https://github.com/asksurf-ai/surf-skills"
+tags:
+  - crypto
+  - data
+  - analytics
+  - ai-agent
+  - onchain
+  - defi
+  - wallet
+  - social
+  - prediction-market
+  - multi-chain
+
+components:
+  skill:
+    dir: "."
+
+api_calls:
+  - "api.asksurf.ai"
+  - "agents.asksurf.ai"
+  - "downloads.asksurf.ai"
