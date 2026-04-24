@@ -11,14 +11,19 @@
 
 name: Integration Test
 
+# ═══════════════════════════════════════════════════════════════════
+# TEMPORARILY DISABLED — pending CI code review.
+# Auto-trigger on push-to-main is commented out; only manual dispatch remains.
+# To re-enable: uncomment the `push` block below.
+# ═══════════════════════════════════════════════════════════════════
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'cli/src/**'
-      - 'cli/Cargo.toml'
-      - 'cli/Cargo.lock'
   workflow_dispatch:
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - 'cli/src/**'
+  #     - 'cli/Cargo.toml'
+  #     - 'cli/Cargo.lock'
 
 permissions:
   contents: read

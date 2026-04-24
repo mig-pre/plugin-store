@@ -1,9 +1,14 @@
 name: Sync from upstream
 
+# ═══════════════════════════════════════════════════════════════════
+# TEMPORARILY DISABLED — pending CI code review.
+# Cron schedule is commented out; only manual dispatch remains.
+# To re-enable: uncomment the `schedule` block below.
+# ═══════════════════════════════════════════════════════════════════
 on:
-  schedule:
-    - cron: '*/15 * * * *'  # Every 15 minutes
   workflow_dispatch:
+  # schedule:
+  #   - cron: '*/15 * * * *'  # Every 15 minutes
 
 jobs:
   sync:

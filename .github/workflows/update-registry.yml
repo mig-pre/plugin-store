@@ -9,11 +9,18 @@
 
 name: "Update Registry"
 
+# ═══════════════════════════════════════════════════════════════════
+# TEMPORARILY DISABLED — pending CI code review.
+# Auto-trigger on push-to-main is commented out; only manual dispatch remains.
+# (PR merges will NOT auto-regenerate registry.json while frozen.)
+# To re-enable: uncomment the `push` block below and remove `workflow_dispatch`.
+# ═══════════════════════════════════════════════════════════════════
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'skills/**'
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - 'skills/**'
 
 permissions:
   contents: write

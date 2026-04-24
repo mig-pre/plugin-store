@@ -1,9 +1,15 @@
 name: Release
 
+# ═══════════════════════════════════════════════════════════════════
+# TEMPORARILY DISABLED — pending CI code review.
+# Auto-trigger on tag push is commented out; only manual dispatch remains.
+# To re-enable: uncomment the `push` block below and remove `workflow_dispatch`.
+# ═══════════════════════════════════════════════════════════════════
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+  # push:
+  #   tags:
+  #     - 'v*'
 
 permissions:
   contents: write
