@@ -250,6 +250,15 @@
       }
     },
     {
+      "name": "polymarket-starter",
+      "description": "Guided first-trade flow on Polymarket with budget protection and $1/$5/$10 presets for new prediction-market users. Routes orders through polymarket-plugin with strategy attribution.",
+      "source": "./skills/polymarket-starter",
+      "category": "utility",
+      "author": {
+        "name": "Lucas"
+      }
+    },
+    {
       "name": "pump-fun",
       "description": "Buy and sell tokens on pump.fun bonding curves on Solana mainnet",
       "source": "./skills/pump-fun-plugin",
