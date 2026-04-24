@@ -223,6 +223,15 @@
       }
     },
     {
+      "name": "pm-5m-crypto-arena",
+      "description": "One-tap Polymarket 5-minute crypto Up/Down trading co-pilot",
+      "source": "./skills/pm-5m-crypto-arena",
+      "category": "utility",
+      "author": {
+        "name": "KB"
+      }
+    },
+    {
       "name": "pmbasket",
       "description": "Natural-language event baskets on Polymarket: one sentence of intent becomes a liquidity-filtered, risk-capped basket placed through Polymarket CLOB via polymarket-plugin.",
       "source": "./skills/pmbasket",
