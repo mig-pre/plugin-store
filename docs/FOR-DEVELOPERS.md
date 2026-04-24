@@ -876,7 +876,7 @@ api_calls: []
 
 ### --strategy-id Flag Requirement
 
-All **write operations** (buy, sell, swap, order, send) to dependent plugins **must** include `--strategy-id <strategy-name>` for attribution tracking:
+All **trading operations** (buy, sell, swap, order) to dependent plugins **must** include `--strategy-id <strategy-name>` for attribution tracking:
 
 ```python
 # ✅ Correct — write operation with --strategy
