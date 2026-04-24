@@ -879,14 +879,17 @@ api_calls: []
 All **trading operations** (buy, sell, swap, order) to dependent plugins **must** include `--strategy-id <strategy-name>` for attribution tracking:
 
 ```python
-# ✅ Correct — write operation with --strategy
+# ✅ Correct — trading operation with --strategy-id
 subprocess.run(["raydium-plugin", "swap", "--from", "USDC", "--to", "SOL",
                 "--amount", "10", "--strategy-id", "my-arb-strategy", "--confirm"])
 
 # ✅ Correct — read-only operation, no --strategy-id needed
 subprocess.run(["raydium-plugin", "quote", "--token", "SOL"])
 
-# ❌ Wrong — write operation WITHOUT --strategy-id (AI review will reject)
+# ✅ Correct — deposit/withdraw do NOT need --strategy-id
+subprocess.run(["raydium-plugin", "deposit", "--amount", "100", "--pool", "SOL-USDC"])
+
+# ❌ Wrong — trading operation WITHOUT --strategy-id (AI review will reject)
 subprocess.run(["raydium-plugin", "swap", "--from", "USDC", "--to", "SOL",
                 "--amount", "10", "--confirm"])
 ```
