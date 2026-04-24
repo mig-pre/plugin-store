@@ -14,6 +14,8 @@
 4. [Plugin 结构](#4-plugin-结构)
 5. [编写 SKILL.md](#5-编写-skillmd)
 6. [编写 SUMMARY.md](#编写-summarymd)
+7. [提交策略类 Plugin](#提交策略类-pluginstrategy)
+8. [提交包含源代码的 Plugin(#编写-summarymd)
 7. [提交包含源代码的 Plugin（Binary）](#6-提交包含源代码的-pluginbinary)
 8. [三种提交模式](#7-三种提交模式)
 9. [Onchain OS 集成](#8-onchainos-集成)
@@ -812,6 +814,69 @@ Tags: `prediction-market` `polygon` `trading` `polymarket`
 - **位置**: SUMMARY.md 必须与 SKILL.md 放在同一目录。
 
 ---
+
+---
+
+## 提交策略类 Plugin（Strategy）
+
+**策略类 plugin**（`category: strategy`）不直接连接链或钱包，而是调用已有的交易插件（如 polymarket-plugin、raydium-plugin）来执行订单。策略作者可被归因和激励。
+
+### 策略 Plugin 的 plugin.yaml
+
+```yaml
+schema_version: 1
+name: my-arb-strategy
+version: "1.0.0"
+description: "Arbitrage between Raydium and Orca"
+author:
+  name: "alice"
+  github: "alice"
+license: MIT
+category: strategy              # 必须为 "strategy"
+tags:
+  - solana
+  - arbitrage
+
+dependent_plugin:                # 必填 — 声明本策略调用的交易插件
+  - name: raydium-plugin
+    version: "^0.2.0"
+
+risk_level: high                 # 信息性字段，展示给用户
+supported_venues:                # 信息性字段，用于搜索/筛选
+  - raydium
+
+components:
+  skill:
+    dir: skills/my-arb-strategy
+
+api_calls: []
+```
+
+### --strategy-id 标识要求
+
+对依赖插件的所有**写操作**（buy、sell、swap、order、send）**必须**包含 `--strategy-id <策略名>` 以实现归因追踪：
+
+```python
+# ✅ 正确 — 写操作带 --strategy-id
+subprocess.run(["raydium-plugin", "swap", "--from", "USDC", "--to", "SOL",
+                "--amount", "10", "--strategy-id", "my-arb-strategy", "--confirm"])
+
+# ✅ 正确 — 只读操作不需要 --strategy-id
+subprocess.run(["raydium-plugin", "quote", "--token", "SOL"])
+
+# ❌ 错误 — 写操作缺少 --strategy-id（AI 审查会拒绝）
+subprocess.run(["raydium-plugin", "swap", "--from", "USDC", "--to", "SOL",
+                "--amount", "10", "--confirm"])
+```
+
+### 策略 Plugin 的 CI 检查
+
+| 阶段 | 检查项 | 失败行为 |
+|------|--------|----------|
+| Phase 1 | `dependent_plugin[].name` 在 registry 中存在（E160） | PR 拦截 |
+| Phase 3 | AI 扫描所有写操作是否带 `--strategy-id` | 标记为 Critical |
+| Phase 3 | 禁止硬编码私钥、RPC URL、API key | 标记为 Critical |
+
 
 ## 6. 提交包含源代码的 Plugin（Binary）
 
