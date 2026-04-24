@@ -3,7 +3,7 @@ name: polymarket-starter
 version: "0.1.0"
 description: "Guided first-trade flow on Polymarket with budget protection and $1/$5/$10 presets for new prediction-market users"
 author:
-  name: "Shuai Si"
+  name: "Lucas"
   github: "lucas7788"
 license: MIT
 category: trading-strategy

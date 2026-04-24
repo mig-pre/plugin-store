@@ -3,7 +3,7 @@
   "description": "Guided first-trade flow on Polymarket with budget protection and $1/$5/$10 presets for new prediction-market users",
   "version": "0.1.0",
   "author": {
-    "name": "Shuai Si"
+    "name": "Lucas"
   },
   "license": "MIT",
   "keywords": [

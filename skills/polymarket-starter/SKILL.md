@@ -2,7 +2,7 @@
 name: polymarket-starter
 description: "Guided first-trade flow on Polymarket with budget protection and $1/$5/$10 presets for new prediction-market users. Trigger phrases: polymarket starter kit, first polymarket trade, polymarket for beginners, safe polymarket bet, small polymarket bet, bet $1 on polymarket, bet $5 on polymarket, bet $10 on polymarket, help me start betting on polymarket, new to prediction markets, polymarket 新手, 第一次下注 polymarket, polymarket 小额试水, 帮我买 polymarket, 1 美元下注, 5 美元下注, polymarket 入门, polymarket 怎么开始, 安全下注"
 version: "0.1.0"
-author: "Shuai Si"
+author: "Lucas"
 tags:
   - polymarket
   - prediction-market
