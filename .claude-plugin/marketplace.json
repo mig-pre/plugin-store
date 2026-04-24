@@ -133,6 +133,15 @@
       }
     },
     {
+      "name": "market-structure-analyzer",
+      "description": "Crypto market-structure research agent — 24+ indicators across derivatives, options (gamma wall, skew), on-chain (MVRV, smart money, DEX hot tokens), and macro sentiment. Live dashboard with K-line charts, TA indicators, and 12-signal composite scoring. Powered by OKX CeFi CLI + OnchainOS.",
+      "source": "./skills/market-structure-analyzer",
+      "category": "utility",
+      "author": {
+        "name": "VibeCodeDaddy"
+      }
+    },
+    {
       "name": "meme-trench-scanner",
       "description": "Meme Trench Scanner v1.0 — Solana Meme automated trading bot with 11 Launchpad coverage, 7-layer exit system, TraderSoul AI observation",
       "source": "./skills/meme-trench-scanner",
