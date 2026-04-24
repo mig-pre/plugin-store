@@ -17,8 +17,12 @@ OPENNEWS_TOKEN = os.environ.get("OPENNEWS_TOKEN", "")
 OPENNEWS_WSS_URL = "wss://ai.6551.io/open/news_wss"
 OPENNEWS_API_BASE = "https://ai.6551.io"
 OPENNEWS_MIN_SCORE = 40          # Only process articles with AI score >= 40
-OPENNEWS_ENGINE_TYPES = ["news"]  # "news", "listing", "onchain", "meme", "market", "prediction"
-OPENNEWS_POLL_SEC = 120          # REST fallback interval (if WebSocket disconnects)
+OPENNEWS_ENGINE_TYPES = ["news", "listing", "onchain", "meme", "market", "prediction"]
+OPENNEWS_POLL_SEC = 60           # REST poll interval (WS returns 403 on free tier)
+OPENNEWS_MAX_ARTICLES = 1000     # Article buffer size for OpenNews dashboard tab
+OPENNEWS_HIGH_SCORE_THRESHOLD = 70
+OPENNEWS_SOURCE_STALE = 300      # seconds before source is "stale"
+OPENNEWS_SOURCE_DEAD = 1800      # seconds before source is "dead"
 
 # ═══════════════════════════════════════════════════════════════════════
 #  Finnhub Market News
@@ -309,6 +313,54 @@ MACRO_PLAYBOOK = {
 }
 
 # ═══════════════════════════════════════════════════════════════════════
+#  TOKEN IMPACT MAP — Maps event_type → which crypto tokens are affected
+#  Values are (symbol, base_impact) where impact is -1.0 to +1.0
+#  Positive = bullish for that token, negative = bearish
+#  Scaled by signal magnitude at runtime
+# ═══════════════════════════════════════════════════════════════════════
+TOKEN_IMPACT_MAP = {
+    # ── Fed / Rates (rate cuts = risk-on = crypto up; hikes = risk-off) ──
+    "fed_cut_surprise":       [("BTC", 0.85), ("ETH", 0.80), ("SOL", 0.75), ("ONDO", 0.50), ("LINK", 0.40)],
+    "fed_cut_expected":       [("BTC", 0.50), ("ETH", 0.45), ("SOL", 0.40), ("ONDO", 0.30)],
+    "fed_hold_hawkish":       [("BTC", -0.55), ("ETH", -0.50), ("SOL", -0.60), ("ONDO", -0.35)],
+    "fed_hike":               [("BTC", -0.75), ("ETH", -0.70), ("SOL", -0.80), ("ONDO", -0.50)],
+    "fed_dovish":             [("BTC", 0.55), ("ETH", 0.50), ("SOL", 0.45), ("ONDO", 0.35)],
+    # ── CPI / Inflation (hot CPI = hawkish expectation; cool = dovish) ──
+    "cpi_hot":                [("BTC", -0.55), ("ETH", -0.50), ("SOL", -0.55)],
+    "cpi_cool":               [("BTC", 0.60), ("ETH", 0.55), ("SOL", 0.50)],
+    # ── Gold (gold rally often correlates with BTC as alt store-of-value) ──
+    "gold_breakout":          [("BTC", 0.35), ("ETH", 0.15), ("PAXG", 0.90)],
+    "gold_selloff":           [("BTC", -0.20), ("PAXG", -0.85)],
+    # ── Geopolitical (risk-off = BTC mixed, alts down; safe havens up) ──
+    "geopolitical_escalation":[("BTC", -0.30), ("ETH", -0.50), ("SOL", -0.60), ("ONDO", -0.40)],
+    "geopolitical_deesc":     [("BTC", 0.25), ("ETH", 0.35), ("SOL", 0.45), ("ONDO", 0.30)],
+    # ── Trade / Tariff ──
+    "tariff_escalation":      [("BTC", -0.40), ("ETH", -0.45), ("SOL", -0.50)],
+    "tariff_relief":          [("BTC", 0.40), ("ETH", 0.45), ("SOL", 0.50)],
+    # ── Whale ──
+    "whale_buy":              [("BTC", 0.50), ("ETH", 0.45)],
+    "whale_sell":             [("BTC", -0.55), ("ETH", -0.50)],
+    # ── Liquidation ──
+    "liquidation_cascade":    [("BTC", -0.60), ("ETH", -0.70), ("SOL", -0.80)],
+    # ── RWA ──
+    "rwa_catalyst":           [("ONDO", 0.80), ("MKR", 0.40), ("LINK", 0.30), ("ETH", 0.20)],
+    "sec_rwa_positive":       [("ONDO", 0.75), ("MKR", 0.35), ("ETH", 0.30), ("SOL", 0.20)],
+    "sec_rwa_negative":       [("ONDO", -0.70), ("MKR", -0.30), ("ETH", -0.20)],
+    # ── Employment / GDP ──
+    "nfp_strong":             [("BTC", -0.30), ("ETH", -0.30), ("SOL", -0.35)],
+    "nfp_weak":               [("BTC", 0.40), ("ETH", 0.35), ("SOL", 0.30)],
+    "gdp_strong":             [("BTC", 0.25), ("ETH", 0.20), ("SOL", 0.20)],
+    "gdp_weak":               [("BTC", -0.35), ("ETH", -0.30), ("SOL", -0.30)],
+}
+
+# Fallback: generic macro → crypto correlation when event_type is unknown
+TOKEN_IMPACT_GENERIC = [("BTC", 0.40), ("ETH", 0.35), ("SOL", 0.30)]
+
+# Dashboard source diversity: minimum signals per source in API response
+DASHBOARD_SOURCE_QUOTA = 5
+DASHBOARD_MAX_SIGNALS  = 80
+
+# ═══════════════════════════════════════════════════════════════════════
 #  SENTIMENT LEXICON (domain-tuned, weighted)
 # ═══════════════════════════════════════════════════════════════════════
 POSITIVE_WORDS = {
@@ -365,3 +417,50 @@ TICKER_NOISE_WORDS = {
     "MAY", "SAY", "SET", "RUN", "USE", "BIG", "OLD", "LOW", "TOP",
     "USD", "EUR", "GBP", "JPY", "CNY",
 }
+
+# ═══════════════════════════════════════════════════════════════════════
+#  WEBSOCKET SERVER (for real-time signal push to consumers)
+# ═══════════════════════════════════════════════════════════════════════
+WS_ENABLED       = True
+WS_PORT          = 3253          # DASHBOARD_PORT + 1
+WS_PING_INTERVAL = 30
+WS_PING_TIMEOUT  = 10
+WS_MAX_CLIENTS   = 50
+
+# ═══════════════════════════════════════════════════════════════════════
+#  WEBHOOK PUSH (fire-and-forget POST to external URLs)
+# ═══════════════════════════════════════════════════════════════════════
+WEBHOOK_URLS          = []       # List of URLs to POST signals to
+WEBHOOK_MIN_MAGNITUDE = 0.6
+WEBHOOK_EVENTS        = []       # Empty = all; else ["fed_cut_surprise", ...]
+WEBHOOK_TIMEOUT_SEC   = 5
+
+# ═══════════════════════════════════════════════════════════════════════
+#  CRYPTOPANIC API
+# ═══════════════════════════════════════════════════════════════════════
+CRYPTOPANIC_ENABLED  = True
+CRYPTOPANIC_TOKEN    = os.environ.get("CRYPTOPANIC_TOKEN", "")
+CRYPTOPANIC_BASE     = "https://cryptopanic.com/api/v1/posts/"
+CRYPTOPANIC_POLL_SEC = 120
+CRYPTOPANIC_FILTER   = "rising"  # "rising" | "hot" | "important" | "all"
+
+# ═══════════════════════════════════════════════════════════════════════
+#  RSS / ATOM FEED SUPPORT
+# ═══════════════════════════════════════════════════════════════════════
+RSS_ENABLED          = True
+RSS_FEEDS            = [
+    # {"url": "https://www.coindesk.com/arc/outboundfeeds/rss/", "category": "crypto_news", "poll_sec": 300, "label": "CoinDesk"},
+]
+RSS_DEFAULT_POLL_SEC = 300
+
+# ═══════════════════════════════════════════════════════════════════════
+#  FUZZY DEDUP
+# ═══════════════════════════════════════════════════════════════════════
+DEDUP_FUZZY_ENABLED   = True
+DEDUP_FUZZY_THRESHOLD = 0.7      # Jaccard similarity threshold
+
+# ═══════════════════════════════════════════════════════════════════════
+#  SIGNAL ACCURACY TRACKING
+# ═══════════════════════════════════════════════════════════════════════
+ACCURACY_ENABLED      = True
+ACCURACY_CHECK_HOURS  = [1, 6, 24]  # Check price at +1h, +6h, +24h
