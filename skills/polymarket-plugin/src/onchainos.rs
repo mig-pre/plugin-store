@@ -4,6 +4,29 @@ use serde_json::Value;
 
 const CHAIN: &str = "137";
 
+/// Return the path to the onchainos binary.
+///
+/// Non-interactive shells (e.g. Claude Code's Bash tool) never source ~/.zshrc, so
+/// ~/.local/bin is missing from PATH and `Command::new("onchainos")` fails with
+/// "os error 2 (No such file or directory)".
+///
+/// Resolution order:
+/// 1. `POLYMARKET_ONCHAINOS_BIN` env var — used in tests to inject a mock binary.
+/// 2. `~/.local/bin/onchainos` — the default install location for the onchainos CLI.
+/// 3. Bare `"onchainos"` — for systems where it is already in the subprocess PATH.
+fn onchainos_bin() -> std::ffi::OsString {
+    if let Ok(override_path) = std::env::var("POLYMARKET_ONCHAINOS_BIN") {
+        return std::ffi::OsString::from(override_path);
+    }
+    let local = dirs::home_dir()
+        .map(|h| h.join(".local").join("bin").join("onchainos"))
+        .filter(|p| p.is_file());
+    match local {
+        Some(p) => p.into_os_string(),
+        None => std::ffi::OsString::from("onchainos"),
+    }
+}
+
 /// Sign an EIP-712 structured data JSON via `onchainos sign-message --type eip712`.
 ///
 /// The JSON must include EIP712Domain in the `types` field — this is required for correct
@@ -15,7 +38,7 @@ pub async fn sign_eip712(structured_data_json: &str) -> Result<String> {
     let wallet_addr = get_wallet_address().await
         .context("Failed to resolve wallet address for sign-message")?;
 
-    let output = tokio::process::Command::new("onchainos")
+    let output = tokio::process::Command::new(onchainos_bin())
         .args([
             "wallet", "sign-message",
             "--type", "eip712",
@@ -47,7 +70,7 @@ pub async fn sign_eip712(structured_data_json: &str) -> Result<String> {
 
 /// Call `onchainos wallet contract-call --chain 137 --to <to> --input-data <data> --force`
 pub async fn wallet_contract_call(to: &str, input_data: &str) -> Result<Value> {
-    let output = tokio::process::Command::new("onchainos")
+    let output = tokio::process::Command::new(onchainos_bin())
         .args([
             "wallet",
             "contract-call",
@@ -85,7 +108,7 @@ pub fn extract_tx_hash(result: &Value) -> anyhow::Result<String> {
 /// Get the wallet address from `onchainos wallet addresses --chain 137`.
 /// Parses: data.evm[0].address
 pub async fn get_wallet_address() -> Result<String> {
-    let output = tokio::process::Command::new("onchainos")
+    let output = tokio::process::Command::new(onchainos_bin())
         .args(["wallet", "addresses", "--chain", CHAIN])
         .output()
         .await?;
@@ -619,18 +642,24 @@ pub async fn ctf_set_approval_for_all(ctf_addr: &str, operator: &str) -> Result<
 
 /// Approve USDC.e allowance before a BUY order.
 ///
+/// Always approves `u128::MAX` (unlimited) so that future trades on the same market
+/// do not trigger a second approval transaction. Approving a specific order amount
+/// downsizes any pre-existing MAX_UINT allowance to that amount, causing a new
+/// approval on every subsequent trade.
+///
 /// For neg_risk=false: approves CTF Exchange only.
 /// For neg_risk=true: approves BOTH NEG_RISK_CTF_EXCHANGE and NEG_RISK_ADAPTER —
 /// the CLOB checks both contracts in the settlement path for neg_risk markets.
 /// Returns the tx hash of the last approval submitted.
-pub async fn approve_usdc(neg_risk: bool, amount: u64) -> Result<String> {
+pub async fn approve_usdc(neg_risk: bool) -> Result<String> {
     use crate::config::Contracts;
     let usdc = Contracts::USDC_E;
+    let amount = u128::MAX;
     if neg_risk {
-        usdc_approve(usdc, Contracts::NEG_RISK_CTF_EXCHANGE, amount as u128).await?;
-        usdc_approve(usdc, Contracts::NEG_RISK_ADAPTER, amount as u128).await
+        usdc_approve(usdc, Contracts::NEG_RISK_CTF_EXCHANGE, amount).await?;
+        usdc_approve(usdc, Contracts::NEG_RISK_ADAPTER, amount).await
     } else {
-        usdc_approve(usdc, Contracts::CTF_EXCHANGE, amount as u128).await
+        usdc_approve(usdc, Contracts::CTF_EXCHANGE, amount).await
     }
 }
 
@@ -658,7 +687,7 @@ pub async fn approve_ctf(neg_risk: bool) -> Result<String> {
 /// YES (bit 0) and NO (bit 1) outcomes — the CTF contract only pays out for winning tokens
 /// and silently no-ops for losing ones, so passing both is safe.
 /// For neg_risk (multi-outcome) markets use the NEG_RISK_ADAPTER path (not implemented here).
-fn build_redeem_positions_calldata(condition_id: &str) -> String {
+pub(crate) fn build_redeem_positions_calldata(condition_id: &str) -> String {
     use sha3::{Digest, Keccak256};
     use crate::config::Contracts;
 
@@ -767,6 +796,117 @@ pub async fn ctf_redeem_via_proxy(condition_id: &str, from: &str) -> Result<Stri
         .await
         .context("Proxy redeemPositions would revert on-chain")?;
     let result = wallet_contract_call(Contracts::PROXY_FACTORY, &calldata).await?;
+    extract_tx_hash(&result)
+}
+
+// ─── NegRisk Adapter redeem ───────────────────────────────────────────────────
+
+/// Convert a large decimal integer string (up to 256 bits) to a 64-char lowercase hex string.
+///
+/// Polymarket outcome token IDs are full uint256 values that do not fit in u128.
+/// This function does the conversion using byte-level long multiplication, avoiding
+/// any bignum dependency.
+///
+/// Returns an error if the string contains non-digit characters or overflows 32 bytes.
+pub fn decimal_str_to_hex64(s: &str) -> Result<String> {
+    if s.is_empty() {
+        anyhow::bail!("decimal_str_to_hex64: empty string is not a valid decimal integer");
+    }
+    let mut result = [0u8; 32];
+    for ch in s.chars() {
+        let digit = ch.to_digit(10)
+            .ok_or_else(|| anyhow::anyhow!("decimal_str_to_hex64: invalid digit '{}' in '{}'", ch, s))?;
+        let mut carry = digit as u16;
+        for byte in result.iter_mut().rev() {
+            let val = (*byte as u16) * 10 + carry;
+            *byte = (val & 0xFF) as u8;
+            carry = val >> 8;
+        }
+        if carry != 0 {
+            anyhow::bail!("decimal_str_to_hex64: overflow — value '{}' too large for 32 bytes", s);
+        }
+    }
+    Ok(hex::encode(result))
+}
+
+/// Query the ERC-1155 CTF token balance of `owner` for a given outcome token ID.
+///
+/// `token_id_decimal` is the decimal string representation of the uint256 token ID
+/// as returned by the Polymarket CLOB API (e.g. `ClobToken::token_id`).
+///
+/// Returns the raw token balance (atomic units, same scale as USDC.e: 1 share = 1_000_000).
+pub async fn get_ctf_balance(owner: &str, token_id_decimal: &str) -> Result<u128> {
+    use crate::config::{Contracts, Urls};
+    // balanceOf(address,uint256) selector = 0x00fdd58e
+    let token_id_hex = decimal_str_to_hex64(token_id_decimal)?;
+    let data = format!("0x00fdd58e{}{}", pad_address(owner), token_id_hex);
+    let body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "eth_call",
+        "params": [{ "to": Contracts::CTF, "data": data }, "latest"],
+        "id": 1
+    });
+    let v: serde_json::Value = reqwest::Client::new()
+        .post(Urls::POLYGON_RPC)
+        .json(&body)
+        .send()
+        .await
+        .context("Polygon RPC request failed")?
+        .json()
+        .await
+        .context("parsing CTF balanceOf response")?;
+    if let Some(err) = v.get("error") {
+        anyhow::bail!("Polygon RPC error in CTF balanceOf: {}", err);
+    }
+    let hex = v["result"].as_str().unwrap_or("0x").trim_start_matches("0x");
+    if hex.is_empty() || hex.chars().all(|c| c == '0') {
+        return Ok(0);
+    }
+    // Balances are small (shares held by a user) — safely fits in u128.
+    Ok(u128::from_str_radix(hex, 16).unwrap_or(u128::MAX))
+}
+
+/// ABI-encode NegRiskAdapter.redeemPositions(bytes32 conditionId, uint256[] amounts).
+///
+/// `amounts` is indexed by outcome slot: amounts[0] = YES token balance, amounts[1] = NO token balance.
+/// After market resolution, only the winning outcome's amount is non-zero; passing zero for the
+/// other slot is safe (the adapter no-ops on zero-balance outcomes).
+pub(crate) fn build_negrisk_redeem_calldata(condition_id: &str, amounts: &[u128]) -> String {
+    use sha3::{Digest, Keccak256};
+
+    let selector = Keccak256::digest(b"redeemPositions(bytes32,uint256[])");
+    let selector_hex = hex::encode(&selector[..4]);
+
+    let cond_id_hex = condition_id.trim_start_matches("0x");
+    let cond_id_pad = format!("{:0>64}", cond_id_hex);
+
+    // Dynamic array starts at offset 64 bytes (2 × 32-byte static params: conditionId + array offset).
+    let array_offset = pad_u256(64u128);
+    let array_len = pad_u256(amounts.len() as u128);
+    let amounts_hex: String = amounts.iter().map(|a| pad_u256(*a)).collect();
+
+    format!(
+        "0x{}{}{}{}{}",
+        selector_hex, cond_id_pad, array_offset, array_len, amounts_hex
+    )
+}
+
+/// Redeem neg_risk (multi-outcome) positions via NegRiskAdapter.redeemPositions.
+///
+/// `amounts[i]` is the ERC-1155 balance of outcome slot i held by `from`.
+/// Pre-flights via eth_call to surface reverts before signing.
+/// Returns the tx hash of the broadcast transaction.
+pub async fn negrisk_redeem_positions(
+    condition_id: &str,
+    amounts: &[u128],
+    from: &str,
+) -> Result<String> {
+    use crate::config::Contracts;
+    let calldata = build_negrisk_redeem_calldata(condition_id, amounts);
+    eth_call_simulate(from, Contracts::NEG_RISK_ADAPTER, &calldata)
+        .await
+        .context("NegRiskAdapter.redeemPositions would revert on-chain")?;
+    let result = wallet_contract_call(Contracts::NEG_RISK_ADAPTER, &calldata).await?;
     extract_tx_hash(&result)
 }
 
@@ -999,7 +1139,7 @@ pub async fn transfer_erc20_on_chain(
     to: &str,
     amount: u128,
 ) -> Result<String> {
-    let output = tokio::process::Command::new("onchainos")
+    let output = tokio::process::Command::new(onchainos_bin())
         .args([
             "wallet", "send",
             "--chain", chain,
@@ -1031,7 +1171,7 @@ pub async fn transfer_erc20_on_chain(
 /// `to` is the destination address.
 /// `amount_wei` is the amount in wei (18 decimals for ETH-like, 9 for others).
 pub async fn transfer_native_on_chain(chain: &str, to: &str, amount_wei: u128) -> Result<String> {
-    let output = tokio::process::Command::new("onchainos")
+    let output = tokio::process::Command::new(onchainos_bin())
         .args([
             "wallet", "send",
             "--chain", chain,
@@ -1129,7 +1269,7 @@ pub async fn get_native_gas_balance(chain: &str) -> f64 {
 }
 
 pub async fn get_chain_balances(chain: &str) -> Vec<ChainTokenBalance> {
-    let output = tokio::process::Command::new("onchainos")
+    let output = tokio::process::Command::new(onchainos_bin())
         .args(["wallet", "balance", "--chain", chain])
         .output()
         .await;
@@ -1187,7 +1327,7 @@ pub async fn get_chain_balances(chain: &str) -> Vec<ChainTokenBalance> {
 pub async fn report_plugin_info(payload: &Value) -> Result<()> {
     let payload_str = serde_json::to_string(payload)
         .context("serializing report-plugin-info payload")?;
-    let output = tokio::process::Command::new("onchainos")
+    let output = tokio::process::Command::new(onchainos_bin())
         .args([
             "wallet", "report-plugin-info",
             "--plugin-parameter", &payload_str,
@@ -1232,5 +1372,194 @@ pub async fn is_ctf_approved_for_all(owner: &str, operator: &str) -> Result<bool
     // ABI-encoded bool: 32 bytes. Approved = 0x0000...0001, Not approved = 0x0000...0000
     let hex = v["result"].as_str().unwrap_or("0x").trim_start_matches("0x");
     Ok(!hex.is_empty() && hex.trim_start_matches('0') == "1")
+}
+
+// ─── Unit Tests ───────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Serialize env-var tests to prevent parallel test contamination.
+    static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    // ── Bug #1: PATH resolution ──────────────────────────────────────────────
+
+    /// `POLYMARKET_ONCHAINOS_BIN` env var overrides the binary path.
+    /// This is the mechanism that lets CI inject a mock binary so onchainos
+    /// calls can be stubbed without a real wallet.
+    #[test]
+    fn test_onchainos_bin_env_override() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        std::env::set_var("POLYMARKET_ONCHAINOS_BIN", "/usr/bin/env");
+        let bin = onchainos_bin();
+        std::env::remove_var("POLYMARKET_ONCHAINOS_BIN");
+        assert_eq!(bin, std::ffi::OsString::from("/usr/bin/env"));
+    }
+
+    /// Without the env var and without ~/.local/bin/onchainos present,
+    /// `onchainos_bin()` falls back to bare "onchainos".
+    #[test]
+    fn test_onchainos_bin_fallback_to_bare_name() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        std::env::remove_var("POLYMARKET_ONCHAINOS_BIN");
+        // Only test the fallback path when ~/.local/bin/onchainos is absent.
+        let local_path = dirs::home_dir()
+            .map(|h| h.join(".local").join("bin").join("onchainos"));
+        if local_path.map(|p| p.is_file()).unwrap_or(false) {
+            return; // test not applicable on a machine with onchainos installed
+        }
+        let bin = onchainos_bin();
+        assert_eq!(bin, std::ffi::OsString::from("onchainos"));
+    }
+
+    // ── Bug #4: MAX_UINT approval calldata ──────────────────────────────────
+
+    /// `usdc_approve` ABI-encodes amount as uint256. Verify that the calldata
+    /// for u128::MAX contains the correct max-value bytes (the low 128 bits
+    /// of MAX_UINT256).
+    ///
+    /// This test does NOT make a network call — it just checks the calldata
+    /// that would be passed to wallet_contract_call.
+    #[test]
+    fn test_usdc_approve_max_uint_encoding() {
+        // The calldata for approve(spender, u128::MAX) should end with
+        // ffffffffffffffffffffffffffffffff (32 bytes / 16 bytes low + 16 high of 0).
+        // Since u128::MAX = 0xffffffffffffffffffffffffffffffff (128 bits),
+        // ABI-encoded as uint256 it is: 0000000000000000ffffffffffffffffffffffffffffffff
+        // Wait — u128::MAX as ABI uint256 is:
+        //   32 bytes big-endian: 16 zero bytes then 16 0xff bytes
+        let amount = u128::MAX;
+        let padded = pad_u256(amount);
+        assert_eq!(padded.len(), 64, "pad_u256 must produce exactly 64 hex chars");
+        assert_eq!(
+            padded,
+            "00000000000000000000000000000000ffffffffffffffffffffffffffffffff",
+            "u128::MAX as uint256 should be 16 zero bytes followed by 16 0xff bytes"
+        );
+    }
+
+    // ── Bug #2: NegRisk ABI encoding ────────────────────────────────────────
+
+    /// `decimal_str_to_hex64("0")` should produce 64 zeros.
+    #[test]
+    fn test_decimal_str_to_hex64_zero() {
+        let result = decimal_str_to_hex64("0").unwrap();
+        assert_eq!(result, "0".repeat(64));
+    }
+
+    /// `decimal_str_to_hex64("255")` should produce 62 zeros + "ff".
+    #[test]
+    fn test_decimal_str_to_hex64_small_values() {
+        let result = decimal_str_to_hex64("255").unwrap();
+        assert_eq!(result, format!("{:0>64}", "ff"));
+
+        let result = decimal_str_to_hex64("256").unwrap();
+        assert_eq!(result, format!("{:0>64}", "100"));
+    }
+
+    /// u64::MAX = 18446744073709551615 = 0xffffffffffffffff
+    #[test]
+    fn test_decimal_str_to_hex64_u64_max() {
+        let result = decimal_str_to_hex64("18446744073709551615").unwrap();
+        assert_eq!(result, format!("{:0>64}", "ffffffffffffffff"));
+    }
+
+    /// u128::MAX = 340282366920938463463374607431768211455 = 0xffffffffffffffffffffffffffffffff
+    #[test]
+    fn test_decimal_str_to_hex64_u128_max() {
+        let result = decimal_str_to_hex64("340282366920938463463374607431768211455").unwrap();
+        assert_eq!(result, format!("{:0>64}", "ffffffffffffffffffffffffffffffff"));
+    }
+
+    /// Invalid decimal string (contains non-digit) should return an error.
+    #[test]
+    fn test_decimal_str_to_hex64_invalid_input() {
+        assert!(decimal_str_to_hex64("0x1234").is_err(), "0x prefix is not valid decimal");
+        assert!(decimal_str_to_hex64("12.34").is_err(), "decimal point is not a digit");
+        assert!(decimal_str_to_hex64("").is_err(), "empty string should fail");
+    }
+
+    /// The `build_negrisk_redeem_calldata` calldata must have the correct structure:
+    /// - 4-byte selector
+    /// - 32-byte condition_id (bytes32)
+    /// - 32-byte array offset (64 = 0x40)
+    /// - 32-byte array length (number of amounts)
+    /// - 32-byte per amount
+    /// Total for 2 amounts: 4 + 4*32 = 4 + 128 = 132 bytes = 264 hex chars + 2 ("0x") = 266
+    #[test]
+    fn test_negrisk_redeem_calldata_length() {
+        let condition_id = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+        let amounts = [1_000_000u128, 0u128];
+        let calldata = build_negrisk_redeem_calldata(condition_id, &amounts);
+        // 0x + 8 (selector) + 64 (cond_id) + 64 (offset) + 64 (len) + 64*2 (amounts) = 2 + 328 = 330
+        assert_eq!(calldata.len(), 330, "calldata should be 330 chars (2 + 8 + 64*5)");
+    }
+
+    /// Verify the array offset field is encoded as 64 (0x40 = 2 static params × 32 bytes).
+    #[test]
+    fn test_negrisk_redeem_calldata_array_offset() {
+        let condition_id = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        let amounts = [0u128, 0u128];
+        let calldata = build_negrisk_redeem_calldata(condition_id, &amounts);
+        // Strip "0x" prefix. Layout: [selector 8][cond_id 64][array_offset 64][...]
+        let hex = &calldata[2..];
+        let array_offset_hex = &hex[8 + 64..8 + 64 + 64];
+        // array_offset = 64 = 0x0000...0040
+        assert_eq!(
+            array_offset_hex,
+            format!("{:0>64}", "40"),
+            "array offset should be 64 (0x40)"
+        );
+    }
+
+    /// Verify amounts are correctly encoded in the calldata.
+    #[test]
+    fn test_negrisk_redeem_calldata_amounts_encoding() {
+        let condition_id = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        let yes_amount = 50_000_000u128; // 50 USDC.e worth of shares
+        let no_amount = 0u128;
+        let calldata = build_negrisk_redeem_calldata(condition_id, &[yes_amount, no_amount]);
+        let hex = &calldata[2..]; // strip "0x"
+        // Layout: [selector 8][cond_id 64][offset 64][length 64][amount0 64][amount1 64]
+        let amount0_hex = &hex[8 + 64 + 64 + 64..8 + 64 + 64 + 64 + 64];
+        let amount1_hex = &hex[8 + 64 + 64 + 64 + 64..];
+        assert_eq!(
+            amount0_hex,
+            format!("{:0>64x}", yes_amount),
+            "yes amount should be correctly encoded"
+        );
+        assert_eq!(
+            amount1_hex,
+            format!("{:0>64x}", no_amount),
+            "no amount should be correctly encoded"
+        );
+    }
+
+    /// CTF.redeemPositions calldata has the correct selector.
+    /// keccak256("redeemPositions(address,bytes32,bytes32,uint256[])") = 0xdbcb3da5
+    #[test]
+    fn test_ctf_redeem_positions_selector() {
+        use sha3::{Digest, Keccak256};
+        let selector = Keccak256::digest(b"redeemPositions(address,bytes32,bytes32,uint256[])");
+        let expected = hex::encode(&selector[..4]);
+        let cid = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+        let calldata = build_redeem_positions_calldata(cid);
+        assert!(calldata.starts_with(&format!("0x{}", expected)),
+            "CTF.redeemPositions selector should be 0x{}", expected);
+    }
+
+    /// NegRiskAdapter.redeemPositions calldata has the correct selector.
+    /// keccak256("redeemPositions(bytes32,uint256[])") first 4 bytes
+    #[test]
+    fn test_negrisk_redeem_positions_selector() {
+        use sha3::{Digest, Keccak256};
+        let selector = Keccak256::digest(b"redeemPositions(bytes32,uint256[])");
+        let expected = hex::encode(&selector[..4]);
+        let cid = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+        let calldata = build_negrisk_redeem_calldata(cid, &[0u128]);
+        assert!(calldata.starts_with(&format!("0x{}", expected)),
+            "NegRiskAdapter.redeemPositions selector should be 0x{}", expected);
+    }
 }
 

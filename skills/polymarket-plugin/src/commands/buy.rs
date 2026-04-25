@@ -2,14 +2,26 @@ use anyhow::{bail, Context, Result};
 use reqwest::Client;
 
 use crate::api::{
-    compute_buy_worst_price, get_balance_allowance, get_clob_market, get_market_fee, get_orderbook,
+    compute_buy_worst_price, get_clob_market, get_market_fee, get_orderbook,
     post_order, round_price,
     OrderBody, OrderRequest,
 };
 use crate::auth::ensure_credentials;
-use crate::onchainos::{approve_usdc, get_usdc_balance, get_wallet_address};
+use crate::onchainos::{approve_usdc, get_usdc_allowance, get_usdc_balance, get_wallet_address};
 use crate::series;
 use crate::signing::{sign_order_via_onchainos, OrderParams};
+
+/// Approval confirmation timeout in seconds.
+///
+/// Polygon block time is ~2s; under typical conditions approvals mine in <30s.
+/// We default to 90s to absorb network congestion and gas price spikes.
+/// Override with `POLYMARKET_APPROVE_TIMEOUT_SECS` env var for testing or custom networks.
+fn approve_timeout_secs() -> u64 {
+    std::env::var("POLYMARKET_APPROVE_TIMEOUT_SECS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(90)
+}
 
 /// Run the buy command.
 ///
@@ -327,13 +339,27 @@ pub async fn run(
         TradingMode::Eoa       => signer_addr.as_str(),
     };
 
-    // Fetch on-chain USDC.e balance and CLOB allowance info in parallel.
-    // Balance uses direct eth_call (authoritative); allowance uses CLOB API.
-    let (onchain_balance_result, allowance_info) = tokio::join!(
-        get_usdc_balance(balance_addr),
-        get_balance_allowance(&client, balance_addr, &creds, "COLLATERAL", None),
-    );
-    let allowance_info = allowance_info?;
+    // Fetch on-chain USDC.e balance and on-chain allowance(s) in parallel.
+    // Both use direct eth_call (authoritative) — not the CLOB API, which can return
+    // stale values or incorrect MAX_UINT and cause unnecessary re-approvals.
+    let (onchain_balance_result, allowance_raw) = if neg_risk {
+        let (bal, a_exchange, a_adapter) = tokio::join!(
+            get_usdc_balance(balance_addr),
+            get_usdc_allowance(balance_addr, Contracts::NEG_RISK_CTF_EXCHANGE),
+            get_usdc_allowance(balance_addr, Contracts::NEG_RISK_ADAPTER),
+        );
+        // Both spenders must have sufficient allowance for a neg_risk order.
+        let ae = a_exchange.unwrap_or(0).min(u64::MAX as u128) as u64;
+        let aa = a_adapter.unwrap_or(0).min(u64::MAX as u128) as u64;
+        (bal, ae.min(aa))
+    } else {
+        let (bal, a) = tokio::join!(
+            get_usdc_balance(balance_addr),
+            get_usdc_allowance(balance_addr, Contracts::CTF_EXCHANGE),
+        );
+        let a_val = a.unwrap_or(0).min(u64::MAX as u128) as u64;
+        (bal, a_val)
+    };
 
     // Pre-flight: bail if on-chain USDC.e balance is insufficient.
     match onchain_balance_result {
@@ -397,21 +423,13 @@ pub async fn run(
     // EOA mode: submit on-chain approve if allowance is insufficient.
     // POLY_PROXY mode: approvals are set once during `setup-proxy` — no per-trade approve needed.
     if effective_mode == TradingMode::Eoa {
-        let allowance_raw = if neg_risk {
-            let a_exchange = allowance_info.allowance_for(Contracts::NEG_RISK_CTF_EXCHANGE);
-            let a_adapter  = allowance_info.allowance_for(Contracts::NEG_RISK_ADAPTER);
-            a_exchange.min(a_adapter)
-        } else {
-            allowance_info.allowance_for(Contracts::CTF_EXCHANGE)
-        };
-
         if allowance_raw < usdc_needed_raw || auto_approve {
             let exchange_label = if neg_risk { "Neg Risk CTF Exchange" } else { "CTF Exchange" };
-            eprintln!("[polymarket] Approving {:.6} USDC.e for {}...", actual_usdc, exchange_label);
-            let tx_hash = approve_usdc(neg_risk, usdc_needed_raw).await?;
+            eprintln!("[polymarket] Approving unlimited USDC.e for {}...", exchange_label);
+            let tx_hash = approve_usdc(neg_risk).await?;
             eprintln!("[polymarket] Approval tx: {}", tx_hash);
             eprintln!("[polymarket] Waiting for approval to confirm on-chain...");
-            crate::onchainos::wait_for_tx_receipt(&tx_hash, 30).await?;
+            crate::onchainos::wait_for_tx_receipt(&tx_hash, approve_timeout_secs()).await?;
             eprintln!("[polymarket] Approval confirmed.");
         }
     }
@@ -635,4 +653,43 @@ fn rand_salt() -> u64 {
     let mut bytes = [0u8; 8];
     getrandom::getrandom(&mut bytes).expect("getrandom failed");
     u64::from_le_bytes(bytes) & 0x001F_FFFF_FFFF_FFFF
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Serialize env-var tests so they don't contaminate each other when run in parallel.
+    static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    // ── Bug #6: Approval timeout env var ────────────────────────────────────
+
+    /// Default timeout is 90 seconds when env var is not set.
+    /// Rationale: Polygon block time ~2s; 30s was too short for congested periods.
+    #[test]
+    fn test_approve_timeout_default() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        std::env::remove_var("POLYMARKET_APPROVE_TIMEOUT_SECS");
+        assert_eq!(approve_timeout_secs(), 90, "default timeout should be 90s");
+    }
+
+    /// Env var override is respected and parsed correctly.
+    #[test]
+    fn test_approve_timeout_env_override() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        std::env::set_var("POLYMARKET_APPROVE_TIMEOUT_SECS", "120");
+        let t = approve_timeout_secs();
+        std::env::remove_var("POLYMARKET_APPROVE_TIMEOUT_SECS");
+        assert_eq!(t, 120, "env var should override default");
+    }
+
+    /// Invalid env var value falls back to default (no panic).
+    #[test]
+    fn test_approve_timeout_invalid_env() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        std::env::set_var("POLYMARKET_APPROVE_TIMEOUT_SECS", "not_a_number");
+        let t = approve_timeout_secs();
+        std::env::remove_var("POLYMARKET_APPROVE_TIMEOUT_SECS");
+        assert_eq!(t, 90, "invalid env var value should fall back to default 90s");
+    }
 }
