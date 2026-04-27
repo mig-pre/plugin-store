@@ -106,7 +106,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/polymarket-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.4.6" > "$HOME/.plugin-store/managed/polymarket-plugin"
+echo "0.4.11" > "$HOME/.plugin-store/managed/polymarket-plugin"
 ```
 
 
