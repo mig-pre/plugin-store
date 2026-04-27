@@ -1321,4 +1321,4 @@ Fees are deducted by the exchange from the received amount. In CLOB v2, `feeRate
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for full version history. Current version: **0.5.1** (2026-04-20).
+See [CHANGELOG.md](CHANGELOG.md) for full version history. Current version: **0.5.1** (2026-04-27).
