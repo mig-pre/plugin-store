@@ -202,7 +202,7 @@ Polymarket is a prediction market platform on Polygon where users trade outcome 
 - **Approval model (EOA)**: `buy` uses exact-amount USDC.e `approve(exchange, amount)`. `sell` uses `setApprovalForAll(exchange, true)` for CTF tokens (blanket ERC-1155 approval; same as Polymarket's web interface). No on-chain approvals needed in POLY_PROXY mode.
 
 **How it works:**
-1. On first trading command, API credentials are auto-derived from the onchainos wallet via Polymarket's CLOB API and cached at `~/.config/polymarket-plugin/creds.json`
+1. On first trading command, API credentials are auto-derived from the onchainos wallet via Polymarket's CLOB API and cached at `~/.config/polymarket/creds.json`
 2. Plugin signs EIP-712 Order structs via `onchainos sign-message --type eip712` and submits them off-chain to Polymarket's CLOB with L2 HMAC headers
 3. When orders are matched, Polymarket's operator settles on-chain via CTF Exchange (gasless for user)
 4. USDC.e flows from the onchainos wallet (buyer); conditional tokens flow from the onchainos wallet (seller)
@@ -987,14 +987,14 @@ polymarket switch-mode --mode eoa
 **No manual credential setup required.** On the first trading command, the plugin:
 1. Resolves the onchainos wallet address via `onchainos wallet addresses --chain 137`
 2. Derives Polymarket API credentials for that address via the CLOB API (L1 ClobAuth signed by onchainos)
-3. Caches them at `~/.config/polymarket-plugin/creds.json` (0600 permissions) for all future calls
+3. Caches them at `~/.config/polymarket/creds.json` (0600 permissions) for all future calls
 
 The onchainos wallet address is the Polymarket trading identity. Credentials are automatically re-derived if the active wallet changes.
 
 **Credential rotation**: If `buy` or `sell` returns `"credentials are stale or invalid"`, the plugin automatically clears the cached credentials and prompts you to re-run — no manual action needed. To manually force re-derivation:
 
 ```bash
-rm ~/.config/polymarket-plugin/creds.json
+rm ~/.config/polymarket/creds.json
 ```
 
 **Override via environment variables** (optional — takes precedence over cached credentials):
@@ -1013,7 +1013,7 @@ export POLYMARKET_PASSPHRASE=<passphrase>
 | `POLYMARKET_SECRET` | Optional override | Base64url-encoded HMAC secret for L2 auth |
 | `POLYMARKET_PASSPHRASE` | Optional override | CLOB API passphrase |
 
-**Credential storage:** Credentials are cached at `~/.config/polymarket-plugin/creds.json` with `0600` permissions (owner read/write only). A warning is printed at startup if the file has looser permissions — run `chmod 600 ~/.config/polymarket-plugin/creds.json` to fix. The file remains in plaintext; avoid storing it on shared machines.
+**Credential storage:** Credentials are cached at `~/.config/polymarket/creds.json` with `0600` permissions (owner read/write only). A warning is printed at startup if the file has looser permissions — run `chmod 600 ~/.config/polymarket/creds.json` to fix. The file remains in plaintext; avoid storing it on shared machines.
 
 ---
 
