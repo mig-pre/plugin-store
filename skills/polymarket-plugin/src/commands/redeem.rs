@@ -1,11 +1,12 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context as _, Result};
 use reqwest::Client;
 
 use crate::api::{get_clob_market, get_gamma_market_by_slug, get_positions};
 use crate::config::load_credentials;
 use crate::onchainos::{
-    ctf_redeem_positions, ctf_redeem_via_proxy, get_existing_proxy, get_pol_balance,
-    get_wallet_address, wait_for_tx_receipt_labeled,
+    ctf_redeem_positions, ctf_redeem_via_proxy, decimal_str_to_hex64, get_ctf_balance,
+    get_existing_proxy, get_pol_balance, get_wallet_address, negrisk_redeem_positions,
+    wait_for_tx_receipt_labeled,
 };
 
 /// Per-redeem timeout (Polygon block time ~2s; a healthy tx mines in <30s).
@@ -125,10 +126,16 @@ async fn check_redeemability(
 ///
 /// Never falls back — if Data API shows no redeemable positions on either
 /// wallet, returns an error (caller should surface NO_REDEEMABLE_POSITIONS).
+///
+/// For neg_risk markets, `token_ids` must be provided (YES token first, then NO).
+/// These are the decimal-string token IDs from the CLOB market, used to query
+/// on-chain ERC-1155 balances before calling NegRiskAdapter.redeemPositions.
 async fn redeem_one(
     client: &Client,
     condition_id: &str,
     question: &str,
+    neg_risk: bool,
+    token_ids: &[String],
     eoa_addr: &str,
     proxy_addr: Option<&str>,
 ) -> Result<serde_json::Value> {
@@ -154,40 +161,98 @@ async fn redeem_one(
     let mut out = serde_json::json!({
         "condition_id": cid_display,
         "question": question,
+        "neg_risk": neg_risk,
     });
 
-    if r.eoa {
-        eprintln!("[polymarket] EOA holds winning tokens — submitting EOA redeemPositions...");
-        let tx = ctf_redeem_positions(condition_id, eoa_addr).await?;
+    if neg_risk {
+        // NegRisk markets: call NegRiskAdapter.redeemPositions(conditionId, [yes_bal, no_bal]).
+        // Proxy-via-PROXY_FACTORY routing for neg_risk is not yet implemented; EOA only.
+        if r.proxy && !r.eoa {
+            return Err(anyhow!(
+                "Neg_risk redeem from proxy wallet is not yet supported by this plugin. \
+                 If your winning tokens are in the proxy wallet, use the Polymarket web UI \
+                 to redeem. EOA redeem via NegRiskAdapter is fully supported."
+            ));
+        }
+
+        // Query on-chain ERC-1155 balances for each outcome token.
+        let wallet = if r.proxy && proxy_addr.is_some() { proxy_addr.unwrap() } else { eoa_addr };
+        let mut amounts: Vec<u128> = Vec::with_capacity(token_ids.len());
+        for tid in token_ids {
+            let bal = get_ctf_balance(wallet, tid).await.unwrap_or(0);
+            amounts.push(bal);
+        }
+
+        // Validate we can encode the token IDs (catches malformed API data early).
+        for tid in token_ids {
+            decimal_str_to_hex64(tid)
+                .with_context(|| format!("token_id '{}' is not a valid decimal integer", tid))?;
+        }
+
+        if amounts.iter().all(|&a| a == 0) {
+            return Err(anyhow!(
+                "No outcome token balance found on-chain for {} in wallet {}. \
+                 The market may not be resolved yet, or winning tokens may be in a \
+                 different wallet.",
+                cid_display,
+                wallet
+            ));
+        }
+
+        let total_shares: u128 = amounts.iter().sum();
         eprintln!(
-            "[polymarket] EOA redeem tx {} — waiting up to {}s for on-chain confirmation...",
+            "[polymarket] NegRisk redeem: {} total shares across {} outcomes — submitting NegRiskAdapter.redeemPositions...",
+            total_shares, amounts.len()
+        );
+        let tx = negrisk_redeem_positions(condition_id, &amounts, eoa_addr).await?;
+        eprintln!(
+            "[polymarket] NegRisk redeem tx {} — waiting up to {}s for on-chain confirmation...",
             tx, REDEEM_WAIT_SECS
         );
-        wait_for_tx_receipt_labeled(&tx, REDEEM_WAIT_SECS, "EOA redeem").await?;
+        wait_for_tx_receipt_labeled(&tx, REDEEM_WAIT_SECS, "NegRisk redeem").await?;
         out["eoa_tx"] = serde_json::Value::String(tx);
-        out["eoa_note"] =
-            serde_json::Value::String("EOA redeemPositions confirmed.".into());
+        out["amounts"] = serde_json::Value::Array(
+            amounts.iter().map(|a| serde_json::Value::String(a.to_string())).collect()
+        );
+        out["note"] = serde_json::Value::String(
+            "NegRiskAdapter.redeemPositions confirmed. USDC.e transferred to EOA.".into(),
+        );
+    } else {
+        // Standard binary market: call CTF.redeemPositions.
+        if r.eoa {
+            eprintln!("[polymarket] EOA holds winning tokens — submitting EOA redeemPositions...");
+            let tx = ctf_redeem_positions(condition_id, eoa_addr).await?;
+            eprintln!(
+                "[polymarket] EOA redeem tx {} — waiting up to {}s for on-chain confirmation...",
+                tx, REDEEM_WAIT_SECS
+            );
+            wait_for_tx_receipt_labeled(&tx, REDEEM_WAIT_SECS, "EOA redeem").await?;
+            out["eoa_tx"] = serde_json::Value::String(tx);
+            out["eoa_note"] =
+                serde_json::Value::String("EOA redeemPositions confirmed.".into());
+        }
+
+        if r.proxy {
+            eprintln!(
+                "[polymarket] Proxy holds winning tokens — submitting proxy redeemPositions via PROXY_FACTORY..."
+            );
+            let tx = ctf_redeem_via_proxy(condition_id, eoa_addr).await?;
+            eprintln!(
+                "[polymarket] Proxy redeem tx {} — waiting up to {}s for on-chain confirmation...",
+                tx, REDEEM_WAIT_SECS
+            );
+            wait_for_tx_receipt_labeled(&tx, REDEEM_WAIT_SECS, "Proxy redeem").await?;
+            out["proxy_tx"] = serde_json::Value::String(tx);
+            out["proxy_note"] = serde_json::Value::String(
+                "Proxy redeemPositions confirmed via PROXY_FACTORY.".into(),
+            );
+        }
+
+        out["note"] = serde_json::Value::String(
+            "USDC.e transferred to the respective wallet(s).".into(),
+        );
     }
 
-    if r.proxy {
-        eprintln!(
-            "[polymarket] Proxy holds winning tokens — submitting proxy redeemPositions via PROXY_FACTORY..."
-        );
-        let tx = ctf_redeem_via_proxy(condition_id, eoa_addr).await?;
-        eprintln!(
-            "[polymarket] Proxy redeem tx {} — waiting up to {}s for on-chain confirmation...",
-            tx, REDEEM_WAIT_SECS
-        );
-        wait_for_tx_receipt_labeled(&tx, REDEEM_WAIT_SECS, "Proxy redeem").await?;
-        out["proxy_tx"] = serde_json::Value::String(tx);
-        out["proxy_note"] = serde_json::Value::String(
-            "Proxy redeemPositions confirmed via PROXY_FACTORY.".into(),
-        );
-    }
-
-    out["note"] = serde_json::Value::String(
-        "USDC.e transferred to the respective wallet(s).".into(),
-    );
     Ok(out)
 }
 
@@ -249,14 +314,12 @@ pub async fn run(market_id: &str, dry_run: bool, strategy_id: Option<&str>) -> R
         }
     };
 
-    if neg_risk {
-        let e = anyhow!(
-            "redeem is not supported for neg_risk (multi-outcome) markets — \
-             use the Polymarket web UI to redeem positions in this market"
-        );
-        println!("{}", super::error_response(&e, Some("redeem"), None));
-        return Ok(());
-    }
+    // Fetch CLOB token IDs (needed for neg_risk on-chain balance queries).
+    // For standard markets, tokens are also available but unused in the redeem path.
+    let token_ids: Vec<String> = match get_clob_market(&client, &condition_id).await {
+        Ok(m) => m.tokens.into_iter().map(|t| t.token_id).collect(),
+        Err(_) => vec![],
+    };
 
     let cid_display = format!("0x{}", condition_id.trim_start_matches("0x"));
     let eoa_addr = match get_wallet_address().await {
@@ -276,6 +339,11 @@ pub async fn run(market_id: &str, dry_run: bool, strategy_id: Option<&str>) -> R
 
     if dry_run {
         let r = check_redeemability(&client, &condition_id, &eoa_addr, proxy_addr.as_deref()).await;
+        let action = if neg_risk {
+            "NegRiskAdapter.redeemPositions"
+        } else {
+            "CTF.redeemPositions"
+        };
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
@@ -285,14 +353,14 @@ pub async fn run(market_id: &str, dry_run: bool, strategy_id: Option<&str>) -> R
                     "market_id": market_id,
                     "condition_id": cid_display,
                     "question": question,
-                    "neg_risk": false,
+                    "neg_risk": neg_risk,
                     "eoa_wallet": eoa_addr,
                     "proxy_wallet": proxy_addr,
                     "discovered_proxy": discovered_proxy,
                     "eoa_redeemable": r.eoa,
                     "proxy_redeemable": r.proxy,
-                    "action": "redeemPositions",
-                    "index_sets": [1, 2],
+                    "action": action,
+                    "token_ids": token_ids,
                     "note": "dry-run: will redeem from whichever wallet holds the winning tokens. \
                              If both eoa_redeemable and proxy_redeemable are false, run `setup-proxy` first."
                 }
@@ -306,7 +374,7 @@ pub async fn run(market_id: &str, dry_run: bool, strategy_id: Option<&str>) -> R
         return Ok(());
     }
 
-    match redeem_one(&client, &condition_id, &question, &eoa_addr, proxy_addr.as_deref()).await {
+    match redeem_one(&client, &condition_id, &question, neg_risk, &token_ids, &eoa_addr, proxy_addr.as_deref()).await {
         Ok(result) => {
             report_redeem(strategy_id, &eoa_addr, proxy_addr.as_deref(), &condition_id, &result).await;
             println!(
@@ -440,7 +508,12 @@ pub async fn run_all(dry_run: bool, strategy_id: Option<&str>) -> Result<()> {
             n,
             title
         );
-        match redeem_one(&client, cid, title, &eoa_addr, proxy_addr.as_deref()).await {
+        // Fetch neg_risk flag and token_ids for each market (needed for NegRisk redeem path).
+        let (market_neg_risk, market_token_ids) = match get_clob_market(&client, cid).await {
+            Ok(m) => (m.neg_risk, m.tokens.into_iter().map(|t| t.token_id).collect()),
+            Err(_) => (false, vec![]),
+        };
+        match redeem_one(&client, cid, title, market_neg_risk, &market_token_ids, &eoa_addr, proxy_addr.as_deref()).await {
             Ok(r) => {
                 report_redeem(strategy_id, &eoa_addr, proxy_addr.as_deref(), cid, &r).await;
                 results.push(r);

@@ -1,5 +1,15 @@
 # Polymarket Plugin Changelog
 
+### v0.4.11 (2026-04-25)
+
+- **fix (Bug #1)**: `onchainos` binary path resolution in non-interactive shells — added `onchainos_bin()` helper that tries `~/.local/bin/onchainos` before falling back to bare `"onchainos"`. Non-interactive shells (e.g. Claude Code) never source `~/.zshrc`, so `~/.local/bin` was missing from PATH, causing "os error 2" on every CLI invocation. New env var `POLYMARKET_ONCHAINOS_BIN` allows test injection of mock binaries.
+- **fix (Bug #2)**: NegRisk market redeem — removed hard-block (`"redeem not supported for neg_risk markets"`). Plugin now queries on-chain ERC-1155 token balances and calls `NegRiskAdapter.redeemPositions(bytes32 conditionId, uint256[] amounts)` for EOA wallets. NegRisk proxy-wallet redeem deferred (returns actionable error message instead of silent block).
+- **fix (Bug #3)**: Allowance check uses direct `eth_call` (`get_usdc_allowance`) instead of the CLOB API (`get_balance_allowance`). CLOB API returns stale or incorrect `MAX_UINT` values that caused redundant approval transactions on every trade.
+- **fix (Bug #4)**: `approve_usdc` now approves `u128::MAX` (unlimited) instead of the specific order amount. Approving an exact amount downgraded any pre-existing `MAX_UINT` allowance to that amount, causing re-approval on every subsequent trade.
+- **fix (Bug #5)**: Partly resolved by Bug #3 fix — eliminating unnecessary re-approvals removes ~95% of TEE sign-tx failures. Residual cases (genuine first-time approvals) remain a TEE-side issue; error message updated to suggest retry.
+- **fix (Bug #6)**: Approval confirmation timeout increased from 30s to 90s (configurable via `POLYMARKET_APPROVE_TIMEOUT_SECS` env var). 30s was too short for Polygon under congestion (5-10s/block × confirmation time).
+- **tests**: First test suite added — 16 unit tests covering ABI encoding correctness (`decimal_str_to_hex64`, `build_negrisk_redeem_calldata`, `build_redeem_positions_calldata`, selectors), timeout env var behavior, and PATH resolution. All tests run with `cargo test` without network access.
+
 ### v0.4.10 (2026-04-22)
 
 - **feat**: Strategy attribution reporting — `buy` / `sell` / `redeem` each accept an optional `--strategy-id <id>`. When provided and non-empty, the plugin invokes `onchainos wallet report-plugin-info` after the order succeeds with a JSON payload containing `wallet`, `proxyAddress`, `order_id`, `tx_hashes`, `market_id`, `asset_id`, `side`, `amount`, `symbol`, `price`, `timestamp`, `strategy_id`, `plugin_name`. Omitting the flag skips reporting entirely. Report failures log to stderr as warnings and do not affect the trade result. `symbol` encodes the collateral / quote asset (Polymarket: `USDC.e`).

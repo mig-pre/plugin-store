@@ -1,7 +1,7 @@
 ---
 name: polymarket-plugin
 description: "Trade prediction markets on Polymarket - buy outcome tokens (YES/NO and categorical markets), check positions, list markets, manage orders, redeem winning tokens, and deposit funds on Polygon. Trigger phrases: buy polymarket shares, sell polymarket position, check my polymarket positions, list polymarket markets, get polymarket market, cancel polymarket order, redeem polymarket tokens, polymarket yes token, polymarket no token, prediction market trade, polymarket price, get started with polymarket, just installed polymarket, how do I use polymarket, set up polymarket, polymarket quickstart, new to polymarket, polymarket setup, help me trade on polymarket, place a bet on, buy prediction market, bet on, trade on prediction markets, prediction trading, place a prediction market bet, i want to bet on, deposit, 充值, 充钱, 转入, 打钱, fund polymarket, top up polymarket, add funds to polymarket, recharge polymarket, deposit usdc, deposit eth, polymarket deposit, BTC 5分钟, ETH 5分钟, 5分钟市场, 5min market, 五分钟市场, 短线市场, list 5-minute, BTC up or down, 找5分钟, 看5分钟, 5m updown, crypto 5m, 5分钟涨跌, 五分钟涨跌, updown market, BTC 5min, ETH 5min, SOL 5min, 5分钟预测."
-version: "0.4.10"
+version: "0.4.11"
 author: "skylavis-sky"
 tags:
   - prediction-market
@@ -25,7 +25,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/polymarket-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.4.10"
+LOCAL_VER="0.4.11"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -98,7 +98,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/polymarket-plugin@0.4.10/polymarket-plugin-${TARGET}${EXT}" -o ~/.local/bin/.polymarket-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/polymarket-plugin@0.4.11/polymarket-plugin-${TARGET}${EXT}" -o ~/.local/bin/.polymarket-plugin-core${EXT}
 chmod +x ~/.local/bin/.polymarket-plugin-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -106,7 +106,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/polymarket-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.4.6" > "$HOME/.plugin-store/managed/polymarket-plugin"
+echo "0.4.11" > "$HOME/.plugin-store/managed/polymarket-plugin"
 ```
 
 
@@ -133,16 +133,42 @@ echo "0.4.6" > "$HOME/.plugin-store/managed/polymarket-plugin"
 
 When a user signals they are **new or just installed** this plugin — e.g. "I just installed polymarket", "how do I get started", "what can I do with this", "help me set up", "I'm new to polymarket" — **do not wait for them to ask specific questions.** Proactively walk them through the Quickstart in order, one step at a time, waiting for confirmation before proceeding to the next:
 
-1. **Check wallet** — run `onchainos wallet addresses --chain 137`. If no address, direct them to connect via `onchainos wallet login`. Also verify `onchainos wallet sign-message --help` works — if missing, run `onchainos upgrade` and re-verify. Do not proceed to trading or suggest workarounds (MetaMask, private key export, manual curl signing) until sign-message is confirmed working.
+1. **Check wallet** — run `onchainos wallet addresses --chain 137`. If no address or session error, direct them to connect via `onchainos wallet login` (see **Session Recovery** below). Also verify `onchainos wallet sign-message --help` works — if missing, run `onchainos upgrade` and re-verify. Do not proceed to trading or suggest workarounds (MetaMask, private key export, manual curl signing) until sign-message is confirmed working.
 2. **Check access** — run `polymarket-plugin check-access`. If `accessible: false`, stop and show the warning. Do not proceed to funding.
-3. **Choose trading mode** — explain the two modes and ask which they prefer:
+3. **Check for existing proxy** — run `polymarket-plugin quickstart`. If `wallet.proxy` is non-null in the output, the user already has a proxy wallet (possibly from a previous setup on another machine). Skip `setup-proxy` and go directly to step 5. Do NOT run `setup-proxy` if a proxy already exists — it is idempotent but wastes POL.
+4. **Choose trading mode** — explain the two modes and ask which they prefer:
    - **EOA mode** (default): trade directly from the onchainos wallet; each buy requires a USDC.e `approve` tx (POL gas, typically < $0.01)
    - **POLY_PROXY mode** (recommended): deploy a proxy wallet once via `polymarket setup-proxy` (one-time ~$0.01 POL), then trade without any gas. USDC.e must be deposited into the proxy via `polymarket-plugin deposit`.
-4. **Check balance** — run `polymarket-plugin balance`. Shows POL and USDC.e for both EOA and proxy wallet (if set up). If insufficient, explain bridging options (OKX Web3 bridge or CEX withdrawal to Polygon). Verify the `usdc_e_contract` field matches `0x2791...a84174` before bridging.
-5. **Find a market** — run `polymarket-plugin list-markets` and offer to help them find something interesting. Ask what topics they care about.
-6. **Place a trade** — once they pick a market, guide them through `buy` or `sell` with explicit confirmation of market, outcome, and amount before executing.
+5. **Check balance** — run `polymarket-plugin balance`. Shows POL and USDC.e for both EOA and proxy wallet (if set up). If insufficient, explain bridging options (OKX Web3 bridge or CEX withdrawal to Polygon). Verify the `usdc_e_contract` field matches `0x2791...a84174` before bridging.
+6. **Find a market** — run `polymarket-plugin list-markets` and offer to help them find something interesting. Ask what topics they care about.
+7. **Place a trade** — once they pick a market, guide them through `buy` or `sell` with explicit confirmation of market, outcome, and amount before executing.
 
 Do not dump all steps at once. Guide conversationally — confirm each step before moving on.
+
+---
+
+## Session Recovery (onchainos session expired)
+
+**Trigger**: any plugin command fails with "session has expired", "not logged in", "Could not determine wallet address", or similar onchainos auth error.
+
+**Root cause**: onchainos sessions expire after inactivity. Polymarket cached credentials (`~/.config/polymarket/creds.json`) become invalid once the underlying onchainos signing key can no longer be used.
+
+**Recovery steps — tell the user exactly this:**
+
+1. Re-authenticate onchainos. In Claude Code you can try running it directly in the chat:
+   ```
+   ! onchainos wallet login your@email.com
+   ```
+   If that command is interactive (requires OTP entry or browser), open a **separate terminal** window and run it there instead. Complete the login before continuing.
+
+2. Clear stale Polymarket credentials so they are re-derived fresh:
+   ```
+   ! rm -f ~/.config/polymarket/creds.json
+   ```
+
+3. Retry the original command. The plugin will automatically re-derive CLOB API credentials using the new onchainos session.
+
+**Do not** suggest retrying the original command before completing both steps — re-login without clearing `creds.json` will still fail with "NOT AUTHORIZED" from the CLOB API.
 
 ---
 
@@ -176,7 +202,7 @@ Polymarket is a prediction market platform on Polygon where users trade outcome 
 - **Approval model (EOA)**: `buy` uses exact-amount USDC.e `approve(exchange, amount)`. `sell` uses `setApprovalForAll(exchange, true)` for CTF tokens (blanket ERC-1155 approval; same as Polymarket's web interface). No on-chain approvals needed in POLY_PROXY mode.
 
 **How it works:**
-1. On first trading command, API credentials are auto-derived from the onchainos wallet via Polymarket's CLOB API and cached at `~/.config/polymarket-plugin/creds.json`
+1. On first trading command, API credentials are auto-derived from the onchainos wallet via Polymarket's CLOB API and cached at `~/.config/polymarket/creds.json`
 2. Plugin signs EIP-712 Order structs via `onchainos sign-message --type eip712` and submits them off-chain to Polymarket's CLOB with L2 HMAC headers
 3. When orders are matched, Polymarket's operator settles on-chain via CTF Exchange (gasless for user)
 4. USDC.e flows from the onchainos wallet (buyer); conditional tokens flow from the onchainos wallet (seller)
@@ -961,14 +987,14 @@ polymarket switch-mode --mode eoa
 **No manual credential setup required.** On the first trading command, the plugin:
 1. Resolves the onchainos wallet address via `onchainos wallet addresses --chain 137`
 2. Derives Polymarket API credentials for that address via the CLOB API (L1 ClobAuth signed by onchainos)
-3. Caches them at `~/.config/polymarket-plugin/creds.json` (0600 permissions) for all future calls
+3. Caches them at `~/.config/polymarket/creds.json` (0600 permissions) for all future calls
 
 The onchainos wallet address is the Polymarket trading identity. Credentials are automatically re-derived if the active wallet changes.
 
 **Credential rotation**: If `buy` or `sell` returns `"credentials are stale or invalid"`, the plugin automatically clears the cached credentials and prompts you to re-run — no manual action needed. To manually force re-derivation:
 
 ```bash
-rm ~/.config/polymarket-plugin/creds.json
+rm ~/.config/polymarket/creds.json
 ```
 
 **Override via environment variables** (optional — takes precedence over cached credentials):
@@ -987,7 +1013,7 @@ export POLYMARKET_PASSPHRASE=<passphrase>
 | `POLYMARKET_SECRET` | Optional override | Base64url-encoded HMAC secret for L2 auth |
 | `POLYMARKET_PASSPHRASE` | Optional override | CLOB API passphrase |
 
-**Credential storage:** Credentials are cached at `~/.config/polymarket-plugin/creds.json` with `0600` permissions (owner read/write only). A warning is printed at startup if the file has looser permissions — run `chmod 600 ~/.config/polymarket-plugin/creds.json` to fix. The file remains in plaintext; avoid storing it on shared machines.
+**Credential storage:** Credentials are cached at `~/.config/polymarket/creds.json` with `0600` permissions (owner read/write only). A warning is printed at startup if the file has looser permissions — run `chmod 600 ~/.config/polymarket/creds.json` to fix. The file remains in plaintext; avoid storing it on shared machines.
 
 ---
 
@@ -1119,4 +1145,4 @@ Fees are deducted by the exchange from the received amount. The `feeRateBps` fie
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for full version history. Current version: **0.4.10** (2026-04-22).
+See [CHANGELOG.md](CHANGELOG.md) for full version history. Current version: **0.4.11** (2026-04-22).
