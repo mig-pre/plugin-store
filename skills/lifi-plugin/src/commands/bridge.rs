@@ -21,7 +21,7 @@ pub struct BridgeArgs {
     #[arg(long)]
     pub to_token: String,
     /// Human-readable amount (e.g. 100 = 100 USDC)
-    #[arg(long)]
+    #[arg(long, allow_hyphen_values = true)]
     pub amount: String,
     /// Receiver address (defaults to sender)
     #[arg(long)]
@@ -208,7 +208,13 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
         .as_str().unwrap_or("0").parse().unwrap_or(0);
 
     // ── 7. Preview block ──────────────────────────────────────────────────────
+    // Always wrap with ok:true so stdout is a single parseable JSON object
+    // (knowledge base GEN-001: structured JSON envelope on every code path).
+    let stage = if args.dry_run { "dry_run" } else if args.confirm { "submit" } else { "preview" };
     let preview = json!({
+        "ok": true,
+        "stage": stage,
+        "submitted": false,
         "preview": {
             "tool": quote.get("tool").cloned().unwrap_or(Value::Null),
             "type": quote.get("type").cloned().unwrap_or(Value::Null),

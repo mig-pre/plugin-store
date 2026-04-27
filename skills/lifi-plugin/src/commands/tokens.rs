@@ -41,7 +41,20 @@ pub async fn run(args: TokensArgs) -> anyhow::Result<()> {
             Ok(v) => v,
             Err(e) => {
                 let msg = format!("{:#}", e);
-                let code = if msg.contains("404") { "TOKEN_NOT_FOUND" } else { "API_ERROR" };
+                // LI.FI returns "404" or "1003" (code) or "Could not find token" body
+                // for unknown symbols. Map all of those to TOKEN_NOT_FOUND.
+                // LI.FI returns either 404 with code 1003 ("Could not find token"),
+                // or 400 with code 1011 ("Unknown token symbol") for unknown inputs.
+                let code = if msg.contains("404")
+                    || msg.contains("Could not find token")
+                    || msg.contains("Unknown token symbol")
+                    || msg.contains("\"code\":1003")
+                    || msg.contains("\"code\":1011")
+                {
+                    "TOKEN_NOT_FOUND"
+                } else {
+                    "API_ERROR"
+                };
                 println!(
                     "{}",
                     super::error_response(

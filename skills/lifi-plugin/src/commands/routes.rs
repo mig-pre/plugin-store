@@ -21,7 +21,7 @@ pub struct RoutesArgs {
     #[arg(long)]
     pub to_token: String,
     /// Human-readable amount
-    #[arg(long)]
+    #[arg(long, allow_hyphen_values = true)]
     pub amount: String,
     /// Override sender (default: onchainos wallet)
     #[arg(long)]

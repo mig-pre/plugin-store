@@ -21,7 +21,8 @@ pub struct QuoteArgs {
     #[arg(long)]
     pub to_token: String,
     /// Human-readable amount (e.g. 100 = 100 USDC). Decimals are resolved automatically.
-    #[arg(long)]
+    /// `allow_hyphen_values` so `--amount -5` reaches our validator (instead of clap eating `-5` as a flag).
+    #[arg(long, allow_hyphen_values = true)]
     pub amount: String,
     /// Override sender address (defaults to onchainos wallet on the source chain)
     #[arg(long)]
