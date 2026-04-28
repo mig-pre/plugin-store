@@ -286,7 +286,17 @@ jobs:
         if: matrix.zigbuild
         run: cargo install cargo-zigbuild --locked
 
+      # Checkout PR head when invoked with a PR number, otherwise the
+      # default ref (main). Using github.ref alone causes the matrix to
+      # compile from main even when a PR's source bumps a Cargo.toml
+      # version — the produced binary then reports the OLD version while
+      # the Publish job (which does explicitly checkout PR head) reads
+      # the NEW plugin.yaml, triggering a version-mismatch + cleanup
+      # self-destruct cycle. See PR #31's failure trace for the symptom.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.pr_number && format('refs/pull/{0}/head', inputs.pr_number) || github.ref }}
+          fetch-depth: 1
 
       - name: Build plugins
         shell: bash
@@ -517,48 +527,21 @@ jobs:
                 chmod +x "$NATIVE_BIN"
                 BIN_VERSION=$("./$NATIVE_BIN" --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
                 if [ -n "$BIN_VERSION" ] && [ "$BIN_VERSION" != "$VERSION" ]; then
-                  echo "::warning::Version mismatch for ${NAME}: tag=${VERSION} but binary=${BIN_VERSION}. Attempting auto-fix..."
-
-                  # Auto-fix: the binary has the REAL version. Use it as the release version.
-                  # This handles the case where plugin.yaml was bumped but this run compiled older Cargo.toml.
-                  FIXED_VERSION="$BIN_VERSION"
-                  FIXED_TAG="plugins/${NAME}@${FIXED_VERSION}"
-                  echo "  Auto-fix: using binary version ${FIXED_VERSION} instead of ${VERSION}"
-                  VERSION="$FIXED_VERSION"
-                  TAG="$FIXED_TAG"
-                  TITLE="${NAME} v${FIXED_VERSION}"
-
-                  # Also try: checkout latest main and check if Cargo.toml matches plugin.yaml now
-                  LATEST_CARGO_VER=$(git show origin/${{ github.ref_name }}:skills/${NAME}/Cargo.toml 2>/dev/null | grep '^version' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-                  LATEST_YAML_VER=$(git show origin/${{ github.ref_name }}:skills/${NAME}/plugin.yaml 2>/dev/null | grep '^version' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-
-                  if [ -n "$LATEST_CARGO_VER" ] && [ -n "$LATEST_YAML_VER" ] && [ "$LATEST_CARGO_VER" = "$LATEST_YAML_VER" ] && [ "$LATEST_CARGO_VER" != "$BIN_VERSION" ]; then
-                    # Check if this run was ALREADY triggered by an auto-rebuild.
-                    # If so, don't retry again — prevents infinite loop.
-                    LAST_COMMIT_MSG=$(git log -1 --pretty=%s 2>/dev/null || echo "")
-                    if echo "$LAST_COMMIT_MSG" | grep -q "^auto: trigger ${NAME} rebuild"; then
-                      echo "::error::Binary ${BIN_VERSION} still stale after auto-rebuild. Manual fix needed: ensure Cargo.toml version matches plugin.yaml (${LATEST_YAML_VER})."
-                      cd "$REPO_ROOT"
-                      continue
-                    fi
-
-                    # First time: auto-trigger rebuild
-                    echo "::warning::Binary ${BIN_VERSION} is stale. Latest main has ${LATEST_CARGO_VER}. Auto-triggering rebuild (one-time)..."
-                    git fetch origin ${{ github.ref_name }} 2>/dev/null || true
-                    git checkout origin/${{ github.ref_name }} -- "skills/${NAME}/SKILL.md" 2>/dev/null || true
-                    echo "" >> "${REPO_ROOT}/skills/${NAME}/SKILL.md"
-                    git -C "$REPO_ROOT" add "skills/${NAME}/SKILL.md"
-                    git -C "$REPO_ROOT" -c user.name="plugin-store-bot" -c user.email="bot@plugin-store.local" \
-                      commit -m "auto: trigger ${NAME} rebuild (binary v${BIN_VERSION} != plugin v${LATEST_YAML_VER})" 2>/dev/null || true
-                    git -C "$REPO_ROOT" push origin HEAD:${{ github.ref_name }} 2>/dev/null && \
-                      echo "  Auto-rebuild triggered for ${NAME}" || \
-                      echo "::warning::Auto-rebuild push failed for ${NAME}. Manual rebuild needed."
-
-                    cd "$REPO_ROOT"
-                    continue
-                  fi
-
-                  echo "  Publishing with binary version ${VERSION}"
+                  # Hard-fail on version mismatch. The previous behaviour was
+                  # to silently fall back to the binary version, but the
+                  # downstream cleanup step keys off plugin.yaml — so the
+                  # auto-fixed release would be deleted as "old" 1 second
+                  # after un-drafting. See PR #31's failure trace.
+                  #
+                  # If you hit this, the most common cause is one of:
+                  #   1. skills/${NAME}/Cargo.toml version was not bumped to
+                  #      match plugin.yaml (or vice versa) — fix the source.
+                  #   2. The build matrix compiled stale source (now fixed
+                  #      by the explicit "Checkout PR head" step above).
+                  echo "::error::Version mismatch for ${NAME}: plugin.yaml=${VERSION} but compiled binary --version reports ${BIN_VERSION}."
+                  echo "::error::Bump skills/${NAME}/Cargo.toml to ${VERSION} (or align plugin.yaml with the source) and re-run."
+                  echo "::error::Refusing to publish — silent fallback to ${BIN_VERSION} would be wiped by cleanup."
+                  exit 1
                 fi
                 if [ -n "$BIN_VERSION" ]; then
                   echo "  Version verified: binary=${BIN_VERSION} tag=${VERSION} ✓"
