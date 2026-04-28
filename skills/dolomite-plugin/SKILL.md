@@ -1,6 +1,6 @@
 ---
 name: dolomite-plugin
-description: Dolomite Finance lending and borrowing on Arbitrum — supply assets to earn interest, open isolated borrow positions, and manage repay/withdraw via DolomiteMargin
+description: Dolomite Finance lending and borrowing on Arbitrum - supply assets to earn interest, open isolated borrow positions, and manage repay/withdraw via DolomiteMargin
 version: "0.1.0"
 author: GeoGu360
 tags:
