@@ -87,11 +87,11 @@ echo "0.1.0" > "$HOME/.plugin-store/managed/compound-v2-plugin"
 
 # Compound V2 (Ethereum mainnet)
 
-> ## ⚠️ V2 IS IN GOVERNANCE WIND-DOWN MODE
+> ## ! V2 IS IN GOVERNANCE WIND-DOWN MODE
 >
 > **All 6 major Compound V2 markets** (cDAI, cUSDC, cUSDT, cETH, cWBTC2, cCOMP) have:
-> - `mintGuardianPaused = true` → **new supply rejected on-chain**
-> - `borrowGuardianPaused = true` → **new borrow rejected on-chain**
+> - `mintGuardianPaused = true` -> **new supply rejected on-chain**
+> - `borrowGuardianPaused = true` -> **new borrow rejected on-chain**
 >
 > The Compound team's active development is on **Compound V3 (Comet)**. This plugin is positioned
 > as an **EXIT tool**: redeem cTokens, repay legacy debt, claim accrued COMP rewards. Trying to
@@ -103,7 +103,7 @@ echo "0.1.0" > "$HOME/.plugin-store/managed/compound-v2-plugin"
 > ```
 
 Compound V2 is the original cToken-based money market protocol. Each market is a separate
-cToken contract (cDAI, cUSDC, cETH, etc.) — depositing the underlying asset mints cTokens
+cToken contract (cDAI, cUSDC, cETH, etc.) - depositing the underlying asset mints cTokens
 that appreciate against the underlying via `exchangeRate`. The Comptroller (a Unitroller proxy
 at `0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B`) is the risk engine: tracks per-account
 collateral entry, liquidity, and pause flags.
@@ -131,7 +131,7 @@ For new supply/borrow flows: route to `compound-v3-plugin` instead.
 
 ## Commands
 
-### 0. `quickstart` — First-time onboarding
+### 0. `quickstart` - First-time onboarding
 
 Scans the 6 well-known cToken markets (cDAI / cUSDC / cUSDT / cETH / cWBTC2 / cCOMP) for the
 user's underlying balance + supply position + borrow position + accrued COMP, returns a
@@ -146,18 +146,18 @@ compound-v2-plugin quickstart --address 0xYourAddr
 
 | `status` | Meaning | `next_command` |
 |----------|---------|----------------|
-| `rpc_degraded` | ≥ 3 of 6 market reads failed | (none — retry) |
+| `rpc_degraded` | >= 3 of 6 market reads failed | (none - retry) |
 | `protocol_winddown` | No V2 history; all supply paused | `npx skills add okx/plugin-store --skill compound-v3-plugin` |
 | `has_supply_can_redeem` | Existing supply position | `withdraw --token X --amount all --confirm` |
 | `has_debt_can_repay` | Existing borrow position | `repay --token X --all --confirm` |
-| `has_comp_accrued` | Accumulated COMP ≥ 0.05 | `claim-comp --confirm` |
-| `insufficient_gas` | < 0.005 ETH gas, no V2 history | (none — top up) |
+| `has_comp_accrued` | Accumulated COMP >= 0.05 | `claim-comp --confirm` |
+| `insufficient_gas` | < 0.005 ETH gas, no V2 history | (none - top up) |
 
 **Output:** `chain`, `wallet`, `winddown_warning`, `native_eth_balance`, `comp_accrued`, `status`, `next_command`, `tip`, `markets[]` (per-market wallet + supply + borrow + APRs + pause flags).
 
 ---
 
-### 1. `markets` — List markets + APYs + pause flags
+### 1. `markets` - List markets + APYs + pause flags
 
 ```bash
 compound-v2-plugin markets
@@ -168,11 +168,11 @@ compound-v2-plugin markets
 `total_borrow_underlying`, `cash_underlying`, `utilization_pct`, `is_listed`, `collateral_factor_pct`,
 `comp_distributed`, `mint_paused`, `borrow_paused`.
 
-APR computed: `ratePerBlock × 2_102_400 / 1e18` (12s blocks per year).
+APR computed: `ratePerBlock x 2_102_400 / 1e18` (12s blocks per year).
 
 ---
 
-### 2. `positions` — User's open positions
+### 2. `positions` - User's open positions
 
 ```bash
 compound-v2-plugin positions
@@ -186,16 +186,16 @@ Empty markets are omitted.
 
 ---
 
-### 3. `supply` — ⚠️ Blocked: redirects to V3 (requires `--confirm` for execution path)
+### 3. `supply` - ! Blocked: redirects to V3 (requires `--confirm` for execution path)
 
-Pre-flight `mintGuardianPaused` check. **All 6 markets paused in v0.1.0** → returns
+Pre-flight `mintGuardianPaused` check. **All 6 markets paused in v0.1.0** -> returns
 `MARKET_PAUSED_USE_V3` error before any approve/submit happens. The full implementation
 (approve + cToken.mint + cETH.mint() payable for native) is preserved for future where
 governance might unpause OR for non-default cToken addresses passed via 0x.
 
 ```bash
 compound-v2-plugin supply --token USDC --amount 100 --confirm
-# → {"ok":false,"error_code":"MARKET_PAUSED_USE_V3", "suggestion":"npx skills add okx/plugin-store --skill compound-v3-plugin"}
+# -> {"ok":false,"error_code":"MARKET_PAUSED_USE_V3", "suggestion":"npx skills add okx/plugin-store --skill compound-v3-plugin"}
 ```
 
 **Parameters:** `--token`, `--amount`, `--dry-run`, `--confirm`, `--approve-timeout-secs`.
@@ -204,7 +204,7 @@ compound-v2-plugin supply --token USDC --amount 100 --confirm
 
 ---
 
-### 4. `withdraw` — Redeem cToken back to wallet (requires `--confirm`)
+### 4. `withdraw` - Redeem cToken back to wallet (requires `--confirm`)
 
 Calls `cToken.redeemUnderlying(uint256 underlyingAmount)`. For ETH: redeems to native ETH
 (cETH unwraps internally). Pass `--amount all` to redeem the entire supply position.
@@ -216,22 +216,22 @@ compound-v2-plugin withdraw --token USDC --amount all --confirm
 
 **Parameters:** `--token`, `--amount` (number or `all`), `--dry-run`, `--confirm`, `--timeout-secs`.
 
-**Flow:** Pre-flight checks supply ≥ amount + native gas; calls `redeemUnderlying`; TX-001
+**Flow:** Pre-flight checks supply >= amount + native gas; calls `redeemUnderlying`; TX-001
 confirms `status=0x1`.
 
 **Errors:** Same set as supply, plus `NO_SUPPLY` | `WITHDRAW_SUBMIT_FAILED`.
 
 ---
 
-### 5. `borrow` — ⚠️ Blocked: redirects to V3 (requires `--confirm`)
+### 5. `borrow` - ! Blocked: redirects to V3 (requires `--confirm`)
 
 Pre-flight `borrowGuardianPaused` + `getAccountLiquidity` checks. **All 6 markets paused in
-v0.1.0** → returns `BORROW_PAUSED_USE_V3` before any submit. Full implementation
+v0.1.0** -> returns `BORROW_PAUSED_USE_V3` before any submit. Full implementation
 (auto enterMarkets + cToken.borrow) preserved.
 
 ```bash
 compound-v2-plugin borrow --token DAI --amount 50 --confirm
-# → {"ok":false,"error_code":"BORROW_PAUSED_USE_V3", "suggestion":"npx skills add okx/plugin-store --skill compound-v3-plugin"}
+# -> {"ok":false,"error_code":"BORROW_PAUSED_USE_V3", "suggestion":"npx skills add okx/plugin-store --skill compound-v3-plugin"}
 ```
 
 **Parameters:** `--token`, `--amount`, `--skip-enter-markets`, `--dry-run`, `--confirm`, `--timeout-secs`.
@@ -240,10 +240,10 @@ compound-v2-plugin borrow --token DAI --amount 50 --confirm
 
 ---
 
-### 6. `repay` — Pay back debt (requires `--confirm`)
+### 6. `repay` - Pay back debt (requires `--confirm`)
 
-`--all`: passes `uint256.max` (`0xff…ff`). Compound V2's `cToken.repayBorrow(amount)` auto-caps
-to `min(amount, currentBorrowBalance)` at execution time → settles to **exactly zero (no dust)** —
+`--all`: passes `uint256.max` (`0xff...ff`). Compound V2's `cToken.repayBorrow(amount)` auto-caps
+to `min(amount, currentBorrowBalance)` at execution time -> settles to **exactly zero (no dust)** -
 addresses **LEND-001**. Same mechanism as Aave V3's max-sentinel.
 
 `--amount X`: partial repay; `cToken.repayBorrow(X)`. Excess (X > debt) auto-clamped at debt by
@@ -265,7 +265,7 @@ compound-v2-plugin repay --token DAI --all --confirm                # exact-zero
 
 ---
 
-### 7. `claim-comp` — Claim accrued COMP rewards (requires `--confirm`)
+### 7. `claim-comp` - Claim accrued COMP rewards (requires `--confirm`)
 
 Calls `Comptroller.claimComp(holder, address[] cTokens)`. The Comptroller iterates each cToken
 and runs supplier + borrower distributions before transferring accrued COMP to the holder.
@@ -279,7 +279,7 @@ compound-v2-plugin claim-comp --ctokens cDAI,cUSDC --confirm # subset
 
 **Output:** `holder`, `ctokens_claimed_from`, `comp_balance_before`, `comp_balance_after`, `comp_claimed`, `tx_hash`.
 
-> Note: `compAccrued(holder)` is the **stored** value — actual claim may be slightly higher
+> Note: `compAccrued(holder)` is the **stored** value - actual claim may be slightly higher
 > after the in-tx distribution settles. Plugin reports both stored (pre-flight) and the
 > diff between balance-before and balance-after (post-confirmation actual claim).
 
@@ -287,9 +287,9 @@ compound-v2-plugin claim-comp --ctokens cDAI,cUSDC --confirm # subset
 
 ---
 
-### 8. `enter-markets` — Mark cTokens as collateral (requires `--confirm`)
+### 8. `enter-markets` - Mark cTokens as collateral (requires `--confirm`)
 
-Calls `Comptroller.enterMarkets(address[] cTokens)`. Rarely needed by hand — `borrow` auto-enters.
+Calls `Comptroller.enterMarkets(address[] cTokens)`. Rarely needed by hand - `borrow` auto-enters.
 Useful if you want a supply-only cToken to serve as collateral for future borrows.
 
 ```bash
@@ -302,7 +302,7 @@ compound-v2-plugin enter-markets --ctokens cDAI,cUSDC --confirm
 
 ---
 
-### 9. `exit-market` — Remove cToken from collateral set (requires `--confirm`)
+### 9. `exit-market` - Remove cToken from collateral set (requires `--confirm`)
 
 Calls `Comptroller.exitMarket(address)`. Reverts if any of:
 - You have an outstanding borrow in this cToken (must `repay --all` first)
@@ -329,20 +329,20 @@ compound-v2-plugin exit-market --ctoken cDAI --confirm
 | **EVM-002** | Every amount field paired (display + `_raw`) |
 | **EVM-006** | Approve followed by `wait_for_tx` polling, no blind sleep |
 | **EVM-014** | Retry-on-allowance-revert with 3 patterns (standard ERC-20, DAI custom, OZ v5) |
-| **EVM-015** | Explicit `--gas-limit`: approve 80k, redeem/repay 280k, borrow 450k, claimComp 200k+70k×N, enterMarkets 100k+30k×N, exitMarket 150k |
+| **EVM-015** | Explicit `--gas-limit`: approve 80k, redeem/repay 280k, borrow 450k, claimComp 200k+70kxN, enterMarkets 100k+30kxN, exitMarket 150k |
 | **TX-001** | `wait_for_tx` after main submit confirms `status=0x1` before reporting success; output includes `on_chain_status: "0x1"` |
 | **GAS-001** | Native ETH gas check before any approve+submit pair; floor 0.005 ETH on L1 (mainnet gas-heavy) |
-| **LEND-001** | `repay --all` uses Compound V2's native `cToken.repayBorrow(uint256.max)` sentinel — contract auto-caps to current debt at execution time. Exact-zero dust guarantee, single-tx, no decision-tree complexity (simpler than Dolomite's branching) |
+| **LEND-001** | `repay --all` uses Compound V2's native `cToken.repayBorrow(uint256.max)` sentinel - contract auto-caps to current debt at execution time. Exact-zero dust guarantee, single-tx, no decision-tree complexity (simpler than Dolomite's branching) |
 
 Not applicable:
-- **EVM-005** — cETH IS a native sentinel pattern (payable mint/repay); handled inline in supply/repay (`is_native` branch). Not a generic ETH sentinel issue.
-- **AGG-001/002/003** — single-protocol skill, not an aggregator.
+- **EVM-005** - cETH IS a native sentinel pattern (payable mint/repay); handled inline in supply/repay (`is_native` branch). Not a generic ETH sentinel issue.
+- **AGG-001/002/003** - single-protocol skill, not an aggregator.
 
 ---
 
 ## Skill Routing
 
-- For active Compound V3 lending: **`compound-v3-plugin`** ← primary recommendation
+- For active Compound V3 lending: **`compound-v3-plugin`** <- primary recommendation
 - For Aave V3 lending: `aave-v3-plugin`
 - For Morpho Blue lending: `morpho-plugin`
 - For Sky/Spark Savings (USDS yield, no borrowing): `spark-savings-plugin`
@@ -355,12 +355,12 @@ Not applicable:
 
 > Compound V2 is audited (OpenZeppelin, Trail of Bits) but is in governance wind-down:
 > - No Compound team support for new V2 issues; stick to read/exit operations
-> - Smart contract risk persists — old code, no new audits
-> - Liquidation engine still active for legacy borrowers (under-collateralized → bot liquidates)
+> - Smart contract risk persists - old code, no new audits
+> - Liquidation engine still active for legacy borrowers (under-collateralized -> bot liquidates)
 > - All write ops require explicit `--confirm`; signing routes through onchainos TEE
 
 **Key mental model**: Compound V2 markets are independent cToken contracts. Your underlying
-balance = `cToken_balanceOf × exchangeRate / 1e18`. exchangeRate grows over time as borrowers
+balance = `cToken_balanceOf x exchangeRate / 1e18`. exchangeRate grows over time as borrowers
 pay interest (this is how supply earns yield). Comptroller separately tracks "entered as
 collateral" and per-account `(liquidity, shortfall)`.
 
@@ -368,10 +368,10 @@ collateral" and per-account `(liquidity, shortfall)`.
 
 ## Do NOT Use For
 
-- New supply or new borrow on Compound V2 — install `compound-v3-plugin` instead
+- New supply or new borrow on Compound V2 - install `compound-v3-plugin` instead
 - Multi-chain Compound (V2 is mainnet-only; "V2-on-X" forks like Venus/CREAM are unrelated)
-- Liquidation protection / auto-deleverage — must be triggered manually via `repay`/`withdraw`
-- DeFi-Saver-style auto-repay-on-shortfall — out of scope; consider DeFi Saver or Instadapp wrappers
+- Liquidation protection / auto-deleverage - must be triggered manually via `repay`/`withdraw`
+- DeFi-Saver-style auto-repay-on-shortfall - out of scope; consider DeFi Saver or Instadapp wrappers
 
 ---
 
@@ -380,11 +380,11 @@ collateral" and per-account `(liquidity, shortfall)`.
 ### v0.1.0 (2026-04-28)
 
 - **feat**: initial release with 10 commands (`quickstart`, `markets`, `positions`, `supply`, `withdraw`, `borrow`, `repay`, `claim-comp`, `enter-markets`, `exit-market`)
-- **feat**: Ethereum mainnet support — Comptroller (Unitroller proxy) at `0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B`, COMP at `0xc00e94Cb662C3520282E6f5717214004A7f26888`
+- **feat**: Ethereum mainnet support - Comptroller (Unitroller proxy) at `0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B`, COMP at `0xc00e94Cb662C3520282E6f5717214004A7f26888`
 - **feat**: 6 well-known cToken markets pre-configured (cDAI / cUSDC / cUSDT / cETH / cWBTC2 / cCOMP); Comptroller registers 20 cTokens total but the rest have minimal liquidity
-- **feat**: live APR computation — supply/borrow rate from `supplyRatePerBlock` / `borrowRatePerBlock`, multiplied by 2_102_400 blocks/year
-- **feat**: wind-down-aware UX — supply/borrow pre-flight check pause flags (mintGuardianPaused / borrowGuardianPaused) and short-circuit with structured `MARKET_PAUSED_USE_V3` / `BORROW_PAUSED_USE_V3` errors that explicitly redirect to `compound-v3-plugin`
-- **feat**: dust-free `repay --all` — uses Compound V2's native `cToken.repayBorrow(uint256.max)` sentinel; settles to exact zero (LEND-001 compliant). cETH path uses payable repay with `value=amount`.
+- **feat**: live APR computation - supply/borrow rate from `supplyRatePerBlock` / `borrowRatePerBlock`, multiplied by 2_102_400 blocks/year
+- **feat**: wind-down-aware UX - supply/borrow pre-flight check pause flags (mintGuardianPaused / borrowGuardianPaused) and short-circuit with structured `MARKET_PAUSED_USE_V3` / `BORROW_PAUSED_USE_V3` errors that explicitly redirect to `compound-v3-plugin`
+- **feat**: dust-free `repay --all` - uses Compound V2's native `cToken.repayBorrow(uint256.max)` sentinel; settles to exact zero (LEND-001 compliant). cETH path uses payable repay with `value=amount`.
 - **feat**: structured GEN-001 errors across all 10 commands; ONC-001 `--force`; EVM-014 retry (3 patterns); EVM-015 explicit gas-limit per op type; TX-001 on-chain confirmation; EVM-001 / EVM-002 / EVM-006 / GAS-001 / ONB-001 / LEND-001 fully honored
-- **selectors**: all selectors verified directly via keccak256 + on-chain eth_call. Critical bug caught during build: initial guess for `borrowGuardianPaused(address)` selector (`0x6d35bf91`) was wrong — actual is `0x6d154ea5`. The wrong selector silently reverted, which my fail-closed `unwrap_or(true)` correctly trapped, but the read-side displays were silently showing `false` → fixed across rpc.rs / quickstart.rs / markets.rs.
+- **selectors**: all selectors verified directly via keccak256 + on-chain eth_call. Critical bug caught during build: initial guess for `borrowGuardianPaused(address)` selector (`0x6d35bf91`) was wrong - actual is `0x6d154ea5`. The wrong selector silently reverted, which my fail-closed `unwrap_or(true)` correctly trapped, but the read-side displays were silently showing `false` -> fixed across rpc.rs / quickstart.rs / markets.rs.
 - Verified end-to-end on Ethereum mainnet: read commands return real on-chain APRs (cUSDC borrow 3.82%, cETH borrow 1.74%, cWBTC2 borrow 2.11%); pause flags correctly show all 6 markets `mint_paused=true && borrow_paused=true`; supply/borrow correctly short-circuit with V3 redirect; withdraw/repay/exit-market return correct NO_SUPPLY/NO_DEBT/NOT_IN_MARKET on user with no V2 history
