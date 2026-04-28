@@ -1,7 +1,7 @@
 ---
 name: rust-sol-price
 description: "Query real-time SOL price via OKX API"
-version: "11.0.0"
+version: "13.0.0"
 author: "yz06276"
 tags: [solana, price]
 ---
@@ -19,7 +19,7 @@ tags: [solana, price]
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/rust-sol-price"
 CACHE_MAX=3600
-LOCAL_VER="12.0.0"
+LOCAL_VER="13.0.0"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -92,7 +92,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/rust-sol-price@12.0.0/rust-sol-price-${TARGET}${EXT}" -o ~/.local/bin/.rust-sol-price-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/rust-sol-price@13.0.0/rust-sol-price-${TARGET}${EXT}" -o ~/.local/bin/.rust-sol-price-core${EXT}
 chmod +x ~/.local/bin/.rust-sol-price-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -100,7 +100,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/rust-sol-price
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "12.0.0" > "$HOME/.plugin-store/managed/rust-sol-price"
+echo "13.0.0" > "$HOME/.plugin-store/managed/rust-sol-price"
 ```
 
 ---
