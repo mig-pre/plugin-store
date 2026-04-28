@@ -26,11 +26,12 @@ tools:
 When a user signals they are **new or just installed** this plugin — e.g. "I just installed aerodrome-amm", "how do I get started", "what can I do" — **do not wait for specific questions.** Walk them through the Quickstart conversationally, one step at a time:
 
 1. **Check wallet** — run `onchainos wallet addresses --chain 8453`. If no address, direct them to `onchainos wallet login`. Do not proceed to write operations until a wallet is confirmed.
-2. **Check balance** — run `onchainos wallet balance --chain 8453`. ETH (WETH) or USDC on Base is needed for swaps; both tokens needed for liquidity.
-3. **Explore pools** — run `aerodrome-amm pools --token-a WETH --token-b USDC` to show what's available.
-4. **Quote first** — run `aerodrome-amm quote` so the user sees the expected output before any on-chain action.
-5. **Preview swap** — run `aerodrome-amm swap` without `--confirm`; show the preview JSON.
-6. **Execute** — once the user confirms, re-run with `--confirm`.
+2. **Check balance** — run `onchainos wallet balance --chain 8453`. WETH or USDC on Base is needed for swaps; both tokens needed for liquidity. Minimum recommended: $5 equivalent.
+3. **Explore pools** — run `aerodrome-amm pools --token-a WETH --token-b USDC` to show available volatile and stable pools with reserves and price.
+4. **Quote first** — run `aerodrome-amm quote --token-in WETH --token-out USDC --amount-in 0.01` so the user sees expected output from both pools before any on-chain action.
+5. **Preview swap** — run `aerodrome-amm swap --token-in WETH --token-out USDC --amount-in 0.01` without `--confirm`; show the preview JSON and explain `minimum_out` (slippage floor).
+6. **Execute** — once the user confirms, re-run with `--confirm`. The binary auto-selects the best pool and handles token approvals.
+7. **For LP users**: after swap, walk through `add-liquidity` → `positions` → `claim-fees` → `remove-liquidity` from the Quickstart Steps 5–7.
 
 Do not dump all steps at once. Guide conversationally — confirm each step before moving on.
 
@@ -82,14 +83,52 @@ aerodrome-amm swap --token-in WETH --token-out USDC --amount-in 0.01 --confirm
 ### Step 5 — Provide liquidity (optional)
 
 ```bash
-# Preview adding WETH/USDC liquidity (volatile pool)
+# Preview adding WETH/USDC liquidity to volatile pool (amounts auto-adjusted to pool ratio)
 aerodrome-amm add-liquidity --token-a WETH --token-b USDC --amount-a 0.01 --amount-b 22.0
 
-# Add --confirm to execute; add --stable for the stable pool
+# Execute:
 aerodrome-amm add-liquidity --token-a WETH --token-b USDC --amount-a 0.01 --amount-b 22.0 --confirm
+
+# For stable pool (e.g. USDC/USDT):
+aerodrome-amm add-liquidity --token-a USDC --token-b USDT --amount-a 10 --amount-b 10 --stable --confirm
 ```
 
-After providing liquidity, you receive LP tokens representing your pool share. Claim accrued trading fees with `claim-fees`.
+The preview shows `amount_a_used` and `amount_b_used` — the actual amounts used may differ from desired to match the current pool ratio. Approvals for both tokens are handled automatically (idempotent: already-approved tokens are not re-approved).
+
+### Step 6 — Check your LP position
+
+After adding liquidity, verify your position and see the underlying token amounts:
+
+```bash
+aerodrome-amm positions --token-a WETH --token-b USDC
+```
+
+Example output:
+```json
+{
+  "lp_balance": "0.000000004512",
+  "pool_share_pct": "0.000004%",
+  "underlying": { "WETH": "0.000096", "USDC": "0.22" },
+  "wallet": "0xee385...",
+  "tip": "Run `aerodrome-amm claim-fees` to collect accrued trading fees."
+}
+```
+
+### Step 7 — Claim fees and remove liquidity
+
+```bash
+# Preview fees before claiming
+aerodrome-amm claim-fees --token-a WETH --token-b USDC
+
+# Claim fees on-chain
+aerodrome-amm claim-fees --token-a WETH --token-b USDC --confirm
+
+# Remove 100% of your position
+aerodrome-amm remove-liquidity --token-a WETH --token-b USDC --percent 100 --confirm
+
+# Or remove a specific LP amount
+aerodrome-amm remove-liquidity --token-a WETH --token-b USDC --liquidity 0.001 --confirm
+```
 
 ---
 
