@@ -358,10 +358,10 @@ lifi-plugin bridge \
 - **EVM-005** — native token sentinel detected, no approve attempt
 - **EVM-006** — approve is followed by `wait_for_tx` polling, no blind sleep
 - **GEN-001** — every code path emits structured JSON to stdout
-- **BRG-001** — `onchainos wallet contract-call` is invoked with `--force` (required for unlimited approve + unknown contract calls)
-- **BRG-002** — pre-flight native gas balance check using `quote.estimate.gasCosts[].amount`
-- **BRG-003** — preview includes `reliability` field flagging solver-quote tools (mayan/near/relayer)
-- **BRG-004** — preview includes `liquidity_check` field with `verdict` ∈ {OK | BELOW_LP_MINIMUM | UNKNOWN}; submission is refused on BELOW_LP_MINIMUM unless `--accept-relayer-risk` is set
+- **ONC-001** — `onchainos wallet contract-call` is invoked with `--force` (required for unlimited approve + unknown contract calls)
+- **GAS-001** — pre-flight native gas balance check using `quote.estimate.gasCosts[].amount`
+- **AGG-001** — preview includes `reliability` field flagging solver-quote tools (mayan/near/relayer)
+- **AGG-002** — preview includes `liquidity_check` field with `verdict` ∈ {OK | BELOW_LP_MINIMUM | UNKNOWN}; submission is refused on BELOW_LP_MINIMUM unless `--accept-relayer-risk` is set
 
 **Preview output shape (relevant fields):**
 ```json
@@ -525,8 +525,8 @@ Data returned by `lifi-plugin status`, `chains`, `tokens`, `quote`, `routes`, `b
 - **feat**: ERC-20 approve uses onchainos `wallet contract-call`; tx hash extracted and **polled via `eth_getTransactionReceipt`** until status `0x1` — no blind sleep (**EVM-006**)
 - **feat**: every command emits **structured JSON on stdout** (`ok`, `error`, `error_code`, `suggestion`) with exit code 0 for business-logic failures (**GEN-001**)
 - **feat**: every amount field is paired (`amount` + `amount_raw`) so downstream agents can read either (**EVM-002**)
-- **fix**: `bridge` — `onchainos wallet contract-call` now invoked with `--force` (was silently failing with cryptic "execution reverted" on unlimited-approve and unknown-contract calls; the comment "intentionally omitted" copied from hyperliquid-plugin was wrong for direct EVM contract calls) (**BRG-001**)
-- **feat**: `bridge` — pre-flight native gas balance check using `quote.estimate.gasCosts[].amount` sum; new error code `INSUFFICIENT_GAS` with shortfall amount in suggestion (**BRG-002**)
-- **feat**: `bridge` — `reliability` field in preview output flags solver-quote tools (mayan/near/relayer) that may revert due to signed-quote latency (**BRG-003**)
-- **feat**: `bridge` — `liquidity_check` field in preview output enumerates ALL available tools (via parallel `/routes` call) and computes `verdict` ∈ {OK, BELOW_LP_MINIMUM, UNKNOWN}; `--confirm` is refused on BELOW_LP_MINIMUM unless `--accept-relayer-risk` is passed (**BRG-004**)
-- Verified: 6 parallel agents — one per chain — confirmed read paths, error paths, and bridge `--dry-run` work on every supported chain; quickstart status enum verified against all 4 documented branches; real ARB→BAS 1 USDC bridge succeeded end-to-end with the BRG-001 fix
+- **fix**: `bridge` — `onchainos wallet contract-call` now invoked with `--force` (was silently failing with cryptic "execution reverted" on unlimited-approve and unknown-contract calls; the comment "intentionally omitted" copied from hyperliquid-plugin was wrong for direct EVM contract calls) (**ONC-001**)
+- **feat**: `bridge` — pre-flight native gas balance check using `quote.estimate.gasCosts[].amount` sum; new error code `INSUFFICIENT_GAS` with shortfall amount in suggestion (**GAS-001**)
+- **feat**: `bridge` — `reliability` field in preview output flags solver-quote tools (mayan/near/relayer) that may revert due to signed-quote latency (**AGG-001**)
+- **feat**: `bridge` — `liquidity_check` field in preview output enumerates ALL available tools (via parallel `/routes` call) and computes `verdict` ∈ {OK, BELOW_LP_MINIMUM, UNKNOWN}; `--confirm` is refused on BELOW_LP_MINIMUM unless `--accept-relayer-risk` is passed (**AGG-002**)
+- Verified: 6 parallel agents — one per chain — confirmed read paths, error paths, and bridge `--dry-run` work on every supported chain; quickstart status enum verified against all 4 documented branches; real ARB→BAS 1 USDC bridge succeeded end-to-end with the ONC-001 fix
