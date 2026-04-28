@@ -151,6 +151,45 @@ Use this plugin when the user says (in any language):
 
 ## Commands
 
+### 0. `quickstart` — First-time onboarding
+
+Scans all 6 supported chains in parallel for native + USDC balances and returns a structured `status` enum + a ready-to-run `next_command`. This is the single entry point new users / external Agents should call first.
+
+```bash
+# Use the connected onchainos wallet
+lifi-plugin quickstart
+
+# Or query an arbitrary address (no signing key needed)
+lifi-plugin quickstart --address 0xYourAddr
+```
+
+**Parameters:**
+
+| Flag | Required | Default | Notes |
+|------|----------|---------|-------|
+| `--address` | no | onchainos wallet | Override the wallet address to inspect |
+
+**Output fields:** `ok`, `about`, `wallet`, `scanned_chains`, `rpc_failures`, `richest_chain`, `status`, `next_command`, `tip`, `chains[]`.
+
+Each entry in `chains[]` carries `chain`, `chain_id`, `native{symbol, amount, amount_raw}`, optional `usdc{amount, amount_raw, decimals, usd_value}`, optional `error`.
+
+**Display:** `status`, `richest_chain`, `next_command`, `tip`. Don't dump the full `chains[]` array unless the user asked for a balance breakdown.
+
+**Status enum:**
+
+| `status` | Meaning | `next_command` |
+|----------|---------|---------------|
+| `rpc_degraded` | ≥ 4 / 6 RPCs failed; environment issue | (none — retry) |
+| `no_funds` | Wallet has nothing on any chain | `lifi-plugin balance --address <wallet>` (helps locate any tiny holdings + shows where to top up) |
+| `low_balance` | Richest chain has < $5 USDC | `lifi-plugin balance --address <wallet> --token USDC` |
+| `ready` | Richest chain has ≥ $5 USDC | `lifi-plugin bridge --from-chain <richest> --to-chain BAS --from-token USDC --to-token USDC --amount 0.5 --confirm` |
+
+**Errors:** `WALLET_NOT_FOUND` (onchainos not logged in and `--address` omitted).
+
+> **For SUMMARY.md / external Agents**: the SUMMARY.md `## Quick Start` section maps each `status` enum value to one specific follow-up command. Keep it in sync with the table above.
+
+---
+
 ### 1. `chains` — List Supported Chains
 
 ```bash
@@ -454,11 +493,13 @@ Data returned by `lifi-plugin status`, `chains`, `tokens`, `quote`, `routes`, `b
 
 ### v0.1.0 (2026-04-28)
 
-- **feat**: initial release with 7 commands (`chains`, `tokens`, `quote`, `routes`, `bridge`, `status`, `balance`)
-- **feat**: 6-chain whitelist (Ethereum, Arbitrum, Base, Optimism, BSC, Polygon)
+- **feat**: initial release with 8 commands (`quickstart`, `chains`, `tokens`, `quote`, `routes`, `bridge`, `status`, `balance`)
+- **feat**: `quickstart` — 6-chain parallel native + USDC balance scan in one call; returns `status` enum (`ready` / `low_balance` / `no_funds` / `rpc_degraded`) + a ready-to-run `next_command` (knowledge-base **ONB-001**)
+- **feat**: `SUMMARY.md` per fixed template (Overview / Prerequisites / Quick Start) — every Quick Start step branches off a `quickstart` status enum, so the doc and the binary stay in lockstep
+- **feat**: 6-chain whitelist (Ethereum, Arbitrum, Base, Optimism, BSC, Polygon); BSC USDC's non-standard 18-decimal layout is handled correctly in `quickstart` and via LI.FI lookup elsewhere
 - **feat**: native token sentinel handling for non-EVM-style native bridging (ETH/BNB/POL); skips ERC-20 approve for native inputs (knowledge-base **EVM-005**)
 - **feat**: pre-flight RPC balance check before approve in `bridge` (**EVM-001**)
 - **feat**: ERC-20 approve uses onchainos `wallet contract-call`; tx hash extracted and **polled via `eth_getTransactionReceipt`** until status `0x1` — no blind sleep (**EVM-006**)
 - **feat**: every command emits **structured JSON on stdout** (`ok`, `error`, `error_code`, `suggestion`) with exit code 0 for business-logic failures (**GEN-001**)
 - **feat**: every amount field is paired (`amount` + `amount_raw`) so downstream agents can read either (**EVM-002**)
-- Verified: 6 parallel agents — one per chain — confirmed read paths, error paths, and bridge `--dry-run` work on every supported chain
+- Verified: 6 parallel agents — one per chain — confirmed read paths, error paths, and bridge `--dry-run` work on every supported chain; quickstart status enum verified against all 4 documented branches

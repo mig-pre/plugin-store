@@ -1,6 +1,7 @@
 pub mod balance;
 pub mod bridge;
 pub mod chains;
+pub mod quickstart;
 pub mod quote;
 pub mod routes;
 pub mod status;

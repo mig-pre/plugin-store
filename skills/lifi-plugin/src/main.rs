@@ -9,6 +9,7 @@ use commands::{
     balance::BalanceArgs,
     bridge::BridgeArgs,
     chains::ChainsArgs,
+    quickstart::QuickstartArgs,
     quote::QuoteArgs,
     routes::RoutesArgs,
     status::StatusArgs,
@@ -28,6 +29,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// First-time onboarding: scan all 6 chains for funds and recommend a next step
+    Quickstart(QuickstartArgs),
     /// List supported chains (use --all for the full LI.FI registry)
     Chains(ChainsArgs),
     /// List tokens on a chain (or look up one symbol)
@@ -48,12 +51,13 @@ enum Commands {
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Commands::Chains(args)  => commands::chains::run(args).await,
-        Commands::Tokens(args)  => commands::tokens::run(args).await,
-        Commands::Quote(args)   => commands::quote::run(args).await,
-        Commands::Routes(args)  => commands::routes::run(args).await,
-        Commands::Bridge(args)  => commands::bridge::run(args).await,
-        Commands::Status(args)  => commands::status::run(args).await,
-        Commands::Balance(args) => commands::balance::run(args).await,
+        Commands::Quickstart(args) => commands::quickstart::run(args).await,
+        Commands::Chains(args)     => commands::chains::run(args).await,
+        Commands::Tokens(args)     => commands::tokens::run(args).await,
+        Commands::Quote(args)      => commands::quote::run(args).await,
+        Commands::Routes(args)     => commands::routes::run(args).await,
+        Commands::Bridge(args)     => commands::bridge::run(args).await,
+        Commands::Status(args)     => commands::status::run(args).await,
+        Commands::Balance(args)    => commands::balance::run(args).await,
     }
 }
