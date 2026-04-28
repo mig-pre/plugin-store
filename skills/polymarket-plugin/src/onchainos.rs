@@ -4,6 +4,37 @@ use serde_json::Value;
 
 const CHAIN: &str = "137";
 
+/// Return the path to the onchainos binary.
+///
+/// Non-interactive shells (e.g. Claude Code's Bash tool) never source ~/.zshrc, so
+/// ~/.local/bin is missing from PATH and `Command::new("onchainos")` fails with
+/// "os error 2 (No such file or directory)".
+///
+/// Resolution order:
+/// 1. `POLYMARKET_ONCHAINOS_BIN` env var — used in tests to inject a mock binary.
+/// 2. `~/.local/bin/onchainos` — the default install location for the onchainos CLI.
+/// 3. Bare `"onchainos"` — for systems where it is already in the subprocess PATH.
+fn onchainos_bin() -> std::ffi::OsString {
+    if let Ok(override_path) = std::env::var("POLYMARKET_ONCHAINOS_BIN") {
+        return std::ffi::OsString::from(override_path);
+    }
+    let local = dirs::home_dir()
+        .map(|h| h.join(".local").join("bin").join("onchainos"))
+        .filter(|p| p.is_file());
+    match local {
+        Some(p) => p.into_os_string(),
+        None => std::ffi::OsString::from("onchainos"),
+    }
+}
+
+/// Approval/receipt timeout in seconds — configurable via POLYMARKET_APPROVE_TIMEOUT_SECS.
+/// Default: 90s (covers Polygon congestion windows where 30s caused false timeouts).
+pub fn approve_timeout_secs() -> u64 {
+    std::env::var("POLYMARKET_APPROVE_TIMEOUT_SECS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(90)
+}
 /// Sign an EIP-712 structured data JSON via `onchainos sign-message --type eip712`.
 ///
 /// The JSON must include EIP712Domain in the `types` field — this is required for correct
@@ -15,7 +46,7 @@ pub async fn sign_eip712(structured_data_json: &str) -> Result<String> {
     let wallet_addr = get_wallet_address().await
         .context("Failed to resolve wallet address for sign-message")?;
 
-    let output = tokio::process::Command::new("onchainos")
+    let output = tokio::process::Command::new(onchainos_bin())
         .args([
             "wallet", "sign-message",
             "--type", "eip712",
@@ -47,7 +78,7 @@ pub async fn sign_eip712(structured_data_json: &str) -> Result<String> {
 
 /// Call `onchainos wallet contract-call --chain 137 --to <to> --input-data <data> --force`
 pub async fn wallet_contract_call(to: &str, input_data: &str) -> Result<Value> {
-    let output = tokio::process::Command::new("onchainos")
+    let output = tokio::process::Command::new(onchainos_bin())
         .args([
             "wallet",
             "contract-call",
@@ -84,18 +115,51 @@ pub fn extract_tx_hash(result: &Value) -> anyhow::Result<String> {
 
 /// Get the wallet address from `onchainos wallet addresses --chain 137`.
 /// Parses: data.evm[0].address
+///
+/// Returns a specific, actionable error when the onchainos session has expired so
+/// the agent can surface recovery instructions rather than a raw parse error.
 pub async fn get_wallet_address() -> Result<String> {
-    let output = tokio::process::Command::new("onchainos")
+    let output = tokio::process::Command::new(onchainos_bin())
         .args(["wallet", "addresses", "--chain", CHAIN])
         .output()
         .await?;
+
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let v: Value = serde_json::from_str(&stdout)
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Detect session-expiry / not-logged-in conditions from exit code or error text.
+    // onchainos emits these on stdout (as JSON) or stderr when the session lapses.
+    let combined = format!("{}{}", stdout, stderr).to_lowercase();
+    let session_expired = !output.status.success()
+        || combined.contains("session")
+        || combined.contains("not logged")
+        || combined.contains("login required")
+        || combined.contains("unauthenticated")
+        || combined.contains("unauthorized");
+
+    let parse_result = serde_json::from_str::<Value>(&stdout);
+    let json_ok = parse_result.as_ref().ok().and_then(|v| v["ok"].as_bool());
+
+    if json_ok == Some(false) || (parse_result.is_err() && session_expired) {
+        anyhow::bail!(
+            "onchainos session has expired or wallet is not connected. \
+             To recover: open a terminal (or use ! in this chat) and run \
+             `onchainos wallet login your@email.com`, complete the login, then retry. \
+             If you already re-logged in, also run \
+             `rm -f ~/.config/polymarket/creds.json` to clear stale Polymarket credentials."
+        );
+    }
+
+    let v = parse_result
         .map_err(|e| anyhow::anyhow!("wallet addresses parse error: {}\nraw: {}", e, stdout))?;
+
     v["data"]["evm"][0]["address"]
         .as_str()
         .map(|s| s.to_string())
-        .ok_or_else(|| anyhow::anyhow!("Could not determine wallet address from onchainos output"))
+        .ok_or_else(|| anyhow::anyhow!(
+            "onchainos returned no wallet address. \
+             Run `onchainos wallet login your@email.com` to connect a wallet, then retry."
+        ))
 }
 
 /// Pad a hex address to 32 bytes (64 hex chars), no 0x prefix.
@@ -111,66 +175,6 @@ fn pad_u256(val: u128) -> String {
 
 // ─── Proxy wallet ─────────────────────────────────────────────────────────────
 
-/// Resolve the proxy wallet address created in `tx_hash` by inspecting the call trace.
-///
-/// Uses `debug_traceTransaction` with the callTracer to find the CREATE/CREATE2 sub-call
-/// emitted by PROXY_FACTORY and extract the resulting contract address.
-///
-/// Resolve the proxy wallet address from `tx_hash` by inspecting the call trace.
-///
-/// Uses `debug_traceTransaction` with the callTracer on two RPCs (drpc + publicnode).
-/// If neither RPC returns a verifiable EIP-1167 proxy address, returns an error — the
-/// caller must NOT proceed with an unverified address, as depositing to a wrong EOA
-/// will permanently lose user funds.
-pub async fn get_proxy_address_from_tx(tx_hash: &str) -> Result<String> {
-    use crate::config::Urls;
-
-    let rpcs = [Urls::POLYGON_RPC, "https://polygon-bor-rpc.publicnode.com"];
-    for rpc_url in &rpcs {
-        let body = serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": "debug_traceTransaction",
-            "params": [tx_hash, {"tracer": "callTracer"}],
-            "id": 1
-        });
-        let resp = reqwest::Client::new()
-            .post(*rpc_url)
-            .json(&body)
-            .send()
-            .await;
-        if let Ok(r) = resp {
-            if let Ok(v) = r.json::<Value>().await {
-                if v.get("error").is_none() {
-                    if let Some(addr) = find_create_in_trace(&v["result"]) {
-                        // Mandatory: verify the resolved address is an EIP-1167 proxy.
-                        // A wrong address (e.g. an EOA) would silently accept deposits and
-                        // permanently lock user funds.
-                        if verify_eip1167_proxy(&addr).await {
-                            return Ok(addr);
-                        }
-                        anyhow::bail!(
-                            "Resolved address {} from tx {} is not an EIP-1167 proxy contract. \
-                             Refusing to proceed to protect funds. \
-                             Check: https://polygonscan.com/tx/{}",
-                            addr, tx_hash, tx_hash
-                        );
-                    }
-                }
-            }
-        }
-    }
-
-    // No nonce-based fallback: guessing an address without on-chain verification risks
-    // sending funds to a random EOA. Fail loudly instead.
-    anyhow::bail!(
-        "Could not retrieve proxy address from tx {} via debug_traceTransaction on any RPC. \
-         This may be a temporary RPC outage — wait a few seconds and retry setup-proxy. \
-         Do NOT deposit until the proxy address is confirmed on-chain. \
-         Check: https://polygonscan.com/tx/{}",
-        tx_hash, tx_hash
-    )
-}
-
 /// Search a callTracer trace for any call (CREATE, CREATE2, or CALL) made BY PROXY_FACTORY.
 /// The factory always calls the proxy wallet as its first sub-call — whether creating a new one
 /// (CREATE/CREATE2) or forwarding calls to an existing one (CALL). The `to` field is the proxy.
@@ -178,21 +182,18 @@ fn find_create_in_trace(trace: &Value) -> Option<String> {
     use crate::config::Contracts;
     let factory = Contracts::PROXY_FACTORY.to_lowercase();
 
-    // Check direct sub-calls of the current frame
     if let Some(calls) = trace["calls"].as_array() {
         for sub in calls {
             let from = sub["from"].as_str().unwrap_or("").to_lowercase();
             let call_type = sub["type"].as_str().unwrap_or("");
             let to = sub["to"].as_str().unwrap_or("");
 
-            // Any call FROM the factory is to the proxy (new or existing)
             if from == factory && !to.is_empty()
                 && matches!(call_type, "CREATE" | "CREATE2" | "CALL")
             {
                 return Some(to.to_string());
             }
 
-            // Recurse deeper
             if let Some(addr) = find_create_in_trace(sub) {
                 return Some(addr);
             }
@@ -201,105 +202,19 @@ fn find_create_in_trace(trace: &Value) -> Option<String> {
     None
 }
 
-/// Compute the CREATE address for a deployment from `deployer` at `nonce`.
-/// Formula: keccak256(rlp([deployer, nonce]))[12:]
-fn compute_create_address(deployer: &str, nonce: u64) -> Result<String> {
-    use sha3::{Digest, Keccak256};
-
-    let addr_bytes = hex::decode(deployer.trim_start_matches("0x"))
-        .context("decoding deployer address")?;
-    anyhow::ensure!(addr_bytes.len() == 20, "deployer must be 20 bytes");
-
-    // RLP-encode address (20 bytes): 0x94 prefix (0x80 + 20)
-    let rlp_addr: Vec<u8> = [&[0x94u8][..], &addr_bytes].concat();
-
-    // RLP-encode nonce
-    let rlp_nonce: Vec<u8> = if nonce == 0 {
-        vec![0x80]
-    } else {
-        let b = {
-            let mut tmp = nonce;
-            let mut bytes = Vec::new();
-            while tmp > 0 {
-                bytes.push((tmp & 0xFF) as u8);
-                tmp >>= 8;
-            }
-            bytes.reverse();
-            bytes
-        };
-        if b.len() == 1 && b[0] < 0x80 {
-            b
-        } else {
-            [[0x80 + b.len() as u8].as_slice(), &b].concat()
-        }
-    };
-
-    // RLP-encode list: payload = rlp_addr + rlp_nonce
-    let payload: Vec<u8> = [rlp_addr, rlp_nonce].concat();
-    let list_prefix: Vec<u8> = if payload.len() < 56 {
-        vec![0xC0 + payload.len() as u8]
-    } else {
-        let len_bytes = {
-            let l = payload.len();
-            let mut tmp = l;
-            let mut bytes = Vec::new();
-            while tmp > 0 {
-                bytes.push((tmp & 0xFF) as u8);
-                tmp >>= 8;
-            }
-            bytes.reverse();
-            bytes
-        };
-        [[0xF7 + len_bytes.len() as u8].as_slice(), &len_bytes].concat()
-    };
-    let encoded: Vec<u8> = [list_prefix, payload].concat();
-
-    let hash = Keccak256::digest(&encoded);
-    Ok(format!("0x{}", hex::encode(&hash[12..])))
+/// Polygon RPC list used for proxy-state probes. Primary first, fallback second.
+/// `polygon_rpc()` reads `POLYMARKET_TEST_POLYGON_RPC` so integration tests can
+/// inject a mock; production always falls back to drpc.org.
+fn proxy_probe_rpcs() -> [String; 2] {
+    [
+        crate::config::Urls::polygon_rpc(),
+        "https://polygon-bor-rpc.publicnode.com".to_string(),
+    ]
 }
 
-/// Check whether an address has EIP-1167 minimal proxy bytecode deployed.
-async fn verify_eip1167_proxy(addr: &str) -> bool {
-    use crate::config::Urls;
-    const EIP1167_PREFIX: &str = "363d3d373d3d3d363d73";
-    let body = serde_json::json!({
-        "jsonrpc": "2.0",
-        "method": "eth_getCode",
-        "params": [addr, "latest"],
-        "id": 1
-    });
-    if let Ok(r) = reqwest::Client::new()
-        .post(Urls::POLYGON_RPC)
-        .json(&body)
-        .send()
-        .await
-    {
-        if let Ok(v) = r.json::<Value>().await {
-            if let Some(code) = v["result"].as_str() {
-                return code.trim_start_matches("0x").starts_with(EIP1167_PREFIX);
-            }
-        }
-    }
-    false
-}
-
-/// Create a Polymarket proxy wallet via PROXY_FACTORY.proxy([]).
-///
-/// Calls `proxy((uint8,address,uint256,bytes)[])` with an empty calls array.
-/// The factory deploys a minimal-proxy clone keyed to msg.sender (this wallet).
-/// Returns the tx hash; call `get_proxy_address_from_tx(tx_hash)` to resolve the address.
-///
-/// NOTE: One-time gas cost in POL. All subsequent trading via the proxy is relayer-paid.
-/// Query PROXY_FACTORY via debug_traceCall to check if a proxy already exists for `eoa_addr`.
-///
-/// Returns:
-/// - `Ok(Some(addr))` — proxy exists on-chain and is a valid EIP-1167 contract
-/// - `Ok(None)`       — no proxy exists yet (safe to deploy)
-/// - `Err(...)`       — RPC call failed; caller MUST NOT proceed with deployment,
-///                      as we cannot distinguish "no proxy" from "RPC error"
-pub async fn get_existing_proxy(eoa_addr: &str) -> Result<Option<String>> {
+async fn try_trace_proxy_call(eoa_addr: &str, rpc_url: &str) -> Result<Option<String>> {
     use sha3::{Digest, Keccak256};
-    use crate::config::{Contracts, Urls};
+    use crate::config::Contracts;
 
     let selector = Keccak256::digest(b"proxy((uint8,address,uint256,bytes)[])");
     let selector_hex = hex::encode(&selector[..4]);
@@ -322,44 +237,94 @@ pub async fn get_existing_proxy(eoa_addr: &str) -> Result<Option<String>> {
     });
 
     let resp = reqwest::Client::new()
-        .post(Urls::POLYGON_RPC)
+        .post(rpc_url)
         .json(&body)
         .send()
         .await
-        .context("debug_traceCall RPC request failed")?;
+        .with_context(|| format!("debug_traceCall request to {} failed", rpc_url))?;
 
     let v: serde_json::Value = resp.json().await
-        .context("debug_traceCall response parse failed")?;
+        .with_context(|| format!("debug_traceCall response from {} not valid JSON", rpc_url))?;
 
     if let Some(err) = v.get("error") {
-        anyhow::bail!(
-            "debug_traceCall returned an error while checking for existing proxy: {}. \
-             Cannot safely determine whether a proxy exists — aborting to prevent duplicate deployment.",
-            err
-        );
+        anyhow::bail!("debug_traceCall on {} returned error: {}", rpc_url, err);
     }
 
     Ok(find_create_in_trace(&v["result"]))
 }
 
-pub async fn create_proxy_wallet() -> Result<String> {
-    use sha3::{Digest, Keccak256};
-    use crate::config::Contracts;
+/// Returns true if `addr` has non-empty bytecode at HEAD. False = EOA or undeployed.
+async fn query_code_present(addr: &str, rpc_url: &str) -> Result<bool> {
+    let body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "eth_getCode",
+        "params": [addr, "latest"],
+        "id": 1
+    });
+    let resp = reqwest::Client::new()
+        .post(rpc_url)
+        .json(&body)
+        .send()
+        .await
+        .with_context(|| format!("eth_getCode request to {} failed", rpc_url))?;
+    let v: serde_json::Value = resp.json().await
+        .with_context(|| format!("eth_getCode response from {} not valid JSON", rpc_url))?;
+    if let Some(err) = v.get("error") {
+        anyhow::bail!("eth_getCode on {} returned error: {}", rpc_url, err);
+    }
+    let code = v["result"].as_str().unwrap_or("0x");
+    let stripped = code.trim_start_matches("0x");
+    Ok(!stripped.is_empty() && !stripped.chars().all(|c| c == '0'))
+}
 
-    // Function selector: keccak256("proxy((uint8,address,uint256,bytes)[])")
-    let selector = Keccak256::digest(b"proxy((uint8,address,uint256,bytes)[])");
-    let selector_hex = hex::encode(&selector[..4]);
+/// Probe PROXY_FACTORY for the proxy address keyed to `eoa_addr`, and report whether
+/// that address has been deployed yet.
+///
+/// Returns:
+/// - `Ok(Some((addr, true)))`  — proxy already deployed at `addr` (recover path)
+/// - `Ok(Some((addr, false)))` — `addr` is the deterministic CREATE2 destination but
+///                                no contract is deployed there yet. Safe to call
+///                                `PROXY_FACTORY.proxy([(...)])` — the first such call
+///                                deploys the proxy atomically with the forwarded op.
+/// - `Ok(None)`                — the trace contained no factory sub-call at all.
+///                                Should not happen with the current Polymarket factory;
+///                                callers should treat it as an indeterminate state.
+/// - `Err(...)`                — both RPCs failed. Caller MUST NOT deploy or save state,
+///                                as we cannot tell which case we're in.
+pub async fn get_existing_proxy(eoa_addr: &str) -> Result<Option<(String, bool)>> {
+    let rpcs = proxy_probe_rpcs();
+    let mut last_err: Option<anyhow::Error> = None;
 
-    // ABI-encode empty dynamic array: offset=0x20 (32), length=0
-    let calldata = format!(
-        "0x{}\
-         0000000000000000000000000000000000000000000000000000000000000020\
-         0000000000000000000000000000000000000000000000000000000000000000",
-        selector_hex
-    );
+    for rpc_url in &rpcs {
+        let trace_result = match try_trace_proxy_call(eoa_addr, rpc_url).await {
+            Ok(opt) => opt,
+            Err(e) => {
+                last_err = Some(e);
+                continue;
+            }
+        };
 
-    let result = wallet_contract_call(Contracts::PROXY_FACTORY, &calldata).await?;
-    extract_tx_hash(&result)
+        let addr = match trace_result {
+            Some(a) => a,
+            None => return Ok(None),
+        };
+
+        // Determine if the address has bytecode (proxy actually deployed).
+        // Use the same RPC for consistency — if drpc.org returned the trace, ask drpc.org for code.
+        match query_code_present(&addr, rpc_url).await {
+            Ok(present) => return Ok(Some((addr, present))),
+            Err(e) => {
+                last_err = Some(e.context(format!(
+                    "Trace returned {} but eth_getCode for it failed", addr
+                )));
+                continue;
+            }
+        }
+    }
+
+    Err(last_err.unwrap_or_else(|| {
+        anyhow::anyhow!("All Polygon RPCs failed for proxy state lookup")
+    }))
 }
 
 /// Transfer USDC.e directly to a proxy wallet address.
@@ -448,7 +413,86 @@ pub async fn withdraw_usdc_from_proxy(eoa_addr: &str, amount: u128) -> Result<St
     extract_tx_hash(&result)
 }
 
+/// Withdraw pUSD from the proxy wallet back to the EOA.
+///
+/// Same ABI encoding as `withdraw_usdc_from_proxy` but targets the pUSD contract.
+/// Used after the V2 collateral cutover (~2026-04-28).
+pub async fn withdraw_pusd_from_proxy(eoa_addr: &str, amount: u128) -> Result<String> {
+    use sha3::{Digest, Keccak256};
+    use crate::config::Contracts;
+
+    let transfer_data = format!(
+        "a9059cbb{}{}",
+        pad_address(eoa_addr),
+        pad_u256(amount)
+    );
+    let transfer_bytes = hex::decode(&transfer_data).expect("transfer calldata hex");
+    let transfer_len = transfer_bytes.len();
+
+    let selector = Keccak256::digest(b"proxy((uint8,address,uint256,bytes)[])");
+    let selector_hex = hex::encode(&selector[..4]);
+    let pusd_padded = pad_address(Contracts::PUSD);
+    let data_len_padded = format!("{:064x}", transfer_len);
+    let pad_len = (32 - transfer_len % 32) % 32;
+    let data_padded = format!("{}{}", transfer_data, "00".repeat(pad_len));
+
+    let calldata = format!(
+        "0x{}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}",
+        selector_hex,
+        "0000000000000000000000000000000000000000000000000000000000000020",
+        "0000000000000000000000000000000000000000000000000000000000000001",
+        "0000000000000000000000000000000000000000000000000000000000000020",
+        "0000000000000000000000000000000000000000000000000000000000000001", // op = 1 (CALL)
+        pusd_padded,
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000080",
+        data_len_padded,
+        data_padded,
+    );
+
+    let result = wallet_contract_call(Contracts::PROXY_FACTORY, &calldata).await?;
+    extract_tx_hash(&result)
+}
+
 /// Get USDC.e ERC-20 allowance for owner → spender. Returns raw amount (6 decimals).
+pub async fn get_pusd_allowance(owner: &str, spender: &str) -> Result<u128> {
+    use crate::config::{Contracts, Urls};
+    // allowance(address,address) selector = 0xdd62ed3e
+    let data = format!("0xdd62ed3e{}{}", pad_address(owner), pad_address(spender));
+    let body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "eth_call",
+        "params": [{ "to": Contracts::PUSD, "data": data }, "latest"],
+        "id": 1
+    });
+    let v: serde_json::Value = reqwest::Client::new()
+        .post(Urls::polygon_rpc())
+        .json(&body)
+        .send()
+        .await
+        .context("Polygon RPC request failed")?
+        .json()
+        .await
+        .context("parsing RPC response")?;
+    if let Some(err) = v.get("error") {
+        anyhow::bail!("Polygon RPC error: {}", err);
+    }
+    let hex = v["result"].as_str().unwrap_or("0x").trim_start_matches("0x");
+    if hex.is_empty() || hex.chars().all(|c| c == '0') {
+        return Ok(0);
+    }
+    Ok(u128::from_str_radix(hex, 16).unwrap_or(u128::MAX))
+}
+
 pub async fn get_usdc_allowance(owner: &str, spender: &str) -> Result<u128> {
     use crate::config::{Contracts, Urls};
     // allowance(address,address) selector = 0xdd62ed3e
@@ -460,7 +504,7 @@ pub async fn get_usdc_allowance(owner: &str, spender: &str) -> Result<u128> {
         "id": 1
     });
     let v: serde_json::Value = reqwest::Client::new()
-        .post(Urls::POLYGON_RPC)
+        .post(Urls::polygon_rpc())
         .json(&body)
         .send()
         .await
@@ -519,6 +563,58 @@ pub async fn proxy_ctf_set_approval_for_all(operator: &str) -> Result<String> {
         "0000000000000000000000000000000000000000000000000000000000000020",
         "0000000000000000000000000000000000000000000000000000000000000001", // op = 1 (CALL)
         ctf_padded,
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000080",
+        data_len_padded,
+        data_padded,
+    );
+
+    let result = wallet_contract_call(Contracts::PROXY_FACTORY, &calldata).await?;
+    extract_tx_hash(&result)
+}
+
+/// Approve pUSD from the proxy wallet to a spender, via PROXY_FACTORY.proxy().
+///
+/// Encodes `PROXY_FACTORY.proxy([(1, PUSD, 0, approve(spender, maxUint))])`.
+/// Used in POLY_PROXY mode to grant V2 exchange contracts (CTF_EXCHANGE_V2 /
+/// NEG_RISK_CTF_EXCHANGE_V2 / NEG_RISK_ADAPTER) spending rights on the proxy wallet's pUSD.
+/// Returns the tx hash.
+pub async fn proxy_pusd_approve(spender: &str) -> Result<String> {
+    use sha3::{Digest, Keccak256};
+    use crate::config::Contracts;
+
+    let approve_data = format!(
+        "095ea7b3{}{}",
+        pad_address(spender),
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    );
+    let approve_bytes = hex::decode(&approve_data).expect("approve calldata hex");
+    let approve_len = approve_bytes.len();
+
+    let selector = Keccak256::digest(b"proxy((uint8,address,uint256,bytes)[])");
+    let selector_hex = hex::encode(&selector[..4]);
+    let pusd_padded = pad_address(Contracts::PUSD);
+    let data_len_padded = format!("{:064x}", approve_len);
+    let pad_len = (32 - approve_len % 32) % 32;
+    let data_padded = format!("{}{}", approve_data, "00".repeat(pad_len));
+
+    let calldata = format!(
+        "0x{}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}",
+        selector_hex,
+        "0000000000000000000000000000000000000000000000000000000000000020",
+        "0000000000000000000000000000000000000000000000000000000000000001",
+        "0000000000000000000000000000000000000000000000000000000000000020",
+        "0000000000000000000000000000000000000000000000000000000000000001",
+        pusd_padded,
         "0000000000000000000000000000000000000000000000000000000000000000",
         "0000000000000000000000000000000000000000000000000000000000000080",
         data_len_padded,
@@ -619,18 +715,24 @@ pub async fn ctf_set_approval_for_all(ctf_addr: &str, operator: &str) -> Result<
 
 /// Approve USDC.e allowance before a BUY order.
 ///
+/// Always approves `u128::MAX` (unlimited) so that future trades on the same market
+/// do not trigger a second approval transaction. Approving a specific order amount
+/// downsizes any pre-existing MAX_UINT allowance to that amount, causing a new
+/// approval on every subsequent trade.
+///
 /// For neg_risk=false: approves CTF Exchange only.
 /// For neg_risk=true: approves BOTH NEG_RISK_CTF_EXCHANGE and NEG_RISK_ADAPTER —
 /// the CLOB checks both contracts in the settlement path for neg_risk markets.
 /// Returns the tx hash of the last approval submitted.
-pub async fn approve_usdc(neg_risk: bool, amount: u64) -> Result<String> {
+pub async fn approve_usdc(neg_risk: bool) -> Result<String> {
     use crate::config::Contracts;
     let usdc = Contracts::USDC_E;
+    let amount = u128::MAX;
     if neg_risk {
-        usdc_approve(usdc, Contracts::NEG_RISK_CTF_EXCHANGE, amount as u128).await?;
-        usdc_approve(usdc, Contracts::NEG_RISK_ADAPTER, amount as u128).await
+        usdc_approve(usdc, Contracts::NEG_RISK_CTF_EXCHANGE, amount).await?;
+        usdc_approve(usdc, Contracts::NEG_RISK_ADAPTER, amount).await
     } else {
-        usdc_approve(usdc, Contracts::CTF_EXCHANGE, amount as u128).await
+        usdc_approve(usdc, Contracts::CTF_EXCHANGE, amount).await
     }
 }
 
@@ -652,39 +754,44 @@ pub async fn approve_ctf(neg_risk: bool) -> Result<String> {
     }
 }
 
-/// ABI-encode and submit CTF redeemPositions(collateralToken, parentCollectionId, conditionId, indexSets).
+/// Pure ABI encoder for CTF.redeemPositions(collateralToken, parentCollectionId, conditionId, indexSets).
 ///
-/// Redeems all outcome positions for the given conditionId. indexSets [1, 2] covers both
-/// YES (bit 0) and NO (bit 1) outcomes — the CTF contract only pays out for winning tokens
-/// and silently no-ops for losing ones, so passing both is safe.
-/// For neg_risk (multi-outcome) markets use the NEG_RISK_ADAPTER path (not implemented here).
-pub async fn ctf_redeem_positions(condition_id: &str) -> Result<String> {
+/// indexSets [1, 2] covers both YES (bit 0) and NO (bit 1) outcomes — the CTF contract only
+/// pays out for winning tokens and silently no-ops for losing ones, so passing both is safe.
+/// Extracted as a pure function so the encoding can be unit-tested independently from RPC I/O.
+pub fn build_ctf_redeem_positions_calldata(condition_id: &str, collateral_addr: &str) -> String {
     use sha3::{Digest, Keccak256};
-    use crate::config::Contracts;
 
-    // Compute the 4-byte function selector: keccak256("redeemPositions(address,bytes32,bytes32,uint256[])")
     let selector = Keccak256::digest(b"redeemPositions(address,bytes32,bytes32,uint256[])");
     let selector_hex = hex::encode(&selector[..4]);
 
-    // ABI-encode the four parameters.
     // Slots 0-2 are static (address and bytes32); slot 3 is the offset to the dynamic uint256[] array.
-    let collateral  = pad_address(Contracts::USDC_E);         // address padded to 32 bytes
+    let collateral  = pad_address(collateral_addr);            // address padded to 32 bytes
     let parent_id   = format!("{:064x}", 0u128);               // bytes32(0) — null parent collection
     let cond_id_hex = condition_id.trim_start_matches("0x");
-    let cond_id_pad = format!("{:0>64}", cond_id_hex);         // conditionId as bytes32
-    let array_offset = pad_u256(4 * 32);                       // 4 static slots → offset = 128
-
-    // Dynamic array: length=2, [1, 2] (YES indexSet=1, NO indexSet=2)
+    let cond_id_pad = format!("{:0>64}", cond_id_hex);
+    let array_offset = pad_u256(4 * 32);
     let array_len  = pad_u256(2);
-    let index_yes  = pad_u256(1);  // outcome 0, indexSet bit 0
-    let index_no   = pad_u256(2);  // outcome 1, indexSet bit 1
+    let index_yes  = pad_u256(1);
+    let index_no   = pad_u256(2);
 
-    let calldata = format!(
+    format!(
         "0x{}{}{}{}{}{}{}{}",
         selector_hex, collateral, parent_id, cond_id_pad,
         array_offset, array_len, index_yes, index_no
-    );
+    )
+}
 
+/// ABI-encode and submit CTF redeemPositions(collateralToken, parentCollectionId, conditionId, indexSets).
+///
+/// For neg_risk (multi-outcome) markets use the NEG_RISK_ADAPTER path (not implemented here).
+///
+/// `collateral_addr`: the collateral token used at trade time.
+///   - V1 markets: Contracts::USDC_E
+///   - V2 markets: Contracts::PUSD  (from ~2026-04-28)
+pub async fn ctf_redeem_positions(condition_id: &str, collateral_addr: &str) -> Result<String> {
+    use crate::config::Contracts;
+    let calldata = build_ctf_redeem_positions_calldata(condition_id, collateral_addr);
     let result = wallet_contract_call(Contracts::CTF, &calldata).await?;
     extract_tx_hash(&result)
 }
@@ -695,14 +802,17 @@ pub async fn ctf_redeem_positions(condition_id: &str) -> Result<String> {
 /// Routes: EOA → PROXY_FACTORY.proxy([(CALL, CTF, 0, redeemPositions_calldata)])
 /// The factory forwards the call from the proxy wallet's context, so CTF sees
 /// msg.sender = proxy wallet, which holds the winning tokens.
-pub async fn ctf_redeem_via_proxy(condition_id: &str) -> Result<String> {
+///
+/// `collateral_addr`: the collateral token used at trade time.
+///   - V1 markets: Contracts::USDC_E
+///   - V2 markets: Contracts::PUSD  (from ~2026-04-28)
+pub async fn ctf_redeem_via_proxy(condition_id: &str, collateral_addr: &str) -> Result<String> {
     use sha3::{Digest, Keccak256};
     use crate::config::Contracts;
 
-    // Build inner redeemPositions calldata (identical to ctf_redeem_positions)
     let inner_selector = Keccak256::digest(b"redeemPositions(address,bytes32,bytes32,uint256[])");
     let inner_selector_hex = hex::encode(&inner_selector[..4]);
-    let collateral   = pad_address(Contracts::USDC_E);
+    let collateral   = pad_address(collateral_addr);
     let parent_id    = format!("{:064x}", 0u128);
     let cond_id_hex  = condition_id.trim_start_matches("0x");
     let cond_id_pad  = format!("{:0>64}", cond_id_hex);
@@ -716,14 +826,11 @@ pub async fn ctf_redeem_via_proxy(condition_id: &str) -> Result<String> {
         inner_selector_hex, collateral, parent_id, cond_id_pad,
         array_offset, array_len, index_yes, index_no
     );
-    // inner calldata = 4 + 7*32 = 228 bytes
     let inner_bytes = hex::decode(&inner_hex).expect("inner redeem calldata");
     let inner_len   = inner_bytes.len();
     let pad_len     = (32 - inner_len % 32) % 32;
     let inner_padded = format!("{}{}", inner_hex, "00".repeat(pad_len));
 
-    // Wrap in PROXY_FACTORY.proxy([(CALL, CTF, 0, inner_calldata)])
-    // Layout mirrors withdraw_usdc_from_proxy exactly, only `to` changes to CTF.
     let outer_selector = Keccak256::digest(b"proxy((uint8,address,uint256,bytes)[])");
     let outer_selector_hex = hex::encode(&outer_selector[..4]);
     let ctf_padded     = pad_address(Contracts::CTF);
@@ -741,20 +848,133 @@ pub async fn ctf_redeem_via_proxy(condition_id: &str) -> Result<String> {
          {}\
          {}",
         outer_selector_hex,
-        "0000000000000000000000000000000000000000000000000000000000000020", // params array offset
-        "0000000000000000000000000000000000000000000000000000000000000001", // array length = 1
-        "0000000000000000000000000000000000000000000000000000000000000020", // tuple[0] offset
-        "0000000000000000000000000000000000000000000000000000000000000001", // op = 1 (CALL)
-        ctf_padded,                                                         // to = CTF
-        "0000000000000000000000000000000000000000000000000000000000000000", // value = 0
-        "0000000000000000000000000000000000000000000000000000000000000080", // data offset in tuple
+        "0000000000000000000000000000000000000000000000000000000000000020",
+        "0000000000000000000000000000000000000000000000000000000000000001",
+        "0000000000000000000000000000000000000000000000000000000000000020",
+        "0000000000000000000000000000000000000000000000000000000000000001",
+        ctf_padded,
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000080",
         data_len_padded,
         inner_padded,
     );
-
     let result = wallet_contract_call(Contracts::PROXY_FACTORY, &calldata).await?;
     extract_tx_hash(&result)
 }
+
+
+// ─── NegRisk Adapter redeem ───────────────────────────────────────────────────
+
+/// Convert a large decimal integer string (up to 256 bits) to a 64-char lowercase hex string.
+///
+/// Polymarket outcome token IDs are full uint256 values that do not fit in u128.
+/// This function does the conversion using byte-level long multiplication, avoiding
+/// any bignum dependency.
+///
+/// Returns an error if the string contains non-digit characters or overflows 32 bytes.
+pub fn decimal_str_to_hex64(s: &str) -> Result<String> {
+    if s.is_empty() {
+        anyhow::bail!("decimal_str_to_hex64: empty string is not a valid decimal integer");
+    }
+    let mut result = [0u8; 32];
+    for ch in s.chars() {
+        let digit = ch
+            .to_digit(10)
+            .ok_or_else(|| anyhow::anyhow!("decimal_str_to_hex64: invalid digit '{}' in '{}'", ch, s))?;
+        let mut carry = digit as u16;
+        for byte in result.iter_mut().rev() {
+            let val = (*byte as u16) * 10 + carry;
+            *byte = (val & 0xFF) as u8;
+            carry = val >> 8;
+        }
+        if carry != 0 {
+            anyhow::bail!("decimal_str_to_hex64: overflow — value '{}' too large for 32 bytes", s);
+        }
+    }
+    Ok(hex::encode(result))
+}
+
+/// Query the ERC-1155 CTF token balance of `owner` for a given outcome token ID.
+///
+/// `token_id_decimal` is the decimal string representation of the uint256 token ID
+/// as returned by the Polymarket CLOB API (e.g. `ClobToken::token_id`).
+///
+/// Returns the raw token balance (atomic units, same scale as USDC.e: 1 share = 1_000_000).
+pub async fn get_ctf_balance(owner: &str, token_id_decimal: &str) -> Result<u128> {
+    use crate::config::{Contracts, Urls};
+    // balanceOf(address,uint256) selector = 0x00fdd58e
+    let token_id_hex = decimal_str_to_hex64(token_id_decimal)?;
+    let data = format!("0x00fdd58e{}{}", pad_address(owner), token_id_hex);
+    let body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "eth_call",
+        "params": [{ "to": Contracts::CTF, "data": data }, "latest"],
+        "id": 1
+    });
+    let v: serde_json::Value = reqwest::Client::new()
+        .post(Urls::polygon_rpc())
+        .json(&body)
+        .send()
+        .await
+        .context("Polygon RPC request failed")?
+        .json()
+        .await
+        .context("parsing CTF balanceOf response")?;
+    if let Some(err) = v.get("error") {
+        anyhow::bail!("Polygon RPC error in CTF balanceOf: {}", err);
+    }
+    let hex = v["result"].as_str().unwrap_or("0x").trim_start_matches("0x");
+    if hex.is_empty() || hex.chars().all(|c| c == '0') {
+        return Ok(0);
+    }
+    // Balances are small (shares held by a user) — safely fits in u128.
+    Ok(u128::from_str_radix(hex, 16).unwrap_or(u128::MAX))
+}
+
+/// ABI-encode NegRiskAdapter.redeemPositions(bytes32 conditionId, uint256[] amounts).
+///
+/// `amounts` is indexed by outcome slot: amounts[0] = YES token balance, amounts[1] = NO token balance.
+/// After market resolution, only the winning outcome's amount is non-zero; passing zero for the
+/// other slot is safe (the adapter no-ops on zero-balance outcomes).
+pub fn build_negrisk_redeem_calldata(condition_id: &str, amounts: &[u128]) -> String {
+    use sha3::{Digest, Keccak256};
+
+    let selector = Keccak256::digest(b"redeemPositions(bytes32,uint256[])");
+    let selector_hex = hex::encode(&selector[..4]);
+
+    let cond_id_hex = condition_id.trim_start_matches("0x");
+    let cond_id_pad = format!("{:0>64}", cond_id_hex);
+
+    // Dynamic array starts at offset 64 bytes (2 × 32-byte static params: conditionId + array offset).
+    let array_offset = pad_u256(64u128);
+    let array_len = pad_u256(amounts.len() as u128);
+    let amounts_hex: String = amounts.iter().map(|a| pad_u256(*a)).collect();
+
+    format!(
+        "0x{}{}{}{}{}",
+        selector_hex, cond_id_pad, array_offset, array_len, amounts_hex
+    )
+}
+
+/// Redeem neg_risk (multi-outcome) positions via NegRiskAdapter.redeemPositions.
+///
+/// `amounts[i]` is the ERC-1155 balance of outcome slot i held by `from`.
+/// Pre-flights via eth_call to surface reverts before signing.
+/// Returns the tx hash of the broadcast transaction.
+pub async fn negrisk_redeem_positions(
+    condition_id: &str,
+    amounts: &[u128],
+    from: &str,
+) -> Result<String> {
+    use crate::config::Contracts;
+    let calldata = build_negrisk_redeem_calldata(condition_id, amounts);
+    eth_call_simulate(from, Contracts::NEG_RISK_ADAPTER, &calldata)
+        .await
+        .context("NegRiskAdapter.redeemPositions would revert on-chain")?;
+    let result = wallet_contract_call(Contracts::NEG_RISK_ADAPTER, &calldata).await?;
+    extract_tx_hash(&result)
+}
+
 
 /// Get native POL balance for an address (eth_getBalance). Returns human-readable f64 (POL).
 pub async fn get_pol_balance(addr: &str) -> Result<f64> {
@@ -766,7 +986,7 @@ pub async fn get_pol_balance(addr: &str) -> Result<f64> {
         "id": 1
     });
     let v: serde_json::Value = reqwest::Client::new()
-        .post(Urls::POLYGON_RPC)
+        .post(Urls::polygon_rpc())
         .json(&body)
         .send()
         .await
@@ -782,19 +1002,20 @@ pub async fn get_pol_balance(addr: &str) -> Result<f64> {
     Ok(wei as f64 / 1e18)
 }
 
-/// Get USDC.e (ERC-20) balance for an address. Returns human-readable f64 (dollars).
-pub async fn get_usdc_balance(addr: &str) -> Result<f64> {
-    use crate::config::{Contracts, Urls};
+/// Get the ERC-20 balance for `holder_addr` on any 6-decimal token contract.
+/// Returns human-readable f64 (e.g. dollars for USDC.e / pUSD).
+pub async fn get_erc20_balance_6dec(token_addr: &str, holder_addr: &str) -> Result<f64> {
+    use crate::config::Urls;
     // balanceOf(address) selector = 0x70a08231
-    let data = format!("0x70a08231{}", pad_address(addr));
+    let data = format!("0x70a08231{}", pad_address(holder_addr));
     let body = serde_json::json!({
         "jsonrpc": "2.0",
         "method": "eth_call",
-        "params": [{ "to": Contracts::USDC_E, "data": data }, "latest"],
+        "params": [{ "to": token_addr, "data": data }, "latest"],
         "id": 1
     });
     let v: serde_json::Value = reqwest::Client::new()
-        .post(Urls::POLYGON_RPC)
+        .post(Urls::polygon_rpc())
         .json(&body)
         .send()
         .await
@@ -807,14 +1028,169 @@ pub async fn get_usdc_balance(addr: &str) -> Result<f64> {
     }
     let hex = v["result"].as_str().unwrap_or("0x").trim_start_matches("0x");
     let raw = u128::from_str_radix(hex, 16).unwrap_or(0);
-    Ok(raw as f64 / 1_000_000.0) // USDC.e has 6 decimals
+    Ok(raw as f64 / 1_000_000.0) // 6 decimals
+}
+
+/// Get USDC.e (ERC-20) balance for an address. Returns human-readable f64 (dollars).
+pub async fn get_usdc_balance(addr: &str) -> Result<f64> {
+    use crate::config::Contracts;
+    get_erc20_balance_6dec(Contracts::USDC_E, addr).await
+}
+
+/// Get pUSD (ERC-20) balance for an address. Returns human-readable f64 (dollars).
+/// pUSD is the Polymarket USD collateral token that replaces USDC.e for V2 exchange contracts.
+pub async fn get_pusd_balance(addr: &str) -> Result<f64> {
+    use crate::config::Contracts;
+    get_erc20_balance_6dec(Contracts::PUSD, addr).await
+}
+
+/// Wrap USDC.e → pUSD via the Collateral Onramp for an EOA wallet.
+///
+/// Steps:
+///   1. Approve USDC.e to COLLATERAL_ONRAMP (amount).
+///   2. Call COLLATERAL_ONRAMP.wrap(USDC_E, recipient, amount).
+///   3. Wait for the wrap tx to confirm.
+///
+/// Returns the wrap tx hash after on-chain confirmation.
+pub async fn wrap_usdc_to_pusd(recipient: &str, amount: u128) -> Result<String> {
+    use sha3::{Digest, Keccak256};
+    use crate::config::Contracts;
+
+    // Step 1: approve USDC.e to the onramp
+    let approve_tx = usdc_approve(Contracts::USDC_E, Contracts::COLLATERAL_ONRAMP, amount).await?;
+    wait_for_tx_receipt(&approve_tx, 30).await?;
+
+    // Step 2: call wrap(address _asset, address _to, uint256 _amount)
+    let selector = Keccak256::digest(b"wrap(address,address,uint256)");
+    let selector_hex = hex::encode(&selector[..4]);
+    let calldata = format!(
+        "0x{}{}{}{}",
+        selector_hex,
+        pad_address(Contracts::USDC_E),
+        pad_address(recipient),
+        pad_u256(amount),
+    );
+    let result = wallet_contract_call(Contracts::COLLATERAL_ONRAMP, &calldata).await?;
+    extract_tx_hash(&result)
+}
+
+/// Wrap USDC.e → pUSD for a proxy wallet via PROXY_FACTORY.proxy().
+///
+/// The proxy wallet first approves USDC.e to the Collateral Onramp, then calls
+/// COLLATERAL_ONRAMP.wrap(USDC_E, proxy_addr, amount) from its own context.
+///
+/// Steps (each routed through proxy):
+///   1. proxy_usdc_approve(COLLATERAL_ONRAMP)  — sets unlimited allowance
+///   2. proxy calls wrap(USDC_E, proxy_addr, amount) → pUSD minted to proxy
+///
+/// Returns the wrap tx hash after on-chain confirmation.
+pub async fn proxy_wrap_usdc_to_pusd(proxy_addr: &str, amount: u128) -> Result<String> {
+    use sha3::{Digest, Keccak256};
+    use crate::config::Contracts;
+
+    // Step 1: proxy approves USDC.e to the onramp (unlimited)
+    let approve_tx = proxy_usdc_approve(Contracts::COLLATERAL_ONRAMP).await?;
+    wait_for_tx_receipt(&approve_tx, 30).await?;
+
+    // Step 2: proxy calls wrap(USDC_E, proxy_addr, amount)
+    // wrap(address,address,uint256) = selector + _asset + _to + _amount
+    let wrap_selector = Keccak256::digest(b"wrap(address,address,uint256)");
+    let wrap_selector_hex = hex::encode(&wrap_selector[..4]);
+    let inner_hex = format!(
+        "{}{}{}{}",
+        wrap_selector_hex,
+        pad_address(Contracts::USDC_E),
+        pad_address(proxy_addr),
+        pad_u256(amount),
+    );
+    let inner_bytes = hex::decode(&inner_hex).expect("wrap calldata hex");
+    let inner_len = inner_bytes.len();
+    let pad_len = (32 - inner_len % 32) % 32;
+    let inner_padded = format!("{}{}", inner_hex, "00".repeat(pad_len));
+
+    // Wrap in PROXY_FACTORY.proxy([(CALL, COLLATERAL_ONRAMP, 0, wrap_calldata)])
+    let outer_selector = Keccak256::digest(b"proxy((uint8,address,uint256,bytes)[])");
+    let outer_selector_hex = hex::encode(&outer_selector[..4]);
+    let onramp_padded = pad_address(Contracts::COLLATERAL_ONRAMP);
+    let data_len_padded = format!("{:064x}", inner_len);
+
+    let calldata = format!(
+        "0x{}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}",
+        outer_selector_hex,
+        "0000000000000000000000000000000000000000000000000000000000000020",
+        "0000000000000000000000000000000000000000000000000000000000000001",
+        "0000000000000000000000000000000000000000000000000000000000000020",
+        "0000000000000000000000000000000000000000000000000000000000000001", // op = 1 (CALL)
+        onramp_padded,
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000080",
+        data_len_padded,
+        inner_padded,
+    );
+
+    let result = wallet_contract_call(Contracts::PROXY_FACTORY, &calldata).await?;
+    extract_tx_hash(&result)
+}
+
+/// Simulate a contract call via eth_call on Polygon. Returns Ok(()) if no revert.
+///
+/// Use this as a pre-flight before `wallet_contract_call` to catch reverts that
+/// onchainos's `--force` flag would otherwise mask (returning a txHash that was
+/// signed but never broadcast).
+pub async fn eth_call_simulate(from: &str, to: &str, input_data: &str) -> Result<()> {
+    use crate::config::Urls;
+    let body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "eth_call",
+        "params": [{
+            "from": from,
+            "to": to,
+            "data": input_data,
+        }, "latest"],
+        "id": 1
+    });
+    let v: serde_json::Value = reqwest::Client::new()
+        .post(Urls::polygon_rpc())
+        .json(&body)
+        .send()
+        .await
+        .context("Polygon RPC eth_call failed")?
+        .json()
+        .await
+        .context("parsing eth_call response")?;
+    if let Some(err) = v.get("error") {
+        let msg = err
+            .get("message")
+            .and_then(|m| m.as_str())
+            .unwrap_or("unknown");
+        anyhow::bail!("eth_call simulation reverted: {}", msg);
+    }
+    Ok(())
 }
 
 /// Poll eth_getTransactionReceipt until the tx is mined (or timeout).
 ///
 /// Polygon block time is ~2 seconds. We poll every 2 seconds for up to max_wait_secs.
-/// Call this after submitting an approval tx before posting any order.
 pub async fn wait_for_tx_receipt(tx_hash: &str, max_wait_secs: u64) -> Result<()> {
+    wait_for_tx_receipt_labeled(tx_hash, max_wait_secs, "Transaction").await
+}
+
+/// Same as `wait_for_tx_receipt` but with a caller-supplied label used in error
+/// messages (e.g. "Approve", "Redeem") so the bail text is accurate.
+pub async fn wait_for_tx_receipt_labeled(
+    tx_hash: &str,
+    max_wait_secs: u64,
+    label: &str,
+) -> Result<()> {
     use crate::config::Urls;
     use std::time::{Duration, Instant};
     use tokio::time::sleep;
@@ -828,20 +1204,19 @@ pub async fn wait_for_tx_receipt(tx_hash: &str, max_wait_secs: u64) -> Result<()
             "id": 1
         });
         let resp = reqwest::Client::new()
-            .post(Urls::POLYGON_RPC)
+            .post(Urls::polygon_rpc())
             .json(&body)
             .send()
             .await;
         if let Ok(r) = resp {
             if let Ok(v) = r.json::<serde_json::Value>().await {
-                // receipt is an object (not null) once the tx is mined
                 if v["result"].is_object() {
-                    // status "0x1" = success, "0x0" = reverted
                     let status = v["result"]["status"].as_str().unwrap_or("0x1");
                     if status == "0x0" {
                         anyhow::bail!(
-                            "Transaction {} was mined but reverted (status 0x0). \
+                            "{} tx {} was mined but reverted (status 0x0). \
                              Check Polygonscan for details.",
+                            label,
                             tx_hash
                         );
                     }
@@ -851,14 +1226,19 @@ pub async fn wait_for_tx_receipt(tx_hash: &str, max_wait_secs: u64) -> Result<()
         }
         if Instant::now() >= deadline {
             anyhow::bail!(
-                "Approval tx {} not confirmed within {}s. \
-                 Check Polygonscan and retry.",
-                tx_hash, max_wait_secs
+                "{} tx {} not observed on-chain within {}s. \
+                 If the hash does not appear on Polygonscan, onchainos signed the tx \
+                 but never broadcast it — usually because it would revert. \
+                 Check your trading mode / outcome token ownership and retry.",
+                label,
+                tx_hash,
+                max_wait_secs
             );
         }
         sleep(Duration::from_millis(2000)).await;
     }
 }
+
 
 /// Poll eth_getTransactionReceipt on any supported EVM chain until mined or timeout.
 ///
@@ -937,7 +1317,7 @@ pub async fn transfer_erc20_on_chain(
     to: &str,
     amount: u128,
 ) -> Result<String> {
-    let output = tokio::process::Command::new("onchainos")
+    let output = tokio::process::Command::new(onchainos_bin())
         .args([
             "wallet", "send",
             "--chain", chain,
@@ -969,7 +1349,7 @@ pub async fn transfer_erc20_on_chain(
 /// `to` is the destination address.
 /// `amount_wei` is the amount in wei (18 decimals for ETH-like, 9 for others).
 pub async fn transfer_native_on_chain(chain: &str, to: &str, amount_wei: u128) -> Result<String> {
-    let output = tokio::process::Command::new("onchainos")
+    let output = tokio::process::Command::new(onchainos_bin())
         .args([
             "wallet", "send",
             "--chain", chain,
@@ -1067,7 +1447,7 @@ pub async fn get_native_gas_balance(chain: &str) -> f64 {
 }
 
 pub async fn get_chain_balances(chain: &str) -> Vec<ChainTokenBalance> {
-    let output = tokio::process::Command::new("onchainos")
+    let output = tokio::process::Command::new(onchainos_bin())
         .args(["wallet", "balance", "--chain", chain])
         .output()
         .await;
@@ -1117,6 +1497,34 @@ pub async fn get_chain_balances(chain: &str) -> Vec<ChainTokenBalance> {
         .collect()
 }
 
+/// Report plugin-level order metadata to the OKX backend for strategy attribution.
+///
+/// Serializes `payload` to a JSON string and passes it as `--plugin-parameter`.
+/// Non-fatal at the call site: the trade has already succeeded before this is invoked,
+/// so callers should log and continue on error rather than propagate.
+pub async fn report_plugin_info(payload: &Value) -> Result<()> {
+    let payload_str = serde_json::to_string(payload)
+        .context("serializing report-plugin-info payload")?;
+    let output = tokio::process::Command::new(onchainos_bin())
+        .args([
+            "wallet", "report-plugin-info",
+            "--plugin-parameter", &payload_str,
+            "--chain", CHAIN,
+        ])
+        .output()
+        .await
+        .context("Failed to spawn onchainos wallet report-plugin-info")?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!(
+            "onchainos report-plugin-info failed ({}): {}",
+            output.status,
+            stderr.trim()
+        );
+    }
+    Ok(())
+}
+
 pub async fn is_ctf_approved_for_all(owner: &str, operator: &str) -> Result<bool> {
     use crate::config::{Contracts, Urls};
     // isApprovedForAll(address,address) selector = 0xe985e9c5
@@ -1129,7 +1537,7 @@ pub async fn is_ctf_approved_for_all(owner: &str, operator: &str) -> Result<bool
     });
     let client = reqwest::Client::new();
     let resp = client
-        .post(Urls::POLYGON_RPC)
+        .post(Urls::polygon_rpc())
         .json(&body)
         .send()
         .await
@@ -1142,5 +1550,195 @@ pub async fn is_ctf_approved_for_all(owner: &str, operator: &str) -> Result<bool
     // ABI-encoded bool: 32 bytes. Approved = 0x0000...0001, Not approved = 0x0000...0000
     let hex = v["result"].as_str().unwrap_or("0x").trim_start_matches("0x");
     Ok(!hex.is_empty() && hex.trim_start_matches('0') == "1")
+}
+
+// ─── Unit Tests ───────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Serialize env-var tests to prevent parallel test contamination.
+    static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    // ── Bug #1: PATH resolution ──────────────────────────────────────────────
+
+    /// `POLYMARKET_ONCHAINOS_BIN` env var overrides the binary path.
+    /// This is the mechanism that lets CI inject a mock binary so onchainos
+    /// calls can be stubbed without a real wallet.
+    #[test]
+    fn test_onchainos_bin_env_override() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        std::env::set_var("POLYMARKET_ONCHAINOS_BIN", "/usr/bin/env");
+        let bin = onchainos_bin();
+        std::env::remove_var("POLYMARKET_ONCHAINOS_BIN");
+        assert_eq!(bin, std::ffi::OsString::from("/usr/bin/env"));
+    }
+
+    /// Without the env var and without ~/.local/bin/onchainos present,
+    /// `onchainos_bin()` falls back to bare "onchainos".
+    #[test]
+    fn test_onchainos_bin_fallback_to_bare_name() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        std::env::remove_var("POLYMARKET_ONCHAINOS_BIN");
+        // Only test the fallback path when ~/.local/bin/onchainos is absent.
+        let local_path = dirs::home_dir()
+            .map(|h| h.join(".local").join("bin").join("onchainos"));
+        if local_path.map(|p| p.is_file()).unwrap_or(false) {
+            return; // test not applicable on a machine with onchainos installed
+        }
+        let bin = onchainos_bin();
+        assert_eq!(bin, std::ffi::OsString::from("onchainos"));
+    }
+
+    // ── Bug #4: MAX_UINT approval calldata ──────────────────────────────────
+
+    /// `usdc_approve` ABI-encodes amount as uint256. Verify that the calldata
+    /// for u128::MAX contains the correct max-value bytes (the low 128 bits
+    /// of MAX_UINT256).
+    ///
+    /// This test does NOT make a network call — it just checks the calldata
+    /// that would be passed to wallet_contract_call.
+    #[test]
+    fn test_usdc_approve_max_uint_encoding() {
+        // The calldata for approve(spender, u128::MAX) should end with
+        // ffffffffffffffffffffffffffffffff (32 bytes / 16 bytes low + 16 high of 0).
+        // Since u128::MAX = 0xffffffffffffffffffffffffffffffff (128 bits),
+        // ABI-encoded as uint256 it is: 0000000000000000ffffffffffffffffffffffffffffffff
+        // Wait — u128::MAX as ABI uint256 is:
+        //   32 bytes big-endian: 16 zero bytes then 16 0xff bytes
+        let amount = u128::MAX;
+        let padded = pad_u256(amount);
+        assert_eq!(padded.len(), 64, "pad_u256 must produce exactly 64 hex chars");
+        assert_eq!(
+            padded,
+            "00000000000000000000000000000000ffffffffffffffffffffffffffffffff",
+            "u128::MAX as uint256 should be 16 zero bytes followed by 16 0xff bytes"
+        );
+    }
+
+    // ── Bug #2: NegRisk ABI encoding ────────────────────────────────────────
+
+    /// `decimal_str_to_hex64("0")` should produce 64 zeros.
+    #[test]
+    fn test_decimal_str_to_hex64_zero() {
+        let result = decimal_str_to_hex64("0").unwrap();
+        assert_eq!(result, "0".repeat(64));
+    }
+
+    /// `decimal_str_to_hex64("255")` should produce 62 zeros + "ff".
+    #[test]
+    fn test_decimal_str_to_hex64_small_values() {
+        let result = decimal_str_to_hex64("255").unwrap();
+        assert_eq!(result, format!("{:0>64}", "ff"));
+
+        let result = decimal_str_to_hex64("256").unwrap();
+        assert_eq!(result, format!("{:0>64}", "100"));
+    }
+
+    /// u64::MAX = 18446744073709551615 = 0xffffffffffffffff
+    #[test]
+    fn test_decimal_str_to_hex64_u64_max() {
+        let result = decimal_str_to_hex64("18446744073709551615").unwrap();
+        assert_eq!(result, format!("{:0>64}", "ffffffffffffffff"));
+    }
+
+    /// u128::MAX = 340282366920938463463374607431768211455 = 0xffffffffffffffffffffffffffffffff
+    #[test]
+    fn test_decimal_str_to_hex64_u128_max() {
+        let result = decimal_str_to_hex64("340282366920938463463374607431768211455").unwrap();
+        assert_eq!(result, format!("{:0>64}", "ffffffffffffffffffffffffffffffff"));
+    }
+
+    /// Invalid decimal string (contains non-digit) should return an error.
+    #[test]
+    fn test_decimal_str_to_hex64_invalid_input() {
+        assert!(decimal_str_to_hex64("0x1234").is_err(), "0x prefix is not valid decimal");
+        assert!(decimal_str_to_hex64("12.34").is_err(), "decimal point is not a digit");
+        assert!(decimal_str_to_hex64("").is_err(), "empty string should fail");
+    }
+
+    /// The `build_negrisk_redeem_calldata` calldata must have the correct structure:
+    /// - 4-byte selector
+    /// - 32-byte condition_id (bytes32)
+    /// - 32-byte array offset (64 = 0x40)
+    /// - 32-byte array length (number of amounts)
+    /// - 32-byte per amount
+    /// Total for 2 amounts: 4 + 4*32 = 4 + 128 = 132 bytes = 264 hex chars + 2 ("0x") = 266
+    #[test]
+    fn test_negrisk_redeem_calldata_length() {
+        let condition_id = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+        let amounts = [1_000_000u128, 0u128];
+        let calldata = build_negrisk_redeem_calldata(condition_id, &amounts);
+        // 0x + 8 (selector) + 64 (cond_id) + 64 (offset) + 64 (len) + 64*2 (amounts) = 2 + 328 = 330
+        assert_eq!(calldata.len(), 330, "calldata should be 330 chars (2 + 8 + 64*5)");
+    }
+
+    /// Verify the array offset field is encoded as 64 (0x40 = 2 static params × 32 bytes).
+    #[test]
+    fn test_negrisk_redeem_calldata_array_offset() {
+        let condition_id = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        let amounts = [0u128, 0u128];
+        let calldata = build_negrisk_redeem_calldata(condition_id, &amounts);
+        // Strip "0x" prefix. Layout: [selector 8][cond_id 64][array_offset 64][...]
+        let hex = &calldata[2..];
+        let array_offset_hex = &hex[8 + 64..8 + 64 + 64];
+        // array_offset = 64 = 0x0000...0040
+        assert_eq!(
+            array_offset_hex,
+            format!("{:0>64}", "40"),
+            "array offset should be 64 (0x40)"
+        );
+    }
+
+    /// Verify amounts are correctly encoded in the calldata.
+    #[test]
+    fn test_negrisk_redeem_calldata_amounts_encoding() {
+        let condition_id = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        let yes_amount = 50_000_000u128; // 50 USDC.e worth of shares
+        let no_amount = 0u128;
+        let calldata = build_negrisk_redeem_calldata(condition_id, &[yes_amount, no_amount]);
+        let hex = &calldata[2..]; // strip "0x"
+        // Layout: [selector 8][cond_id 64][offset 64][length 64][amount0 64][amount1 64]
+        let amount0_hex = &hex[8 + 64 + 64 + 64..8 + 64 + 64 + 64 + 64];
+        let amount1_hex = &hex[8 + 64 + 64 + 64 + 64..];
+        assert_eq!(
+            amount0_hex,
+            format!("{:0>64x}", yes_amount),
+            "yes amount should be correctly encoded"
+        );
+        assert_eq!(
+            amount1_hex,
+            format!("{:0>64x}", no_amount),
+            "no amount should be correctly encoded"
+        );
+    }
+
+    /// CTF.redeemPositions calldata has the correct selector.
+    /// keccak256("redeemPositions(address,bytes32,bytes32,uint256[])") = 0xdbcb3da5
+    #[test]
+    fn test_ctf_redeem_positions_selector() {
+        use sha3::{Digest, Keccak256};
+        let selector = Keccak256::digest(b"redeemPositions(address,bytes32,bytes32,uint256[])");
+        let expected = hex::encode(&selector[..4]);
+        let cid = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+        let collateral = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"; // USDC.e (V1)
+        let calldata = build_ctf_redeem_positions_calldata(cid, collateral);
+        assert!(calldata.starts_with(&format!("0x{}", expected)),
+            "CTF.redeemPositions selector should be 0x{}", expected);
+    }
+
+    /// NegRiskAdapter.redeemPositions calldata has the correct selector.
+    /// keccak256("redeemPositions(bytes32,uint256[])") first 4 bytes
+    #[test]
+    fn test_negrisk_redeem_positions_selector() {
+        use sha3::{Digest, Keccak256};
+        let selector = Keccak256::digest(b"redeemPositions(bytes32,uint256[])");
+        let expected = hex::encode(&selector[..4]);
+        let cid = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+        let calldata = build_negrisk_redeem_calldata(cid, &[0u128]);
+        assert!(calldata.starts_with(&format!("0x{}", expected)),
+            "NegRiskAdapter.redeemPositions selector should be 0x{}", expected);
+    }
 }
 
