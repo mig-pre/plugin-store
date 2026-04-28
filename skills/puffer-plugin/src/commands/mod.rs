@@ -6,6 +6,7 @@ use crate::onchainos::{gas_limit, gas_price_wei, wallet_balance};
 pub mod claim_withdraw;
 pub mod instant_withdraw;
 pub mod positions;
+pub mod quickstart;
 pub mod rate;
 pub mod request_withdraw;
 pub mod stake;

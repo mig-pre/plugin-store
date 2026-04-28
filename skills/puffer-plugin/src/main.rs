@@ -10,6 +10,7 @@ use commands::{
     claim_withdraw::ClaimWithdrawArgs,
     instant_withdraw::InstantWithdrawArgs,
     positions::PositionsArgs,
+    quickstart::QuickstartArgs,
     rate::RateArgs,
     request_withdraw::RequestWithdrawArgs,
     stake::StakeArgs,
@@ -30,6 +31,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// First-time onboarding: scan ETH + pufETH balance, current rate + APY, return status enum + ready-to-run next_command.
+    Quickstart(QuickstartArgs),
     /// Show pufETH balance, ETH-equivalent value, current rate, exit fee, and APY (read-only).
     Positions(PositionsArgs),
     /// Deposit ETH into PufferVault to receive pufETH (ERC-4626 mint, 1:1 ≤ rate).
@@ -52,6 +55,7 @@ enum Commands {
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
+        Commands::Quickstart(args) => commands::quickstart::run(args).await,
         Commands::Positions(args) => commands::positions::run(args).await,
         Commands::Stake(args) => commands::stake::run(args).await,
         Commands::Rate(args) => commands::rate::run(args).await,

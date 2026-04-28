@@ -1,7 +1,7 @@
 schema_version: 1
 name: puffer-plugin
 version: "0.1.0"
-description: Liquid restaking on Puffer Finance (Ethereum) — deposit ETH to mint pufETH (ERC-4626 nLRT), choose between instant 1-step withdraw (1% fee) or 2-step queued withdraw (~14d, no fee), and check positions/rate
+description: Puffer Finance liquid restaking on Ethereum — stake ETH for pufETH (ERC-4626 nLRT), choose 1-step instant exit (1% fee) or 2-step queued (~14d, no fee), check positions and rate
 author:
   name: GeoGu360
   github: GeoGu360
