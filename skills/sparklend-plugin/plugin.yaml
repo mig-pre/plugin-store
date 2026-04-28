@@ -1,0 +1,30 @@
+name: sparklend-plugin
+version: "0.1.0"
+description: "SparkLend lending and borrowing on Ethereum Mainnet — supply, withdraw, borrow, repay, positions, health factor, reserves."
+author: skylavis-sky
+license: MIT
+homepage: https://spark.fi
+repository: https://github.com/skylavis-sky/plugin-store
+tags:
+  - defi
+  - lending
+  - ethereum
+  - sparklend
+  - aave
+chains:
+  - ethereum
+commands:
+  - name: supply
+    description: Supply/deposit an asset to SparkLend to earn interest (spTokens)
+  - name: withdraw
+    description: Withdraw a previously supplied asset from SparkLend
+  - name: borrow
+    description: Borrow an asset against posted collateral (variable rate)
+  - name: repay
+    description: Repay borrowed debt (partial or full)
+  - name: positions
+    description: View current supply and borrow positions (health factor, collateral, debt)
+  - name: health-factor
+    description: Check health factor and liquidation risk
+  - name: reserves
+    description: List market rates and supply/borrow APYs for all SparkLend assets
