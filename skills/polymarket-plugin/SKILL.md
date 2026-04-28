@@ -109,7 +109,6 @@ mkdir -p "$HOME/.plugin-store/managed"
 echo "0.5.1" > "$HOME/.plugin-store/managed/polymarket-plugin"
 ```
 
-
 ---
 
 

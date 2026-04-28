@@ -74,8 +74,7 @@ if [ ! -f "$CHECKER" ]; then
   curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
 fi
 
-# Clean up old installation (legacy pendle binary from v0.2.4–v0.2.5, and any stale pendle-plugin)
-rm -f "$HOME/.local/bin/pendle" "$HOME/.local/bin/.pendle-core" 2>/dev/null
+# Clean up old installation
 rm -f "$HOME/.local/bin/pendle-plugin" "$HOME/.local/bin/.pendle-plugin-core" 2>/dev/null
 
 # Download binary
@@ -97,38 +96,12 @@ mkdir -p ~/.local/bin
 curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/pendle-plugin@0.2.7/pendle-plugin-${TARGET}${EXT}" -o ~/.local/bin/.pendle-plugin-core${EXT}
 chmod +x ~/.local/bin/.pendle-plugin-core${EXT}
 
-# Symlink CLI name to pendle-plugin
+# Symlink CLI name to universal launcher
 ln -sf "$LAUNCHER" ~/.local/bin/pendle-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
 echo "0.2.7" > "$HOME/.plugin-store/managed/pendle-plugin"
-```
-
-### Report install (auto-injected, runs once)
-
-```bash
-REPORT_FLAG="$HOME/.plugin-store/reported/pendle-plugin"
-if [ ! -f "$REPORT_FLAG" ]; then
-  mkdir -p "$HOME/.plugin-store/reported"
-  # Device fingerprint → SHA256 → 32-char device ID
-  DEV_RAW="$(hostname):$(uname -s):$(uname -m):$HOME"
-  DEV_ID=$(echo -n "$DEV_RAW" | shasum -a 256 | head -c 32)
-  # HMAC signature (obfuscated key, same as CLI binary)
-  _K=$(echo 'OE9nNWFRUFdfSVJkektrMExOV2RNeTIzV2JibXo3ZWNTbExJUDFIWnVoZw==' | base64 -d 2>/dev/null || echo 'OE9nNWFRUFdfSVJkektrMExOV2RNeTIzV2JibXo3ZWNTbExJUDFIWnVoZw==' | openssl base64 -d)
-  HMAC_SIG=$(echo -n "${_K}${DEV_ID}" | shasum -a 256 | head -c 8)
-  DIV_ID="${DEV_ID}${HMAC_SIG}"
-  unset _K
-  # Report to Vercel stats
-  curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
-    -H "Content-Type: application/json" \
-    -d '{"name":"pendle-plugin","version":"0.2.7"}' >/dev/null 2>&1 || true
-  # Report to OKX API (with HMAC-signed device token)
-  curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
-    -H "Content-Type: application/json" \
-    -d '{"pluginName":"pendle-plugin","divId":"'"$DIV_ID"'"}' >/dev/null 2>&1 || true
-  touch "$REPORT_FLAG"
-fi
 ```
 
 ---
@@ -793,6 +766,4 @@ pendle-plugin --chain 42161 --confirm sell-pt \
 | "Pendle SDK convert returned HTTP 403" | API rate limit, geographic restriction, or unsupported market | Wait and retry; verify market addresses are correct for the target chain |
 | `get-asset-price` returns empty priceMap | IDs not chain-prefixed | Use format `42161-0x...` not bare `0x...` |
 | Approval or main tx times out after ~40 seconds | Network congestion; the binary polls for confirmation every 2s for up to 20 retries (40s hard limit) | The tx may still confirm on-chain. Check the returned `tx_hash` on a block explorer; if confirmed, safe to proceed. If still pending, wait for the next block and retry the command (the approval is idempotent). |
-
-
 

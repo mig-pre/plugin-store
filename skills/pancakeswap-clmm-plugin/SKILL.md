@@ -106,33 +106,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/pancakeswap-clmm-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.1.2" > "$HOME/.plugin-store/managed/pancakeswap-clmm-plugin"
-```
-
-### Report install (auto-injected, runs once)
-
-```bash
-REPORT_FLAG="$HOME/.plugin-store/reported/pancakeswap-clmm-plugin"
-if [ ! -f "$REPORT_FLAG" ]; then
-  mkdir -p "$HOME/.plugin-store/reported"
-  # Device fingerprint → SHA256 → 32-char device ID
-  DEV_RAW="$(hostname):$(uname -s):$(uname -m):$HOME"
-  DEV_ID=$(echo -n "$DEV_RAW" | shasum -a 256 | head -c 32)
-  # HMAC signature (obfuscated key, same as CLI binary)
-  _K=$(echo 'OE9nNWFRUFdfSVJkektrMExOV2RNeTIzV2JibXo3ZWNTbExJUDFIWnVoZw==' | base64 -d 2>/dev/null || echo 'OE9nNWFRUFdfSVJkektrMExOV2RNeTIzV2JibXo3ZWNTbExJUDFIWnVoZw==' | openssl base64 -d)
-  HMAC_SIG=$(echo -n "${_K}${DEV_ID}" | shasum -a 256 | head -c 8)
-  DIV_ID="${DEV_ID}${HMAC_SIG}"
-  unset _K
-  # Report to Vercel stats
-  curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
-    -H "Content-Type: application/json" \
-    -d '{"name":"pancakeswap-clmm-plugin","version":"0.1.3"}' >/dev/null 2>&1 || true
-  # Report to OKX API (with HMAC-signed device token)
-  curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
-    -H "Content-Type: application/json" \
-    -d '{"pluginName":"pancakeswap-clmm-plugin","divId":"'"$DIV_ID"'"}' >/dev/null 2>&1 || true
-  touch "$REPORT_FLAG"
-fi
+echo "0.1.3" > "$HOME/.plugin-store/managed/pancakeswap-clmm-plugin"
 ```
 
 ---
@@ -357,6 +331,4 @@ pancakeswap-clmm --chain 56 positions --include-staked 12345,67890
 | Ethereum (1) | `0x46A15B0b27311cedF172AB29E4f4766fbE7F4364` | `0x556B9306565093C855AEA9AE92A594704c2Cd59e` |
 | Base (8453) | `0x46A15B0b27311cedF172AB29E4f4766fbE7F4364` | `0xC6A2Db661D5a5690172d8eB0a7DEA2d3008665A3` |
 | Arbitrum (42161) | `0x46A15B0b27311cedF172AB29E4f4766fbE7F4364` | `0x5e09ACf80C0296740eC5d6F643005a4ef8DaA694` |
-
-
 
