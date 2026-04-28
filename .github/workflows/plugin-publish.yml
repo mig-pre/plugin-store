@@ -40,6 +40,11 @@ on:
         required: false
         default: 'false'
         type: boolean
+      target_plugin:
+        description: 'Single plugin name to rebuild (used with rebuild_all=true to scope to one plugin, e.g. for re-publishing a previously failed release)'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write
@@ -92,15 +97,27 @@ jobs:
           PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           # workflow_dispatch with rebuild_all: treat ALL plugins as changed
+          # (or a single plugin if target_plugin is set — useful for re-publishing
+          # a previously failed release without churning every plugin)
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.rebuild_all }}" = "true" ]; then
-            PLUGINS=$(ls -d skills/*/plugin.yaml 2>/dev/null | xargs -I{} dirname {} | xargs -I{} basename {} | sort -u | tr '\n' ' ' | sed 's/ $//')
+            TARGET="${{ inputs.target_plugin }}"
+            if [ -n "$TARGET" ]; then
+              if [ ! -d "skills/$TARGET" ] || [ ! -f "skills/$TARGET/plugin.yaml" ]; then
+                echo "::error::target_plugin '$TARGET' not found at skills/${TARGET}/plugin.yaml"
+                exit 1
+              fi
+              PLUGINS="$TARGET"
+              echo "Rebuild-all mode (scoped to single plugin): ${PLUGINS}"
+            else
+              PLUGINS=$(ls -d skills/*/plugin.yaml 2>/dev/null | xargs -I{} dirname {} | xargs -I{} basename {} | sort -u | tr '\n' ' ' | sed 's/ $//')
+              echo "Rebuild-all mode (all plugins): ${PLUGINS}"
+            fi
             if [ -z "$PLUGINS" ]; then
               echo "has_changes=false" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             echo "changed_plugins=${PLUGINS}" >> "$GITHUB_OUTPUT"
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
-            echo "Rebuild-all mode: ${PLUGINS}"
             exit 0
           fi
 
