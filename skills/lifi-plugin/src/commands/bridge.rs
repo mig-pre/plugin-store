@@ -286,7 +286,14 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
     let stage = if args.dry_run { "dry_run" } else if args.confirm { "submit" } else { "preview" };
     let exec_secs = quote["estimate"]["executionDuration"].as_u64().unwrap_or(0);
     let tool_name = quote.get("tool").and_then(|v| v.as_str()).unwrap_or("").to_string();
-    let liquidity_check = assess_liquidity(&all_available_tools);
+    // LI.FI populates fromAmountUSD on most quotes — used to detect sub-$1
+    // bridges that pass dry-run verdict but get rejected by relayer minimum
+    // fill amounts (AGG-003).
+    let from_amount_usd = quote["estimate"]["fromAmountUSD"]
+        .as_str()
+        .and_then(|s| s.parse::<f64>().ok())
+        .unwrap_or(0.0);
+    let liquidity_check = assess_liquidity(&all_available_tools, from_amount_usd);
     let reliability = assess_reliability(&tool_name, exec_secs, &liquidity_check);
 
     let preview = json!({
@@ -339,23 +346,36 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    // Safety gate: refuse to submit when only solver-quote bridges are available.
-    // The on-chain tx will broadcast and burn gas, but the off-chain relayer
-    // will reject the fill (BELOW_LP_MINIMUM) — that's a wasted gas tx with no
-    // funds bridged. Override with --accept-relayer-risk if the caller has
-    // a reason to retry anyway.
-    if liquidity_check["verdict"].as_str() == Some("BELOW_LP_MINIMUM") && !args.accept_relayer_risk {
-        return print_err(
-            &format!(
-                "Refusing to submit: only solver-quote bridges available at this amount ({}). The relayer will likely reject the fill, wasting source-chain gas. See preview.liquidity_check for alternatives.",
-                liquidity_check["all_available_tools"]
-                    .as_array()
-                    .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
-                    .unwrap_or_default()
+    // Safety gate: refuse to submit when only solver-quote bridges are available
+    // OR amount is sub-$1 (relayers reject most fills at this size even when
+    // LP-tier tools are listed). On-chain tx would broadcast and burn gas, but
+    // the off-chain relayer will reject the fill — that's a wasted-gas tx with
+    // no funds bridged. Override with --accept-relayer-risk to attempt anyway.
+    let verdict = liquidity_check["verdict"].as_str().unwrap_or("");
+    if matches!(verdict, "BELOW_LP_MINIMUM" | "LIKELY_REJECT_SUBDOLLAR") && !args.accept_relayer_risk {
+        let (msg, code, suggestion) = match verdict {
+            "BELOW_LP_MINIMUM" => (
+                format!(
+                    "Refusing to submit: only solver-quote bridges available at this amount ({}). The relayer will likely reject the fill, wasting source-chain gas. See preview.liquidity_check for alternatives.",
+                    liquidity_check["all_available_tools"]
+                        .as_array()
+                        .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
+                        .unwrap_or_default()
+                ),
+                "BELOW_LP_MINIMUM",
+                "Pick one: (1) increase --amount to meet LP minimum, (2) try a different chain, or (3) re-run with --accept-relayer-risk if you understand the gas-loss risk and want to attempt anyway.".to_string(),
             ),
-            "BELOW_LP_MINIMUM",
-            "Pick one: (1) increase --amount to meet LP minimum, (2) try a different chain, or (3) re-run with --accept-relayer-risk if you understand the gas-loss risk and want to attempt anyway.",
-        );
+            "LIKELY_REJECT_SUBDOLLAR" => (
+                format!(
+                    "Refusing to submit: bridge size is ${:.2} (below $1 USD floor). LP-tier bridges typically reject fills at this size even when the route is listed. Onchainos may catch this at pre-flight (no gas wasted) but the user request still fails.",
+                    liquidity_check["amount_usd"].as_f64().unwrap_or(0.0)
+                ),
+                "LIKELY_REJECT_SUBDOLLAR",
+                "Increase --amount to at least $1 (preferably $5+). Or pass --accept-relayer-risk to attempt anyway.".to_string(),
+            ),
+            _ => unreachable!(),
+        };
+        return print_err(&msg, code, &suggestion);
     }
 
     // ── 8. Approve (if ERC-20 and allowance < amount). EVM-005, EVM-006. ─────
@@ -414,14 +434,40 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
     }
 
     // ── 9. Submit the bridge tx via onchainos ─────────────────────────────────
+    // Retry once on `exceeds allowance` revert (EVM-014): even after our
+    // wait_for_tx confirms the approve via publicnode RPC, onchainos's
+    // internal RPC can lag a block or two and reject the bridge submission
+    // with `ERC20: transfer amount exceeds allowance`. A single 5-second
+    // retry resolves it without re-approving.
     let submit_value = if is_native_token(&from_token_addr) { Some(value_wei) } else { None };
     let result = match wallet_contract_call(from_chain.id, &router_to, &calldata, submit_value, false) {
         Ok(r) => r,
-        Err(e) => return print_err(
-            &format!("Bridge submission failed: {:#}", e),
-            "BRIDGE_SUBMIT_FAILED",
-            "Inspect onchainos output. Common causes: insufficient gas, RPC issue, slippage tightened.",
-        ),
+        Err(e) => {
+            let emsg = format!("{:#}", e);
+            let is_allowance_lag = !is_native_token(&from_token_addr)
+                && (emsg.contains("transfer amount exceeds allowance")
+                    || emsg.contains("exceeds allowance"));
+            if is_allowance_lag {
+                eprintln!(
+                    "[bridge] Allowance-lag revert detected (EVM-014). Onchainos RPC trails our approve confirmation by a few seconds. Sleeping 5s and retrying once…"
+                );
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                match wallet_contract_call(from_chain.id, &router_to, &calldata, submit_value, false) {
+                    Ok(r) => r,
+                    Err(e2) => return print_err(
+                        &format!("Bridge submission failed after allowance-lag retry: {:#}", e2),
+                        "BRIDGE_SUBMIT_FAILED",
+                        "First attempt revert was 'exceeds allowance' (RPC lag), retry also failed. Wait a block (~12s on L1, ~2s on L2) and re-run the same command.",
+                    ),
+                }
+            } else {
+                return print_err(
+                    &format!("Bridge submission failed: {:#}", emsg),
+                    "BRIDGE_SUBMIT_FAILED",
+                    "Inspect onchainos output. Common causes: insufficient gas, RPC issue, slippage tightened, or below relayer's per-route minimum (try larger amount).",
+                );
+            }
+        }
     };
     let tx_hash = extract_tx_hash(&result);
 
@@ -472,14 +518,22 @@ const LP_TIER_TOOLS: &[&str] = &["across", "stargate", "stargatev2", "relaydepos
 /// Submission can broadcast successfully but the relayer may reject the fill.
 const SOLVER_QUOTE_TOOLS: &[&str] = &["mayan", "near", "relayer"];
 
+/// Hard USD-equivalent floor below which most LP-tier bridges still reject
+/// the fill at the relayer level, even when the route is "available". Observed
+/// empirically: BSC→ARB native BNB at ~$0.6 returned verdict=OK + across
+/// LP-tier in dry-run, but onchainos pre-flight reverted at simulation. (AGG-003)
+const SUB_DOLLAR_FLOOR_USD: f64 = 1.0;
+
 /// Inspect the full list of routes returned by /v1/advanced/routes (already
 /// filtered by `--deny-bridges`) and decide whether the user is below the
 /// LP-tier liquidity floor.
 ///
-/// Returns a JSON envelope with `verdict` ∈ { OK | BELOW_LP_MINIMUM | UNKNOWN }
-/// and the supporting tool inventory. Always populated even when verdict is
-/// OK — downstream Agents can read `lp_tier_tools_present` to make decisions.
-fn assess_liquidity(all_tools: &[String]) -> Value {
+/// Returns a JSON envelope with `verdict` ∈
+///   { OK | BELOW_LP_MINIMUM | LIKELY_REJECT_SUBDOLLAR | UNKNOWN }
+/// and the supporting tool inventory. Always populated.
+///
+/// `amount_usd` is the LI.FI-reported `fromAmountUSD`; pass 0.0 if missing.
+fn assess_liquidity(all_tools: &[String], amount_usd: f64) -> Value {
     if all_tools.is_empty() {
         // /routes call failed or returned nothing useful — don't claim a verdict.
         return json!({
@@ -508,6 +562,7 @@ fn assess_liquidity(all_tools: &[String]) -> Value {
         // reject the fill on-chain.
         return json!({
             "verdict": "BELOW_LP_MINIMUM",
+            "amount_usd": amount_usd,
             "all_available_tools": all_tools,
             "lp_tier_tools_present": false,
             "solver_quote_tools_present": true,
@@ -523,8 +578,32 @@ fn assess_liquidity(all_tools: &[String]) -> Value {
         });
     }
 
+    // Sub-dollar bridges (AGG-003): even when LP tools are available, relayers
+    // reject sub-$1 fills empirically. Observed BSC→ARB native BNB $0.6 with
+    // across LP-tier listed → onchainos pre-flight reverted at simulation.
+    if amount_usd > 0.0 && amount_usd < SUB_DOLLAR_FLOOR_USD && !lp_present.is_empty() {
+        return json!({
+            "verdict": "LIKELY_REJECT_SUBDOLLAR",
+            "amount_usd": amount_usd,
+            "all_available_tools": all_tools,
+            "lp_tier_tools_present": true,
+            "lp_tier_tools": lp_present,
+            "solver_quote_tools_present": !solver_present.is_empty(),
+            "message": format!(
+                "Bridge size is ${:.2} — below the empirical $1 USD floor where LP-tier bridges (even across/stargate/relaydepository) tend to reject fills at the relayer level. The route is listed but the actual broadcast will likely revert at simulation.",
+                amount_usd
+            ),
+            "suggestions": [
+                "Increase --amount to at least $1 USD-equivalent.",
+                "For LP-tier reliability, $5+ is recommended (LI.FI per-route minimums vary).",
+                "Override with --accept-relayer-risk only if you understand the gas-loss risk; onchainos may catch this at pre-flight without broadcasting (no gas burned).",
+            ],
+        });
+    }
+
     json!({
         "verdict": "OK",
+        "amount_usd": amount_usd,
         "all_available_tools": all_tools,
         "lp_tier_tools_present": !lp_present.is_empty(),
         "solver_quote_tools_present": !solver_present.is_empty(),
