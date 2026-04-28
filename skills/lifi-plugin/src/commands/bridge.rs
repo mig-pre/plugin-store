@@ -124,40 +124,7 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
     let slippage_dec = args.slippage_pct / 100.0;
     let deny: Vec<&str> = args.deny_bridges.iter().map(|s| s.as_str()).collect();
 
-    // ── 5. Pre-flight balance check (knowledge base EVM-001) ──────────────────
-    let bal: u128 = if is_native_token(&from_token_addr) {
-        match native_balance(&from_addr, from_chain.rpc).await {
-            Ok(v) => v,
-            Err(e) => return print_err(
-                &format!("Failed to read native balance on {}: {:#}", from_chain.key, e),
-                "RPC_ERROR",
-                "Public RPC may be limited. Retry in a few seconds.",
-            ),
-        }
-    } else {
-        match erc20_balance(&from_token_addr, &from_addr, from_chain.rpc).await {
-            Ok(v) => v,
-            Err(e) => return print_err(
-                &format!("Failed to read {} balance on {}: {:#}", from_token_symbol, from_chain.key, e),
-                "RPC_ERROR",
-                "Public RPC may be limited. Retry in a few seconds.",
-            ),
-        }
-    };
-    if bal < amount_atomic {
-        return print_err(
-            &format!(
-                "Insufficient {} on {}: need {} (raw {}), have {} (raw {})",
-                from_token_symbol, from_chain.key,
-                fmt_token_amount(amount_atomic, from_token_decimals), amount_atomic,
-                fmt_token_amount(bal, from_token_decimals), bal
-            ),
-            "INSUFFICIENT_BALANCE",
-            "Top up the source token on the source chain, or reduce --amount.",
-        );
-    }
-
-    // ── 6. Get the quote with calldata ────────────────────────────────────────
+    // ── 5. Get the quote first (we need its gasCosts for the gas check) ──────
     let qp = QuoteParams {
         from_chain: from_chain.id,
         to_chain: to_chain.id,
@@ -180,6 +147,71 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
             return print_err(&msg, code, suggestion);
         }
     };
+
+    // ── 6. Pre-flight balance check (EVM-001 source-token + new native-gas check) ─
+    // Always read native balance — needed for gas check even when from-token is ERC-20.
+    let native_bal = match native_balance(&from_addr, from_chain.rpc).await {
+        Ok(v) => v,
+        Err(e) => return print_err(
+            &format!("Failed to read native balance on {}: {:#}", from_chain.key, e),
+            "RPC_ERROR",
+            "Public RPC may be limited. Retry in a few seconds.",
+        ),
+    };
+    let from_token_bal: u128 = if is_native_token(&from_token_addr) {
+        native_bal
+    } else {
+        match erc20_balance(&from_token_addr, &from_addr, from_chain.rpc).await {
+            Ok(v) => v,
+            Err(e) => return print_err(
+                &format!("Failed to read {} balance on {}: {:#}", from_token_symbol, from_chain.key, e),
+                "RPC_ERROR",
+                "Public RPC may be limited. Retry in a few seconds.",
+            ),
+        }
+    };
+
+    // Source-token balance check (EVM-001).
+    if from_token_bal < amount_atomic {
+        return print_err(
+            &format!(
+                "Insufficient {} on {}: need {} (raw {}), have {} (raw {})",
+                from_token_symbol, from_chain.key,
+                fmt_token_amount(amount_atomic, from_token_decimals), amount_atomic,
+                fmt_token_amount(from_token_bal, from_token_decimals), from_token_bal
+            ),
+            "INSUFFICIENT_BALANCE",
+            "Top up the source token on the source chain, or reduce --amount.",
+        );
+    }
+
+    // Native gas balance check. Sum estimate.gasCosts[].amount; if from-token
+    // is native, the bridge amount is also debited from native balance, so we
+    // require: native_bal >= amount + gas. Otherwise just: native_bal >= gas.
+    let gas_total_wei = sum_gas_costs(&quote);
+    let native_required = if is_native_token(&from_token_addr) {
+        amount_atomic.saturating_add(gas_total_wei)
+    } else {
+        gas_total_wei
+    };
+    if native_bal < native_required {
+        let shortfall = native_required - native_bal;
+        return print_err(
+            &format!(
+                "Insufficient native gas on {}: need {} {} (≈ {} wei), have {} {} (gas alone: {} wei)",
+                from_chain.key,
+                fmt_token_amount(native_required, 18), from_chain.native_symbol, native_required,
+                fmt_token_amount(native_bal, 18), from_chain.native_symbol,
+                gas_total_wei,
+            ),
+            "INSUFFICIENT_GAS",
+            &format!(
+                "Top up native {} on {} by ≈{} {} (or reduce --amount if you're bridging native).",
+                from_chain.native_symbol, from_chain.key,
+                fmt_token_amount(shortfall, 18), from_chain.native_symbol,
+            ),
+        );
+    }
 
     let approval_addr = quote["estimate"]["approvalAddress"]
         .as_str()
@@ -211,12 +243,16 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
     // Always wrap with ok:true so stdout is a single parseable JSON object
     // (knowledge base GEN-001: structured JSON envelope on every code path).
     let stage = if args.dry_run { "dry_run" } else if args.confirm { "submit" } else { "preview" };
+    let exec_secs = quote["estimate"]["executionDuration"].as_u64().unwrap_or(0);
+    let tool_name = quote.get("tool").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let reliability = assess_reliability(&tool_name, exec_secs, amount_atomic, from_token_decimals);
+
     let preview = json!({
         "ok": true,
         "stage": stage,
         "submitted": false,
         "preview": {
-            "tool": quote.get("tool").cloned().unwrap_or(Value::Null),
+            "tool": tool_name,
             "type": quote.get("type").cloned().unwrap_or(Value::Null),
             "from": {
                 "chain": from_chain.key, "chain_id": from_chain.id,
@@ -224,8 +260,10 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
                 "amount": fmt_token_amount(amount_atomic, from_token_decimals),
                 "amount_raw": amount_atomic.to_string(),
                 "wallet": from_addr,
-                "balance": fmt_token_amount(bal, from_token_decimals),
-                "balance_raw": bal.to_string(),
+                "token_balance": fmt_token_amount(from_token_bal, from_token_decimals),
+                "token_balance_raw": from_token_bal.to_string(),
+                "native_balance": fmt_token_amount(native_bal, 18),
+                "native_balance_raw": native_bal.to_string(),
             },
             "to": {
                 "chain": to_chain.key, "chain_id": to_chain.id,
@@ -235,9 +273,16 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
             "approval_address": approval_addr.clone().unwrap_or_default(),
             "router_to": router_to,
             "value_wei": value_wei.to_string(),
-            "execution_duration_seconds": quote["estimate"]["executionDuration"].as_u64(),
+            "execution_duration_seconds": exec_secs,
             "slippage_pct": args.slippage_pct,
             "is_native_input": is_native_token(&from_token_addr),
+            "gas": {
+                "estimate_wei": gas_total_wei.to_string(),
+                "estimate_native": fmt_token_amount(gas_total_wei, 18),
+                "native_required_total_wei": native_required.to_string(),
+                "native_required_total": fmt_token_amount(native_required, 18),
+            },
+            "reliability": reliability,
         }
     });
     println!("{}", serde_json::to_string_pretty(&preview)?);
@@ -339,6 +384,62 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
 fn print_err(msg: &str, code: &str, suggestion: &str) -> anyhow::Result<()> {
     println!("{}", super::error_response(msg, code, suggestion));
     Ok(())
+}
+
+/// Sum estimate.gasCosts[].amount across all gas-cost entries (SEND + APPROVE if present).
+/// Returns total wei the caller must hold in native gas to cover the bridge tx(s).
+fn sum_gas_costs(quote: &Value) -> u128 {
+    quote["estimate"]["gasCosts"]
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|g| g.get("amount").and_then(|a| a.as_str()))
+                .filter_map(|s| s.parse::<u128>().ok())
+                .sum()
+        })
+        .unwrap_or(0)
+}
+
+/// Assess revert risk for the chosen LI.FI tool at the given amount, and surface
+/// a warning the user can act on. Returns Value::Null when no concern detected.
+///
+/// Heuristics (from real-world failure modes observed):
+///   - `mayan` and `near` use signed off-chain solver quotes that expire fast.
+///     Submission may revert if onchainos broadcast latency exceeds the quote
+///     validity window. Common at small amounts where these are the only routes.
+///   - executionDuration > 30s usually means a slow / async settlement tool.
+fn assess_reliability(tool: &str, exec_secs: u64, _amount_atomic: u128, _decimals: u32) -> Value {
+    let lc = tool.to_lowercase();
+    let solver_quote = matches!(lc.as_str(), "mayan" | "near" | "relayer");
+
+    if solver_quote {
+        return json!({
+            "level": "WARN",
+            "tool": tool,
+            "concern": "solver_quote_latency",
+            "message": format!(
+                "Tool '{}' uses time-sensitive signed quotes from off-chain solvers. The signed quote may expire between fetch and broadcast, causing on-chain revert with no informative reason. Observed in production at small (<$25) amounts.",
+                tool
+            ),
+            "suggestions": [
+                "Re-run with --deny-bridges mayan,near — typically falls back to `across` or `relaydepository`, both of which submit deterministic calldata and confirm in ~3s. (Recommended.)",
+                "If --deny-bridges returns NO_ROUTE_AVAILABLE, try a different destination chain. `lifi-plugin routes --from-chain X --to-chain Y --limit 8` lists alternatives.",
+                "Increase --amount — at ≥$25 USD-equivalent more bridges become available so the default picker is less likely to land on a solver-quote tool.",
+            ],
+        });
+    }
+
+    if exec_secs > 30 {
+        return json!({
+            "level": "INFO",
+            "tool": tool,
+            "concern": "long_execution_duration",
+            "message": format!("Tool '{}' has an estimated execution duration of {}s. This is normal for some bridges (e.g. Stargate, async settlement), but plan accordingly.", tool, exec_secs),
+            "suggestions": ["After --confirm, use `lifi-plugin status --tx-hash <h>` to track until status: DONE."],
+        });
+    }
+
+    Value::Null
 }
 
 fn human_to_atomic(s: &str, decimals: u32) -> Result<String, String> {
