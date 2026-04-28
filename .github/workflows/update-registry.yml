@@ -220,13 +220,29 @@ jobs:
 
           PYEOF
 
+      - name: Inject pre-flight dependencies into all SKILL.md
+        run: |
+          # Re-run inject-preflight.py for every skill. The script is
+          # idempotent — it detects an existing "auto-injected" block and
+          # replaces it in place — so a full scan over all skills is safe
+          # and produces a no-op diff for plugins whose pre-flight is
+          # already current.
+          pip install pyyaml 2>/dev/null || pip3 install pyyaml 2>/dev/null || true
+          for plugin_dir in skills/*/; do
+            plugin_name="$(basename "$plugin_dir")"
+            [ -f "${plugin_dir}plugin.yaml" ] || continue
+            [ -f "${plugin_dir}SKILL.md" ] || continue
+            echo "Injecting pre-flight for ${plugin_name}..."
+            python3 .github/scripts/inject-preflight.py "$plugin_name" "$plugin_dir" || true
+          done
+
       - name: Commit and push if changed
         run: |
           git config user.name "plugin-store-bot"
           git config user.email "bot@plugin-store.local"
-          git add registry.json .claude-plugin/marketplace.json
-          git diff --staged --quiet && echo "No registry changes" && exit 0
+          git add registry.json .claude-plugin/marketplace.json skills/
+          git diff --staged --quiet && echo "No registry / pre-flight changes" && exit 0
 
-          git commit -m "auto: update registry.json + marketplace.json from skills/"
+          git commit -m "auto: update registry.json + marketplace.json + pre-flight from skills/"
           git push
-          echo "Registry updated"
+          echo "Registry + pre-flight updated"

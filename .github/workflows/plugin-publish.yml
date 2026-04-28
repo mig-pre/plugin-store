@@ -833,133 +833,15 @@ jobs:
             echo "Tag count ${COUNT}/${MAX_TAGS} — within limit"
           fi
 
-      # ── Inject pre-flight dependencies into SKILL.md ──────────
-      - name: Inject pre-flight dependencies
-        run: |
-          pip install pyyaml 2>/dev/null || pip3 install pyyaml 2>/dev/null || true
-
-          CHANGED_PLUGINS="${{ needs.detect.outputs.changed_plugins }}"
-          for PLUGIN_NAME in $CHANGED_PLUGINS; do
-            PLUGIN_DIR="skills/${PLUGIN_NAME}"
-            if [ -d "$PLUGIN_DIR" ]; then
-              echo "Injecting pre-flight for ${PLUGIN_NAME}..."
-              python3 .github/scripts/inject-preflight.py "$PLUGIN_NAME" "$PLUGIN_DIR" || true
-            fi
-          done
-
-      - name: Update registry in this repo
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # Full-scan approach: regenerate registry.json from ALL skills/ directories.
-          # This eliminates concurrent push conflicts — every run produces the complete
-          # registry, so the last push always wins and is always correct.
-
-          python3 << 'PYEOF'
-          import json, os, yaml, glob, time
-
-          # Read current registry to preserve link/extra fields
-          with open("registry.json") as f:
-              current = json.load(f)
-          existing_by_name = {p["name"]: p for p in current.get("plugins", [])}
-
-          plugins = []
-          for yaml_path in sorted(glob.glob("skills/*/plugin.yaml")):
-              plugin_dir = os.path.dirname(yaml_path)
-              name = os.path.basename(plugin_dir)
-              if name.startswith("_"):
-                  continue
-
-              with open(yaml_path) as f:
-                  data = yaml.safe_load(f) or {}
-
-              entry = {
-                  "name": name,
-                  "version": str(data.get("version", "0.1.0")),
-                  "description": data.get("description", ""),
-                  "author": data.get("author", {}),
-                  "license": data.get("license", "MIT"),
-                  "category": data.get("category", ""),
-                  "tags": data.get("tags", []),
-                  "modify_date": str(int(time.time())),
-              }
-
-              # Detect plugin type
-              build = data.get("build", {}) or {}
-              components = data.get("components", {}) or {}
-              skill = components.get("skill", {}) or {}
-
-              if skill.get("repo"):
-                  entry["type"] = "community"
-              elif build.get("source_repo"):
-                  entry["type"] = "community-developer"
-              elif build.get("lang"):
-                  entry["type"] = "community-developer"
-              else:
-                  entry["type"] = data.get("type", "community")
-
-              # Add binary component if applicable
-              if build.get("lang") in ("rust", "go"):
-                  bin_name = build.get("binary_name", name)
-                  entry["components"] = {
-                      "skill": {"dir": skill.get("dir", ".")},
-                      "binary": {
-                          "repo": "okx/plugin-store",
-                          "asset_pattern": f"{bin_name}-{{target}}",
-                          "checksums_asset": "checksums.txt",
-                          "release_tag": f"plugins/{name}@{entry['version']}"
-                      }
-                  }
-              else:
-                  entry["components"] = {"skill": {"dir": skill.get("dir", ".")}}
-
-              # Add api_calls if present
-              api_calls = data.get("api_calls", [])
-              if api_calls:
-                  entry["api_calls"] = api_calls
-
-              # Raw content links for backend
-              skill_dir_path = skill.get("dir", ".")
-              if skill_dir_path == ".":
-                  skill_dir_path = f"skills/{name}"
-              elif not skill_dir_path.startswith("skills/"):
-                  skill_dir_path = f"skills/{name}/{skill_dir_path}"
-              entry["skill_md_link"] = f"https://raw.githubusercontent.com/okx/plugin-store/main/{skill_dir_path}/SKILL.md"
-              entry["summary_md_link"] = f"https://raw.githubusercontent.com/okx/plugin-store/main/{skill_dir_path}/SUMMARY.md"
-
-              # Always generate correct github_link pointing to plugin directory
-              entry["github_link"] = f"https://github.com/okx/plugin-store/tree/main/skills/{name}"
-
-              # Preserve extra from existing registry
-              existing = existing_by_name.get(name, {})
-              if "extra" in existing:
-                  entry["extra"] = existing["extra"]
-
-              plugins.append(entry)
-
-          result = {
-              "schema_version": 1,
-              "stats_url": current.get("stats_url", ""),
-              "plugins": plugins
-          }
-
-          with open("registry.json", "w") as f:
-              json.dump(result, f, indent=2, ensure_ascii=False)
-              f.write("\n")
-
-          print(f"Registry regenerated: {len(plugins)} plugins from skills/ scan")
-          PYEOF
-
-          # ── Atomic commit: pre-flight + registry + marketplace ──
-          git config user.name "plugin-store-bot"
-          git config user.email "bot@plugin-store.local"
-          git add skills/ registry.json .claude-plugin/marketplace.json
-          git diff --staged --quiet && echo "No CI changes to commit" || {
-            CHANGED="${{ needs.detect.outputs.changed_plugins }}"
-            git commit -m "auto: publish ${CHANGED} (pre-flight + registry)"
-            # Push to fork PR branch (works for both fork and same-repo PRs)
-            git push origin HEAD:refs/heads/${{ needs.detect.outputs.pr_head_ref || github.ref_name }}
-          }
+      # ── Pre-flight injection + registry.json + marketplace.json are now
+      #    handled post-merge by .github/workflows/update-registry.yml
+      #    (trigger: push to main + paths: skills/**). Doing them in-PR
+      #    required pushing back to the PR head branch, which fails with
+      #    HTTP 403 on fork PRs because the App token has no write
+      #    permission on the contributor's fork. The post-merge workflow
+      #    runs inject-preflight.py over every skill (idempotent) and
+      #    rebuilds both registry/marketplace from a full skills/ scan,
+      #    committing directly to main.
 
       # ── Final step: merge feature branch to main ──────────
       - name: Merge PR to main
