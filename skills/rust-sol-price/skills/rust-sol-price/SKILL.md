@@ -105,6 +105,7 @@ echo "12.0.0" > "$HOME/.plugin-store/managed/rust-sol-price"
 
 ---
 
+
 # rust-sol-price
 ## Overview
 A Rust CLI tool that queries the current SOL price from the OKX public API.
