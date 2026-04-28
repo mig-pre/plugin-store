@@ -52,18 +52,35 @@ pub fn resolve_wallet(chain_id: u64) -> anyhow::Result<String> {
     )
 }
 
-/// Execute an EVM contract call via `onchainos wallet contract-call`.
+/// Execute an EVM contract call via `onchainos wallet contract-call --force`.
 ///
-/// chain_id: target EVM chain id (e.g. 42161 for Arbitrum)
-/// to:       contract address (LI.FI router for bridge, or token contract for approve)
+/// `--force` is **defensively included** — see ONC-001. It is NOT "required for
+/// non-interactive calls" (onchainos is non-interactive by default). Its real
+/// role is to skip the backend's risk-control prompt that triggers on:
+/// unlimited-approve, untrusted contracts, or internal threshold violations.
+/// Low-risk daily calls work without `--force` (verified on Polygon
+/// `USDC.e.approve(0,0)`). But when the rare risk-control path fires,
+/// onchainos returns generic "execution reverted" with no specific code,
+/// indistinguishable from an on-chain revert. Always passing `--force`
+/// is a no-op in the common case and prevents that misleading failure mode.
+///
+/// `gas_limit` (EVM-015): explicit gas limit override. onchainos's internal
+/// eth_estimateGas occasionally under-estimates complex bridge calls (some
+/// LI.FI tools allocate 200k+ gas for cross-chain message routing). Pass
+/// `Some(N)` per-tool to avoid OOG reverts; None preserves auto-estimate.
+///
+/// chain_id: target EVM chain id
+/// to:       contract address (LI.FI router for bridge, or token for approve)
 /// calldata: hex-encoded call (0x-prefixed)
-/// value_wei: ETH/native value to attach (None for ERC-20 ops, Some for native-token bridges)
-/// dry_run: if true, returns a preview JSON without invoking onchainos
+/// value_wei: ETH/native value to attach
+/// gas_limit: explicit gas limit (recommended for EVM writes — see EVM-015)
+/// dry_run: if true, returns preview JSON without invoking onchainos
 pub fn wallet_contract_call(
     chain_id: u64,
     to: &str,
     calldata: &str,
     value_wei: Option<u128>,
+    gas_limit: Option<u64>,
     dry_run: bool,
 ) -> anyhow::Result<Value> {
     if dry_run {
@@ -74,18 +91,14 @@ pub fn wallet_contract_call(
             "to": to,
             "data": calldata,
             "value_wei": value_wei.map(|v| v.to_string()),
+            "gas_limit": gas_limit.map(|g| g.to_string()),
             "note": "Dry run — calldata not submitted"
         }));
     }
-    // --force is REQUIRED for LI.FI bridge calls. Without it, onchainos's backend
-    // policy/MEV-protection layer rejects unlimited-approve and unknown-contract
-    // calls with a cryptic "execution reverted" error. The plugin's own --confirm
-    // flag already gates whether this call is made at all, so the second
-    // confirmation from onchainos backend is redundant.
     let mut args = vec![
         "wallet".to_string(),
         "contract-call".to_string(),
-        "--force".to_string(),
+        "--force".to_string(),  // ← ONC-001 defensive
         "--chain".to_string(),
         chain_id.to_string(),
         "--to".to_string(),
@@ -96,6 +109,10 @@ pub fn wallet_contract_call(
     if let Some(v) = value_wei {
         args.push("--amt".to_string());
         args.push(v.to_string());
+    }
+    if let Some(g) = gas_limit {
+        args.push("--gas-limit".to_string());
+        args.push(g.to_string());
     }
     let output = Command::new("onchainos")
         .args(&args)

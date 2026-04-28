@@ -357,11 +357,15 @@ lifi-plugin bridge \
 - **EVM-002** — every amount field has `_raw` (atomic) + display version
 - **EVM-005** — native token sentinel detected, no approve attempt
 - **EVM-006** — approve is followed by `wait_for_tx` polling, no blind sleep
+- **EVM-014** (extended) — submit retry covers 3 allowance-revert formats: standard ERC-20, DAI's `Dai/insufficient-allowance`, OZ v5's `ERC20InsufficientAllowance`
+- **EVM-015** — explicit `--gas-limit` per call (approve 60k, bridge submit 500k) to avoid onchainos auto-estimate OOG on cross-chain message routing
 - **GEN-001** — every code path emits structured JSON to stdout
-- **ONC-001** — `onchainos wallet contract-call` is invoked with `--force` (required for unlimited approve + unknown contract calls)
+- **TX-001** — `wait_for_tx` after main bridge submit confirms source-chain `status=0x1` before reporting success; output includes `source_chain_status: "0x1"` field
+- **ONC-001** — `onchainos wallet contract-call` invoked with `--force` (defensively included; not "required for non-interactive" — onchainos is non-interactive by default. `--force` only matters when backend risk-control prompts trigger on unlimited-approve / untrusted contracts)
 - **GAS-001** — pre-flight native gas balance check using `quote.estimate.gasCosts[].amount`
 - **AGG-001** — preview includes `reliability` field flagging solver-quote tools (mayan/near/relayer)
-- **AGG-002** — preview includes `liquidity_check` field with `verdict` ∈ {OK | BELOW_LP_MINIMUM | UNKNOWN}; submission is refused on BELOW_LP_MINIMUM unless `--accept-relayer-risk` is set
+- **AGG-002** — preview includes `liquidity_check` field with `verdict` ∈ {OK | BELOW_LP_MINIMUM | LIKELY_REJECT_SUBDOLLAR | UNKNOWN}; submission is refused on BELOW_LP_MINIMUM / LIKELY_REJECT_SUBDOLLAR unless `--accept-relayer-risk` is set
+- **AGG-003** — sub-$1 USD safety floor catches cases where LP tools listed but relayer minimums still reject
 
 **Preview output shape (relevant fields):**
 ```json

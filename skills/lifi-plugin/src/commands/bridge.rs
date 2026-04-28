@@ -403,7 +403,7 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
                 "[bridge] Approving {} for {} (current allowance {} < {} required)…",
                 from_token_symbol, spender, allowance, amount_atomic
             );
-            let result = match wallet_contract_call(from_chain.id, &from_token_addr, &approve_data, None, false) {
+            let result = match wallet_contract_call(from_chain.id, &from_token_addr, &approve_data, None, Some(60_000), false) {
                 Ok(r) => r,
                 Err(e) => return print_err(
                     &format!("Approve submission failed: {:#}", e),
@@ -440,19 +440,25 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
     // with `ERC20: transfer amount exceeds allowance`. A single 5-second
     // retry resolves it without re-approving.
     let submit_value = if is_native_token(&from_token_addr) { Some(value_wei) } else { None };
-    let result = match wallet_contract_call(from_chain.id, &router_to, &calldata, submit_value, false) {
+    let result = match wallet_contract_call(from_chain.id, &router_to, &calldata, submit_value, Some(500_000), false) {
         Ok(r) => r,
         Err(e) => {
             let emsg = format!("{:#}", e);
+            // EVM-014 (extended): cover all known revert formats — standard
+            // ERC-20, DAI custom (Dai/insufficient-allowance), OZ v5 typed
+            // (ERC20InsufficientAllowance). Without these, DAI / OZ v5
+            // contracts bypass the retry and report a misleading SUBMIT_FAILED.
             let is_allowance_lag = !is_native_token(&from_token_addr)
                 && (emsg.contains("transfer amount exceeds allowance")
-                    || emsg.contains("exceeds allowance"));
+                    || emsg.contains("exceeds allowance")
+                    || emsg.contains("insufficient-allowance")
+                    || emsg.contains("ERC20InsufficientAllowance"));
             if is_allowance_lag {
                 eprintln!(
                     "[bridge] Allowance-lag revert detected (EVM-014). Onchainos RPC trails our approve confirmation by a few seconds. Sleeping 5s and retrying once…"
                 );
                 tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-                match wallet_contract_call(from_chain.id, &router_to, &calldata, submit_value, false) {
+                match wallet_contract_call(from_chain.id, &router_to, &calldata, submit_value, Some(500_000), false) {
                     Ok(r) => r,
                     Err(e2) => return print_err(
                         &format!("Bridge submission failed after allowance-lag retry: {:#}", e2),
@@ -471,6 +477,30 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
     };
     let tx_hash = extract_tx_hash(&result);
 
+    // TX-001: onchainos returns ok once broadcast, but the on-chain tx can
+    // still revert (OOG, slippage, signed-quote expired, etc.). Poll the
+    // source-chain receipt to confirm status=0x1 before reporting success.
+    // For bridges, this only confirms the SOURCE leg — the cross-chain
+    // settlement is async and tracked separately via `lifi-plugin status`.
+    match tx_hash.as_ref() {
+        Some(h) => {
+            eprintln!("[bridge] Source tx: {} — waiting for source-chain confirmation…", h);
+            if let Err(e) = wait_for_tx(h, from_chain.rpc, args.approve_timeout_secs).await {
+                return print_err(
+                    &format!("Source tx {} broadcast but reverted on-chain: {:#}", h, e),
+                    "TX_REVERTED",
+                    "Source-chain revert. Common causes for bridge calls: relayer rejected fill (LP minimum), slippage tightened, signed-quote expired (mayan/near). Inspect on the explorer.",
+                );
+            }
+            eprintln!("[bridge] Source-chain confirmed (status 0x1). Cross-chain leg now in flight.");
+        }
+        None => return print_err(
+            "Bridge broadcast but onchainos did not return a tx hash",
+            "TX_HASH_MISSING",
+            "Cannot verify on-chain status. Check `onchainos wallet history` for the tx.",
+        ),
+    }
+
     println!("{}", serde_json::to_string_pretty(&json!({
         "ok": true,
         "action": "bridge",
@@ -481,8 +511,9 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
         "amount_raw": amount_atomic.to_string(),
         "tool": quote.get("tool").cloned().unwrap_or(Value::Null),
         "tx_hash": tx_hash,
+        "source_chain_status": "0x1",
         "execution_duration_seconds": quote["estimate"]["executionDuration"].as_u64(),
-        "tip": "Run `lifi-plugin status --tx-hash <h> --from-chain <X> --to-chain <Y>` to track the cross-chain leg.",
+        "tip": "Source confirmed. Run `lifi-plugin status --tx-hash <h> --from-chain <X> --to-chain <Y>` to track the cross-chain leg until DONE.",
     }))?);
     Ok(())
 }
