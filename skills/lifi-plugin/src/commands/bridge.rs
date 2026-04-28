@@ -44,6 +44,12 @@ pub struct BridgeArgs {
     /// Approve confirmation timeout (seconds, default 180)
     #[arg(long, default_value = "180")]
     pub approve_timeout_secs: u64,
+    /// Override the BELOW_LP_MINIMUM safety gate. By default, --confirm is rejected
+    /// when only solver-quote bridges (mayan/near/relayer) are available at this
+    /// amount, because their relayers will likely reject the fill on-chain.
+    /// Pass this flag to acknowledge the risk and submit anyway.
+    #[arg(long)]
+    pub accept_relayer_risk: bool,
 }
 
 pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
@@ -139,13 +145,48 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
         integrator: Some("lifi-plugin"),
     };
 
-    let quote = match api::get_quote(&qp).await {
+    // Fetch /quote (needs calldata) and /routes (needs full tool list for
+    // liquidity check) in parallel — same params, two endpoints, ~same latency.
+    let (quote_res, routes_res) = tokio::join!(
+        api::get_quote(&qp),
+        api::post_routes(&qp),
+    );
+
+    let quote = match quote_res {
         Ok(v) => v,
         Err(e) => {
             let msg = format!("{:#}", e);
             let (code, suggestion) = classify_quote_error(&msg);
             return print_err(&msg, code, suggestion);
         }
+    };
+
+    // routes is best-effort — failures here just mean we can't run the
+    // liquidity check, the bridge itself can still proceed.
+    let all_available_tools: Vec<String> = match routes_res {
+        Ok(v) => v["routes"]
+            .as_array()
+            .map(|arr| {
+                let mut tools: Vec<String> = arr
+                    .iter()
+                    .flat_map(|r| {
+                        r["steps"]
+                            .as_array()
+                            .map(|steps| {
+                                steps
+                                    .iter()
+                                    .filter_map(|s| s["tool"].as_str().map(|t| t.to_string()))
+                                    .collect::<Vec<_>>()
+                            })
+                            .unwrap_or_default()
+                    })
+                    .collect();
+                tools.sort();
+                tools.dedup();
+                tools
+            })
+            .unwrap_or_default(),
+        Err(_) => vec![],
     };
 
     // ── 6. Pre-flight balance check (EVM-001 source-token + new native-gas check) ─
@@ -245,7 +286,8 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
     let stage = if args.dry_run { "dry_run" } else if args.confirm { "submit" } else { "preview" };
     let exec_secs = quote["estimate"]["executionDuration"].as_u64().unwrap_or(0);
     let tool_name = quote.get("tool").and_then(|v| v.as_str()).unwrap_or("").to_string();
-    let reliability = assess_reliability(&tool_name, exec_secs, amount_atomic, from_token_decimals);
+    let liquidity_check = assess_liquidity(&all_available_tools);
+    let reliability = assess_reliability(&tool_name, exec_secs, &liquidity_check);
 
     let preview = json!({
         "ok": true,
@@ -282,6 +324,7 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
                 "native_required_total_wei": native_required.to_string(),
                 "native_required_total": fmt_token_amount(native_required, 18),
             },
+            "liquidity_check": liquidity_check,
             "reliability": reliability,
         }
     });
@@ -294,6 +337,25 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
     if !args.confirm {
         eprintln!("[PREVIEW] Add --confirm to sign and submit the bridge transaction.");
         return Ok(());
+    }
+
+    // Safety gate: refuse to submit when only solver-quote bridges are available.
+    // The on-chain tx will broadcast and burn gas, but the off-chain relayer
+    // will reject the fill (BELOW_LP_MINIMUM) — that's a wasted gas tx with no
+    // funds bridged. Override with --accept-relayer-risk if the caller has
+    // a reason to retry anyway.
+    if liquidity_check["verdict"].as_str() == Some("BELOW_LP_MINIMUM") && !args.accept_relayer_risk {
+        return print_err(
+            &format!(
+                "Refusing to submit: only solver-quote bridges available at this amount ({}). The relayer will likely reject the fill, wasting source-chain gas. See preview.liquidity_check for alternatives.",
+                liquidity_check["all_available_tools"]
+                    .as_array()
+                    .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
+                    .unwrap_or_default()
+            ),
+            "BELOW_LP_MINIMUM",
+            "Pick one: (1) increase --amount to meet LP minimum, (2) try a different chain, or (3) re-run with --accept-relayer-risk if you understand the gas-loss risk and want to attempt anyway.",
+        );
     }
 
     // ── 8. Approve (if ERC-20 and allowance < amount). EVM-005, EVM-006. ─────
@@ -400,32 +462,114 @@ fn sum_gas_costs(quote: &Value) -> u128 {
         .unwrap_or(0)
 }
 
-/// Assess revert risk for the chosen LI.FI tool at the given amount, and surface
-/// a warning the user can act on. Returns Value::Null when no concern detected.
+/// LP-tier bridges. These maintain liquidity pools / depository contracts and
+/// fill txs on-chain deterministically (no signed-quote expiration). Below
+/// their per-route minimum, they refuse to return a route at all — so when
+/// `routes` only returns solver-quote tools, we know LP minimums aren't met.
+const LP_TIER_TOOLS: &[&str] = &["across", "stargate", "stargatev2", "relaydepository", "hop", "celercircle", "polymer"];
+
+/// Solver-quote bridges. Use signed off-chain quotes that expire in seconds.
+/// Submission can broadcast successfully but the relayer may reject the fill.
+const SOLVER_QUOTE_TOOLS: &[&str] = &["mayan", "near", "relayer"];
+
+/// Inspect the full list of routes returned by /v1/advanced/routes (already
+/// filtered by `--deny-bridges`) and decide whether the user is below the
+/// LP-tier liquidity floor.
 ///
-/// Heuristics (from real-world failure modes observed):
-///   - `mayan` and `near` use signed off-chain solver quotes that expire fast.
-///     Submission may revert if onchainos broadcast latency exceeds the quote
-///     validity window. Common at small amounts where these are the only routes.
-///   - executionDuration > 30s usually means a slow / async settlement tool.
-fn assess_reliability(tool: &str, exec_secs: u64, _amount_atomic: u128, _decimals: u32) -> Value {
+/// Returns a JSON envelope with `verdict` ∈ { OK | BELOW_LP_MINIMUM | UNKNOWN }
+/// and the supporting tool inventory. Always populated even when verdict is
+/// OK — downstream Agents can read `lp_tier_tools_present` to make decisions.
+fn assess_liquidity(all_tools: &[String]) -> Value {
+    if all_tools.is_empty() {
+        // /routes call failed or returned nothing useful — don't claim a verdict.
+        return json!({
+            "verdict": "UNKNOWN",
+            "all_available_tools": Value::Array(vec![]),
+            "lp_tier_tools_present": false,
+            "solver_quote_tools_present": false,
+            "message": "Could not enumerate available routes (LI.FI /routes returned empty or failed). Liquidity verdict unknown.",
+        });
+    }
+
+    let lp_present: Vec<String> = all_tools
+        .iter()
+        .filter(|t| LP_TIER_TOOLS.iter().any(|known| known.eq_ignore_ascii_case(t)))
+        .cloned()
+        .collect();
+    let solver_present: Vec<String> = all_tools
+        .iter()
+        .filter(|t| SOLVER_QUOTE_TOOLS.iter().any(|known| known.eq_ignore_ascii_case(t)))
+        .cloned()
+        .collect();
+
+    if lp_present.is_empty() && !solver_present.is_empty() {
+        // Concrete proof: only solver-quote tools available → user is below LP
+        // minimums. The bridge tx will broadcast but the relayer is likely to
+        // reject the fill on-chain.
+        return json!({
+            "verdict": "BELOW_LP_MINIMUM",
+            "all_available_tools": all_tools,
+            "lp_tier_tools_present": false,
+            "solver_quote_tools_present": true,
+            "message": format!(
+                "Only solver-quote bridges available at this amount: {}. LP-tier bridges (across, stargate, relaydepository, ...) typically require ≥$10–25 USD-equivalent on this route. Submission may broadcast successfully, but the off-chain relayer will likely reject the fill — the on-chain tx then reverts with a generic 'execution reverted' error.",
+                solver_present.join(", ")
+            ),
+            "suggestions": [
+                "Increase --amount to meet the LP-tier minimum (typically $10 for L2→L2 stable pairs, $25+ for L1→L2 native).",
+                "Try a different source chain — bridge from your richest chain via `lifi-plugin balance --token USDC`.",
+                "Try a different destination chain — `lifi-plugin routes --from-chain X --to-chain Y --limit 8` lists alternatives at this amount.",
+            ],
+        });
+    }
+
+    json!({
+        "verdict": "OK",
+        "all_available_tools": all_tools,
+        "lp_tier_tools_present": !lp_present.is_empty(),
+        "solver_quote_tools_present": !solver_present.is_empty(),
+        "lp_tier_tools": lp_present,
+    })
+}
+
+/// Assess revert risk for the chosen LI.FI tool. Returns Value::Null when no
+/// concern. Cross-references the `liquidity_check` so when LP tools ARE
+/// available but the picker selected a solver-quote one, we recommend
+/// `--deny-bridges` rather than raising the amount.
+///
+/// Heuristics:
+///   - selected tool is solver-quote (mayan/near/relayer): WARN
+///   - executionDuration > 30s: INFO (slow but deterministic settlement)
+fn assess_reliability(tool: &str, exec_secs: u64, liquidity: &Value) -> Value {
     let lc = tool.to_lowercase();
-    let solver_quote = matches!(lc.as_str(), "mayan" | "near" | "relayer");
+    let solver_quote = SOLVER_QUOTE_TOOLS.iter().any(|s| s.eq_ignore_ascii_case(&lc));
 
     if solver_quote {
+        let lp_alt_available = liquidity["lp_tier_tools_present"].as_bool().unwrap_or(false);
+        let suggestions: Vec<&str> = if lp_alt_available {
+            // LP-tier bridges exist at this amount; selected tool is just suboptimal
+            vec![
+                "Re-run with --deny-bridges mayan,near to force the LP-tier alternative — `liquidity_check.lp_tier_tools` shows what's available. (Recommended.)",
+                "Or accept the solver-quote risk and hope the broadcast wins the latency race.",
+            ]
+        } else {
+            // No LP alternative at this amount — increasing amount is the real fix
+            vec![
+                "Increase --amount to unlock LP-tier bridges (typically $10+ for L2 stable pairs, $25+ for L1 native).",
+                "Try a different source or destination chain via `lifi-plugin routes --from-chain X --to-chain Y --limit 8`.",
+                "Or accept the risk and submit; you may need to retry several times on L1 due to 12s blocks.",
+            ]
+        };
         return json!({
             "level": "WARN",
             "tool": tool,
             "concern": "solver_quote_latency",
+            "lp_alternative_available": lp_alt_available,
             "message": format!(
-                "Tool '{}' uses time-sensitive signed quotes from off-chain solvers. The signed quote may expire between fetch and broadcast, causing on-chain revert with no informative reason. Observed in production at small (<$25) amounts.",
+                "Tool '{}' uses time-sensitive signed quotes from off-chain solvers. The signed quote may expire between fetch and broadcast, causing on-chain revert with no informative reason.",
                 tool
             ),
-            "suggestions": [
-                "Re-run with --deny-bridges mayan,near — typically falls back to `across` or `relaydepository`, both of which submit deterministic calldata and confirm in ~3s. (Recommended.)",
-                "If --deny-bridges returns NO_ROUTE_AVAILABLE, try a different destination chain. `lifi-plugin routes --from-chain X --to-chain Y --limit 8` lists alternatives.",
-                "Increase --amount — at ≥$25 USD-equivalent more bridges become available so the default picker is less likely to land on a solver-quote tool.",
-            ],
+            "suggestions": suggestions,
         });
     }
 
@@ -434,7 +578,7 @@ fn assess_reliability(tool: &str, exec_secs: u64, _amount_atomic: u128, _decimal
             "level": "INFO",
             "tool": tool,
             "concern": "long_execution_duration",
-            "message": format!("Tool '{}' has an estimated execution duration of {}s. This is normal for some bridges (e.g. Stargate, async settlement), but plan accordingly.", tool, exec_secs),
+            "message": format!("Tool '{}' has an estimated execution duration of {}s. This is normal for some bridges (Stargate v2, etc.), but plan accordingly.", tool, exec_secs),
             "suggestions": ["After --confirm, use `lifi-plugin status --tx-hash <h>` to track until status: DONE."],
         });
     }

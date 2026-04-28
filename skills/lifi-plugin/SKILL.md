@@ -333,6 +333,7 @@ lifi-plugin bridge \
 | `--dry-run` | no | false | Validate + fetch calldata; never sign |
 | `--confirm` | for submit | false | Without it, prints a preview |
 | `--approve-timeout-secs` | no | `180` | Seconds to wait for approve tx confirmation |
+| `--accept-relayer-risk` | no | false | Override the BELOW_LP_MINIMUM safety gate. By default, `--confirm` is rejected when only solver-quote bridges are available — pass this to acknowledge the gas-loss risk and submit anyway |
 
 **Flow:**
 1. Resolve chains, validate `--order` and `--slippage-pct`
@@ -357,8 +358,28 @@ lifi-plugin bridge \
 - **EVM-005** — native token sentinel detected, no approve attempt
 - **EVM-006** — approve is followed by `wait_for_tx` polling, no blind sleep
 - **GEN-001** — every code path emits structured JSON to stdout
+- **BRG-001** — `onchainos wallet contract-call` is invoked with `--force` (required for unlimited approve + unknown contract calls)
+- **BRG-002** — pre-flight native gas balance check using `quote.estimate.gasCosts[].amount`
+- **BRG-003** — preview includes `reliability` field flagging solver-quote tools (mayan/near/relayer)
+- **BRG-004** — preview includes `liquidity_check` field with `verdict` ∈ {OK | BELOW_LP_MINIMUM | UNKNOWN}; submission is refused on BELOW_LP_MINIMUM unless `--accept-relayer-risk` is set
 
-**Errors:** `UNSUPPORTED_CHAIN` | `WALLET_NOT_FOUND` | `TOKEN_NOT_FOUND` | `INVALID_ARGUMENT` | `INSUFFICIENT_BALANCE` | `RPC_ERROR` | `NO_ROUTE_AVAILABLE` | `BAD_QUOTE_RESPONSE` | `APPROVE_FAILED` | `APPROVE_HASH_MISSING` | `APPROVE_NOT_CONFIRMED` | `BRIDGE_SUBMIT_FAILED`.
+**Preview output shape (relevant fields):**
+```json
+{
+  "preview": {
+    "gas": { "estimate_native": "0.000354...", "native_required_total": "0.002535..." },
+    "liquidity_check": {
+      "verdict": "OK | BELOW_LP_MINIMUM | UNKNOWN",
+      "all_available_tools": ["across", "mayan", "near", ...],
+      "lp_tier_tools_present": true,
+      "lp_tier_tools": ["across", "stargateV2"]
+    },
+    "reliability": null | { "level": "WARN", "tool": "mayan", "concern": "solver_quote_latency", ... }
+  }
+}
+```
+
+**Errors:** `UNSUPPORTED_CHAIN` | `WALLET_NOT_FOUND` | `TOKEN_NOT_FOUND` | `INVALID_ARGUMENT` | `INSUFFICIENT_BALANCE` | `INSUFFICIENT_GAS` | `RPC_ERROR` | `NO_ROUTE_AVAILABLE` | `BAD_QUOTE_RESPONSE` | `BELOW_LP_MINIMUM` | `APPROVE_FAILED` | `APPROVE_HASH_MISSING` | `APPROVE_NOT_CONFIRMED` | `BRIDGE_SUBMIT_FAILED`.
 
 ---
 
@@ -439,6 +460,8 @@ All commands follow knowledge-base **GEN-001**: every failure is emitted as **st
 | `NO_ROUTE_AVAILABLE` | LI.FI returned 404 or "No quote available" | Try a different token / smaller amount / `--order CHEAPEST` |
 | `INSUFFICIENT_LIQUIDITY` | Pool depth too thin | Reduce `--amount` |
 | `BAD_QUOTE_RESPONSE` | LI.FI omitted `transactionRequest.data` or `to` | Retry; try a different `--order` |
+| `INSUFFICIENT_GAS` | Native balance < gas estimate from quote (+ amount if native input) | Top up native gas token on the source chain by the shortfall shown in `suggestion` |
+| `BELOW_LP_MINIMUM` | Only solver-quote bridges available at this amount; LP-tier bridges (across/stargate/...) refused | Increase `--amount`, switch source/dest chain, or override with `--accept-relayer-risk` if you want to attempt anyway |
 | `APPROVE_FAILED` | onchainos failed to submit approve | Inspect onchainos status + gas |
 | `APPROVE_NOT_CONFIRMED` | Approve tx didn't mine within timeout | Bump `--approve-timeout-secs`, check explorer |
 | `BRIDGE_SUBMIT_FAILED` | Bridge tx submission failed | Inspect onchainos output |
@@ -502,4 +525,8 @@ Data returned by `lifi-plugin status`, `chains`, `tokens`, `quote`, `routes`, `b
 - **feat**: ERC-20 approve uses onchainos `wallet contract-call`; tx hash extracted and **polled via `eth_getTransactionReceipt`** until status `0x1` — no blind sleep (**EVM-006**)
 - **feat**: every command emits **structured JSON on stdout** (`ok`, `error`, `error_code`, `suggestion`) with exit code 0 for business-logic failures (**GEN-001**)
 - **feat**: every amount field is paired (`amount` + `amount_raw`) so downstream agents can read either (**EVM-002**)
-- Verified: 6 parallel agents — one per chain — confirmed read paths, error paths, and bridge `--dry-run` work on every supported chain; quickstart status enum verified against all 4 documented branches
+- **fix**: `bridge` — `onchainos wallet contract-call` now invoked with `--force` (was silently failing with cryptic "execution reverted" on unlimited-approve and unknown-contract calls; the comment "intentionally omitted" copied from hyperliquid-plugin was wrong for direct EVM contract calls) (**BRG-001**)
+- **feat**: `bridge` — pre-flight native gas balance check using `quote.estimate.gasCosts[].amount` sum; new error code `INSUFFICIENT_GAS` with shortfall amount in suggestion (**BRG-002**)
+- **feat**: `bridge` — `reliability` field in preview output flags solver-quote tools (mayan/near/relayer) that may revert due to signed-quote latency (**BRG-003**)
+- **feat**: `bridge` — `liquidity_check` field in preview output enumerates ALL available tools (via parallel `/routes` call) and computes `verdict` ∈ {OK, BELOW_LP_MINIMUM, UNKNOWN}; `--confirm` is refused on BELOW_LP_MINIMUM unless `--accept-relayer-risk` is passed (**BRG-004**)
+- Verified: 6 parallel agents — one per chain — confirmed read paths, error paths, and bridge `--dry-run` work on every supported chain; quickstart status enum verified against all 4 documented branches; real ARB→BAS 1 USDC bridge succeeded end-to-end with the BRG-001 fix
