@@ -27,13 +27,17 @@ pub struct ChainInfo {
 }
 
 /// 6 supported chains. Order is the user-facing display order in `chains`.
+/// Keys use community-standard short names (BASE / OP), not LI.FI's internal
+/// 3-letter keys (BAS / OPT). We always pass chain IDs to the LI.FI API, so
+/// our keys are display-only and should match what users actually type.
+/// `parse_chain` accepts the LI.FI-style aliases (BAS / OPT) for back-compat.
 pub const SUPPORTED_CHAINS: &[ChainInfo] = &[
-    ChainInfo { id: 1,     key: "ETH", name: "Ethereum", rpc: "https://ethereum-rpc.publicnode.com",     native_symbol: "ETH"   },
-    ChainInfo { id: 42161, key: "ARB", name: "Arbitrum", rpc: "https://arbitrum-one-rpc.publicnode.com", native_symbol: "ETH"   },
-    ChainInfo { id: 8453,  key: "BAS", name: "Base",     rpc: "https://base-rpc.publicnode.com",         native_symbol: "ETH"   },
-    ChainInfo { id: 10,    key: "OPT", name: "Optimism", rpc: "https://optimism-rpc.publicnode.com",     native_symbol: "ETH"   },
-    ChainInfo { id: 56,    key: "BSC", name: "BSC",      rpc: "https://bsc-rpc.publicnode.com",          native_symbol: "BNB"   },
-    ChainInfo { id: 137,   key: "POL", name: "Polygon",  rpc: "https://polygon-bor-rpc.publicnode.com",  native_symbol: "POL"   },
+    ChainInfo { id: 1,     key: "ETH",  name: "Ethereum", rpc: "https://ethereum-rpc.publicnode.com",     native_symbol: "ETH" },
+    ChainInfo { id: 42161, key: "ARB",  name: "Arbitrum", rpc: "https://arbitrum-one-rpc.publicnode.com", native_symbol: "ETH" },
+    ChainInfo { id: 8453,  key: "BASE", name: "Base",     rpc: "https://base-rpc.publicnode.com",         native_symbol: "ETH" },
+    ChainInfo { id: 10,    key: "OP",   name: "Optimism", rpc: "https://optimism-rpc.publicnode.com",     native_symbol: "ETH" },
+    ChainInfo { id: 56,    key: "BSC",  name: "BSC",      rpc: "https://bsc-rpc.publicnode.com",          native_symbol: "BNB" },
+    ChainInfo { id: 137,   key: "POL",  name: "Polygon",  rpc: "https://polygon-bor-rpc.publicnode.com",  native_symbol: "POL" },
 ];
 
 /// Look up by chain id.
@@ -52,8 +56,8 @@ pub fn parse_chain(s: &str) -> Option<&'static ChainInfo> {
     let canon = match upper.as_str() {
         "ETHEREUM" | "MAINNET" | "ETH" => "ETH",
         "ARBITRUM" | "ARB" | "ARBITRUM-ONE" => "ARB",
-        "BASE" | "BAS" => "BAS",
-        "OPTIMISM" | "OP" | "OPT" => "OPT",
+        "BASE" | "BAS" => "BASE",
+        "OPTIMISM" | "OP" | "OPT" => "OP",
         "BSC" | "BNB" | "BINANCE" => "BSC",
         "POLYGON" | "MATIC" | "POL" => "POL",
         other => other,

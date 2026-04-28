@@ -123,8 +123,8 @@ LI.FI is a cross-chain liquidity aggregator. It routes tokens across multiple br
 |-----|-----------|----------|--------|
 | ETH | Ethereum  | 1        | ETH    |
 | ARB | Arbitrum  | 42161    | ETH    |
-| BAS | Base      | 8453     | ETH    |
-| OPT | Optimism  | 10       | ETH    |
+| BASE | Base      | 8453     | ETH    |
+| OP   | Optimism  | 10       | ETH    |
 | BSC | BSC       | 56       | BNB    |
 | POL | Polygon   | 137      | POL (formerly MATIC) |
 
@@ -182,7 +182,7 @@ Each entry in `chains[]` carries `chain`, `chain_id`, `native{symbol, amount, am
 | `rpc_degraded` | ≥ 4 / 6 RPCs failed; environment issue | (none — retry) |
 | `no_funds` | Wallet has nothing on any chain | `lifi-plugin balance --address <wallet>` (helps locate any tiny holdings + shows where to top up) |
 | `low_balance` | Richest chain has < $5 USDC | `lifi-plugin balance --address <wallet> --token USDC` |
-| `ready` | Richest chain has ≥ $5 USDC | `lifi-plugin bridge --from-chain <richest> --to-chain BAS --from-token USDC --to-token USDC --amount 0.5 --confirm` |
+| `ready` | Richest chain has ≥ $5 USDC | `lifi-plugin bridge --from-chain <richest> --to-chain BASE --from-token USDC --to-token USDC --amount 0.5 --confirm` |
 
 **Errors:** `WALLET_NOT_FOUND` (onchainos not logged in and `--address` omitted).
 
@@ -226,7 +226,7 @@ lifi-plugin tokens --chain ETH --limit 200
 
 | Flag | Required | Default | Notes |
 |------|----------|---------|-------|
-| `--chain` | yes | — | Chain id (1, 42161, ...) or key (ETH, ARB, BAS, OPT, BSC, POL); case-insensitive |
+| `--chain` | yes | — | Chain id (1, 42161, ...) or key (ETH, ARB, BASE, OP, BSC, POL); case-insensitive |
 | `--symbol` | no | — | Single token lookup (symbol or 0x address) |
 | `--limit` | no | 50 | Cap on number of tokens shown when listing |
 
@@ -250,7 +250,7 @@ lifi-plugin quote \
 
 # Native ETH bridge (send 0.05 ETH from Optimism to Base)
 lifi-plugin quote \
-  --from-chain OPT --to-chain BAS \
+  --from-chain OP --to-chain BASE \
   --from-token ETH --to-token ETH \
   --amount 0.05
 
@@ -288,7 +288,7 @@ Returns up to N ranked routes (each may be a single hop or multi-hop chain) with
 
 ```bash
 lifi-plugin routes \
-  --from-chain ARB --to-chain BAS \
+  --from-chain ARB --to-chain BASE \
   --from-token USDC --to-token USDC \
   --amount 50 \
   --order CHEAPEST --limit 5
@@ -311,7 +311,7 @@ End-to-end: fetches quote → balance pre-flight → ERC-20 approve (if needed) 
 ```bash
 # Preview only (NO signing, NO submission)
 lifi-plugin bridge \
-  --from-chain ARB --to-chain BAS \
+  --from-chain ARB --to-chain BASE \
   --from-token USDC --to-token USDC \
   --amount 1
 
@@ -320,7 +320,7 @@ lifi-plugin bridge ... --dry-run
 
 # Submit
 lifi-plugin bridge \
-  --from-chain ARB --to-chain BAS \
+  --from-chain ARB --to-chain BASE \
   --from-token USDC --to-token USDC \
   --amount 1 \
   --confirm
@@ -389,7 +389,7 @@ lifi-plugin bridge \
 # Track a bridge tx (from-chain/to-chain optional but recommended)
 lifi-plugin status \
   --tx-hash 0x… \
-  --from-chain ARB --to-chain BAS
+  --from-chain ARB --to-chain BASE
 
 # Filter by bridge tool (when the tx hash exists on multiple bridges)
 lifi-plugin status --tx-hash 0x… --bridge across
@@ -451,7 +451,7 @@ All commands follow knowledge-base **GEN-001**: every failure is emitted as **st
 
 | `error_code` | Meaning | Suggested next step |
 |--------------|---------|---------------------|
-| `UNSUPPORTED_CHAIN` | Chain not in the 6-chain whitelist | Use one of ETH, ARB, BAS, OPT, BSC, POL |
+| `UNSUPPORTED_CHAIN` | Chain not in the 6-chain whitelist | Use one of ETH, ARB, BASE, OP, BSC, POL |
 | `INVALID_ARGUMENT` | Param shape/range invalid | Check the surfaced `error` field |
 | `TOKEN_NOT_FOUND` | Symbol/address unknown to LI.FI on this chain | Pass the contract address, or call `tokens` to list valid symbols |
 | `WALLET_NOT_FOUND` | onchainos has no address for this chain | `onchainos wallet addresses` to verify login |
@@ -529,4 +529,4 @@ Data returned by `lifi-plugin status`, `chains`, `tokens`, `quote`, `routes`, `b
 - **feat**: `bridge` — pre-flight native gas balance check using `quote.estimate.gasCosts[].amount` sum; new error code `INSUFFICIENT_GAS` with shortfall amount in suggestion (**GAS-001**)
 - **feat**: `bridge` — `reliability` field in preview output flags solver-quote tools (mayan/near/relayer) that may revert due to signed-quote latency (**AGG-001**)
 - **feat**: `bridge` — `liquidity_check` field in preview output enumerates ALL available tools (via parallel `/routes` call) and computes `verdict` ∈ {OK, BELOW_LP_MINIMUM, UNKNOWN}; `--confirm` is refused on BELOW_LP_MINIMUM unless `--accept-relayer-risk` is passed (**AGG-002**)
-- Verified: 6 parallel agents — one per chain — confirmed read paths, error paths, and bridge `--dry-run` work on every supported chain; quickstart status enum verified against all 4 documented branches; real ARB→BAS 1 USDC bridge succeeded end-to-end with the ONC-001 fix
+- Verified: 6 parallel agents — one per chain — confirmed read paths, error paths, and bridge `--dry-run` work on every supported chain; quickstart status enum verified against all 4 documented branches; real ARB→BASE 1 USDC bridge succeeded end-to-end with the ONC-001 fix
