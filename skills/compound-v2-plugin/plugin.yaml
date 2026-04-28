@@ -1,7 +1,11 @@
+schema_version: 1
 name: compound-v2-plugin
 version: "0.1.0"
-author: GeoGu360
 description: "Compound V2 (legacy cToken-based) money market on Ethereum mainnet - exit tool: redeem cTokens, repay debt, claim COMP. New supply/borrow paused by governance - use compound-v3-plugin for active flows"
+author:
+  name: GeoGu360
+  github: GeoGu360
+category: defi-protocol
 tags:
   - compound
   - lending
@@ -11,10 +15,12 @@ tags:
   - comp
   - winddown
   - defi
-
+license: MIT
+components:
+  skill:
+    dir: .
+build:
+  lang: rust
+  binary_name: compound-v2-plugin
 api_calls:
   - "https://ethereum-rpc.publicnode.com"
-
-binary:
-  enabled: true
-  build_target: compound-v2-plugin
