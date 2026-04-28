@@ -1,0 +1,17 @@
+[package]
+name = "compound-v2-plugin"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "compound-v2-plugin"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+anyhow = "1"
+futures = "0.3"
