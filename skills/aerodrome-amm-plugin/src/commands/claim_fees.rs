@@ -1,5 +1,5 @@
 use clap::Args;
-use crate::config::{factory, resolve_token, rpc_url, token_symbol, CHAIN_ID};
+use crate::config::{factory, resolve_token_validated, rpc_url, token_symbol, CHAIN_ID};
 use crate::onchainos::{extract_tx_hash, resolve_wallet, wallet_contract_call};
 use crate::rpc::{amm_get_pool, format_amount, get_decimals};
 
@@ -29,8 +29,8 @@ const CLAIM_FEES_SELECTOR: &str = "0xd294f093";
 pub async fn run(args: ClaimFeesArgs) -> anyhow::Result<()> {
     let rpc = rpc_url();
     let fac = factory();
-    let token_a = resolve_token(&args.token_a);
-    let token_b = resolve_token(&args.token_b);
+    let token_a = resolve_token_validated(&args.token_a)?;
+    let token_b = resolve_token_validated(&args.token_b)?;
 
     let sym_a = resolve_symbol(&token_a, &args.token_a);
     let sym_b = resolve_symbol(&token_b, &args.token_b);
@@ -109,6 +109,11 @@ pub async fn run(args: ClaimFeesArgs) -> anyhow::Result<()> {
         "tx_hash": tx_hash,
         "explorer": format!("https://basescan.org/tx/{}", tx_hash),
     });
+    if claimed_0 == 0 && claimed_1 == 0 {
+        out["note"] = serde_json::json!(
+            "No fees accrued yet — fees accumulate as trading volume passes through your LP position."
+        );
+    }
     if args.dry_run {
         out["dry_run"] = serde_json::json!(true);
     }

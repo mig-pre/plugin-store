@@ -2,7 +2,7 @@ use clap::Args;
 use tokio::time::{sleep, Duration};
 use crate::config::{
     build_approve_calldata, factory, pad_address, pad_bool, pad_u256,
-    resolve_token, router, rpc_url, token_symbol, unix_now, CHAIN_ID,
+    resolve_token_validated, router, rpc_url, token_symbol, unix_now, CHAIN_ID,
 };
 use crate::onchainos::{extract_tx_hash, resolve_wallet, wallet_contract_call};
 use crate::rpc::{
@@ -65,8 +65,8 @@ pub async fn run(args: RemoveLiquidityArgs) -> anyhow::Result<()> {
     let rpc = rpc_url();
     let fac = factory();
     let rtr = router();
-    let token_a = resolve_token(&args.token_a);
-    let token_b = resolve_token(&args.token_b);
+    let token_a = resolve_token_validated(&args.token_a)?;
+    let token_b = resolve_token_validated(&args.token_b)?;
 
     let sym_a = resolve_symbol(&token_a, &args.token_a);
     let sym_b = resolve_symbol(&token_b, &args.token_b);
@@ -89,7 +89,18 @@ pub async fn run(args: RemoveLiquidityArgs) -> anyhow::Result<()> {
     };
 
     // ── Resolve LP amount ──────────────────────────────────────────────────────
-    let lp_balance = get_balance_of(&pool, &recipient, rpc).await.unwrap_or(0);
+    // In dry-run mode, look up the real wallet's LP balance (not the zero address)
+    // so --percent can compute a non-zero amount for calldata preview.
+    let balance_addr = if args.dry_run {
+        resolve_wallet(CHAIN_ID).unwrap_or_else(|_| zero.to_string())
+    } else {
+        recipient.clone()
+    };
+    let lp_balance = get_balance_of(&pool, &balance_addr, rpc).await.unwrap_or(0);
+
+    // In dry-run mode with --percent and zero LP balance, use 1 LP token as a
+    // calldata-generation mock so the command produces useful output.
+    const DRY_RUN_MOCK_LP: u128 = 1_000_000_000_000_000_000; // 1.0 LP token
 
     let liquidity_raw = if let Some(ref liq_str) = args.liquidity {
         parse_human_amount(liq_str, 18)?
@@ -97,7 +108,12 @@ pub async fn run(args: RemoveLiquidityArgs) -> anyhow::Result<()> {
         if pct <= 0.0 || pct > 100.0 {
             anyhow::bail!("--percent must be between 1 and 100");
         }
-        (lp_balance as f64 * pct / 100.0) as u128
+        let effective_balance = if args.dry_run && lp_balance == 0 {
+            DRY_RUN_MOCK_LP
+        } else {
+            lp_balance
+        };
+        (effective_balance as f64 * pct / 100.0) as u128
     } else {
         anyhow::bail!("Specify either --liquidity <amount> or --percent <1-100>");
     };
@@ -190,6 +206,12 @@ pub async fn run(args: RemoveLiquidityArgs) -> anyhow::Result<()> {
     if args.dry_run {
         out["dry_run"] = serde_json::json!(true);
         out["calldata"] = serde_json::json!(calldata);
+        if args.percent.is_some() && lp_balance == 0 {
+            out["note"] = serde_json::json!(
+                "Amounts estimated using a 1 LP token mock (no active position). \
+                 Run with your actual LP balance for accurate output estimates."
+            );
+        }
     }
     println!("{}", serde_json::to_string_pretty(&out)?);
     Ok(())

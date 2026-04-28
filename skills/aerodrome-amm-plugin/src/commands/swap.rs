@@ -2,11 +2,11 @@ use clap::Args;
 use tokio::time::{sleep, Duration};
 use crate::config::{
     build_approve_calldata, factory, pad_address, pad_bool, pad_u256,
-    resolve_token, router, rpc_url, token_symbol, unix_now, CHAIN_ID,
+    resolve_token_validated, router, rpc_url, token_symbol, unix_now, CHAIN_ID,
 };
 use crate::onchainos::{extract_tx_hash, resolve_wallet, wallet_contract_call};
 use crate::rpc::{
-    amm_get_pool, format_amount, get_allowance, get_decimals,
+    amm_get_pool, format_amount, get_allowance, get_balance_of, get_decimals,
     parse_human_amount, router_get_amounts_out,
 };
 
@@ -82,8 +82,8 @@ pub async fn run(args: SwapArgs) -> anyhow::Result<()> {
     let rpc = rpc_url();
     let fac = factory();
     let rtr = router();
-    let token_in  = resolve_token(&args.token_in);
-    let token_out = resolve_token(&args.token_out);
+    let token_in  = resolve_token_validated(&args.token_in)?;
+    let token_out = resolve_token_validated(&args.token_out)?;
 
     let sym_in  = resolve_symbol(&token_in, &args.token_in);
     let sym_out = resolve_symbol(&token_out, &args.token_out);
@@ -161,7 +161,20 @@ pub async fn run(args: SwapArgs) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    // ── 4. Approve token_in if needed ──────────────────────────────────────────
+    // ── 4. Check wallet balance ────────────────────────────────────────────────
+    if !args.dry_run {
+        let balance = get_balance_of(&token_in, &recipient, rpc).await.unwrap_or(0);
+        if balance < amount_in_raw {
+            anyhow::bail!(
+                "Insufficient {} balance. Need {}, have {}.",
+                sym_in,
+                format_amount(amount_in_raw, dec_in),
+                format_amount(balance, dec_in)
+            );
+        }
+    }
+
+    // ── 5. Approve token_in if needed ──────────────────────────────────────────
     if !args.dry_run {
         let allowance = get_allowance(&token_in, &recipient, rtr, rpc).await?;
         if allowance < amount_in_raw {

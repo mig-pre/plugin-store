@@ -1,5 +1,5 @@
 use clap::Args;
-use crate::config::{factory, resolve_token, rpc_url, token_symbol, CHAIN_ID};
+use crate::config::{factory, resolve_token_validated, rpc_url, token_symbol, CHAIN_ID};
 use crate::onchainos::resolve_wallet;
 use crate::rpc::{
     amm_get_pool, format_amount, get_balance_of, get_decimals,
@@ -22,8 +22,8 @@ pub struct PositionsArgs {
 pub async fn run(args: PositionsArgs) -> anyhow::Result<()> {
     let rpc = rpc_url();
     let fac = factory();
-    let token_a = resolve_token(&args.token_a);
-    let token_b = resolve_token(&args.token_b);
+    let token_a = resolve_token_validated(&args.token_a)?;
+    let token_b = resolve_token_validated(&args.token_b)?;
 
     let sym_a = resolve_symbol(&token_a, &args.token_a);
     let sym_b = resolve_symbol(&token_b, &args.token_b);

@@ -40,6 +40,27 @@ pub fn resolve_token(symbol: &str) -> String {
     .to_string()
 }
 
+/// Like resolve_token but returns an error for unknown symbols or malformed addresses.
+pub fn resolve_token_validated(symbol: &str) -> anyhow::Result<String> {
+    let resolved = resolve_token(symbol);
+    if !resolved.starts_with("0x") {
+        anyhow::bail!(
+            "Unknown token '{}'. Use a supported symbol (WETH, USDC, AERO, USDT, DAI, \
+             cbETH, cbBTC, EURC) or provide a full ERC-20 address (0x + 40 hex chars).",
+            symbol
+        );
+    }
+    let hex_part = &resolved[2..];
+    if hex_part.len() != 40 || !hex_part.chars().all(|c| c.is_ascii_hexdigit()) {
+        anyhow::bail!(
+            "Invalid token address '{}'. Expected 0x + 40 hex characters, got 0x + {} chars.",
+            symbol,
+            hex_part.len()
+        );
+    }
+    Ok(resolved)
+}
+
 /// Canonical token symbol for display (reverse lookup).
 pub fn token_symbol(addr: &str) -> &'static str {
     match addr.to_lowercase().as_str() {

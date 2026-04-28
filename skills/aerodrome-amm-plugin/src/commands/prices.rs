@@ -1,5 +1,5 @@
 use clap::Args;
-use crate::config::{factory, resolve_token, rpc_url, token_symbol};
+use crate::config::{factory, resolve_token_validated, rpc_url, token_symbol};
 use crate::rpc::{amm_get_pool, get_decimals, pool_get_reserves, pool_token0};
 
 #[derive(Args)]
@@ -15,8 +15,8 @@ pub struct PricesArgs {
 pub async fn run(args: PricesArgs) -> anyhow::Result<()> {
     let rpc = rpc_url();
     let fac = factory();
-    let token     = resolve_token(&args.token);
-    let quote_tok = resolve_token(&args.quote);
+    let token     = resolve_token_validated(&args.token)?;
+    let quote_tok = resolve_token_validated(&args.quote)?;
 
     let sym_tok   = resolve_symbol(&token, &args.token);
     let sym_quote = resolve_symbol(&quote_tok, &args.quote);

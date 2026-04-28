@@ -2,7 +2,7 @@ use clap::Args;
 use tokio::time::{sleep, Duration};
 use crate::config::{
     build_approve_calldata, factory, pad_address, pad_bool, pad_u256,
-    resolve_token, router, rpc_url, token_symbol, unix_now, CHAIN_ID,
+    resolve_token_validated, router, rpc_url, token_symbol, unix_now, CHAIN_ID,
 };
 use crate::onchainos::{extract_tx_hash, resolve_wallet, wallet_contract_call};
 use crate::rpc::{
@@ -68,8 +68,8 @@ pub async fn run(args: AddLiquidityArgs) -> anyhow::Result<()> {
     let rpc = rpc_url();
     let fac = factory();
     let rtr = router();
-    let token_a = resolve_token(&args.token_a);
-    let token_b = resolve_token(&args.token_b);
+    let token_a = resolve_token_validated(&args.token_a)?;
+    let token_b = resolve_token_validated(&args.token_b)?;
 
     let sym_a = resolve_symbol(&token_a, &args.token_a);
     let sym_b = resolve_symbol(&token_b, &args.token_b);
