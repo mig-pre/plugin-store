@@ -189,7 +189,7 @@ aerodrome-amm swap --token-in WETH --token-out USDC --amount-in 0.01 --confirm
 aerodrome-amm swap --token-in USDC --token-out USDT --amount-in 100 --stable --confirm
 ```
 
-Auto-selects the pool giving the best output. Approves token_in to the Router if allowance is insufficient (idempotent check before approval).
+Auto-selects the pool giving the best output. Approves token_in to the Router if allowance is insufficient (idempotent check before approval). **Approval uses unlimited allowance (`type(uint256).max`) so future swaps of the same token skip the approve step.**
 
 | Flag | Default | Description |
 |------|---------|-------------|
@@ -276,7 +276,7 @@ aerodrome-amm add-liquidity --token-a WETH --token-b USDC --amount-a 0.01 --amou
 aerodrome-amm add-liquidity --token-a USDC --token-b USDT --amount-a 100 --amount-b 100 --stable --confirm
 ```
 
-Calls `quoteAddLiquidity` first to show actual amounts used (may be adjusted to match pool ratio). Approves both tokens to Router if needed. Returns LP tokens to your wallet.
+Calls `quoteAddLiquidity` first to show actual amounts used (may be adjusted to match pool ratio). Approves both tokens to Router if needed (unlimited allowance — `type(uint256).max`). Returns LP tokens to your wallet.
 
 | Flag | Default | Description |
 |------|---------|-------------|
@@ -305,7 +305,7 @@ aerodrome-amm remove-liquidity --token-a WETH --token-b USDC --liquidity 0.001 -
 aerodrome-amm remove-liquidity --token-a USDC --token-b USDT --percent 100 --stable --confirm
 ```
 
-Approves LP tokens (pool contract) to the Router, then calls `removeLiquidity`. Run `positions` first to see your LP balance.
+Approves LP tokens (pool contract) to the Router (unlimited allowance — `type(uint256).max`), then calls `removeLiquidity`. Run `positions` first to see your LP balance.
 
 | Flag | Default | Description |
 |------|---------|-------------|

@@ -84,11 +84,13 @@ pub async fn run(args: PositionsArgs) -> anyhow::Result<()> {
     }
 
     if results.is_empty() {
-        println!(
-            "No {}/{} LP positions found for wallet {}.\n\
-             Use `aerodrome-amm add-liquidity` to provide liquidity.",
-            sym_a, sym_b, &wallet[..10]
-        );
+        println!("{}", serde_json::to_string_pretty(&serde_json::json!({
+            "positions": [],
+            "wallet": wallet,
+            "token_a": sym_a,
+            "token_b": sym_b,
+            "message": "No LP positions found. Use `aerodrome-amm add-liquidity` to provide liquidity."
+        }))?);
     } else {
         println!("{}", serde_json::to_string_pretty(&results)?);
     }

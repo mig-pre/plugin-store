@@ -69,11 +69,11 @@ pub async fn run(args: ClaimFeesArgs) -> anyhow::Result<()> {
 
     if !args.confirm && !args.dry_run {
         println!("{}", serde_json::to_string_pretty(&preview)?);
-        println!("\nAdd --confirm to broadcast.");
+        eprintln!("\nAdd --confirm to broadcast.");
         return Ok(());
     }
 
-    let result  = wallet_contract_call(CHAIN_ID, &pool, CLAIM_FEES_SELECTOR, true, args.dry_run).await?;
+    let result  = wallet_contract_call(CHAIN_ID, &pool, CLAIM_FEES_SELECTOR, true, args.dry_run, Some(&wallet)).await?;
     let tx_hash = extract_tx_hash(&result);
 
     // Decode claimed amounts from return data if available

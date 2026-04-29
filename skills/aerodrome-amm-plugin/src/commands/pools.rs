@@ -24,7 +24,7 @@ pub async fn run(args: PoolsArgs) -> anyhow::Result<()> {
     let sym_a = resolve_symbol(&token_a, &args.token_a);
     let sym_b = resolve_symbol(&token_b, &args.token_b);
 
-    println!("Searching Aerodrome AMM pools for {}/{} on Base...", sym_a, sym_b);
+    eprintln!("Searching Aerodrome AMM pools for {}/{} on Base...", sym_a, sym_b);
 
     let zero = "0x0000000000000000000000000000000000000000";
     let mut results = vec![];

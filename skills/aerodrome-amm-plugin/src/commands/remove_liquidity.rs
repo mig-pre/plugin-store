@@ -164,12 +164,13 @@ pub async fn run(args: RemoveLiquidityArgs) -> anyhow::Result<()> {
         "minimum_a": format_amount(min_a, dec_a),
         "minimum_b": format_amount(min_b, dec_b),
         "slippage": format!("{}%", args.slippage),
+        "wallet": recipient,
         "chain": "Base (8453)"
     });
 
     if !args.confirm && !args.dry_run {
         println!("{}", serde_json::to_string_pretty(&preview)?);
-        println!("\nAdd --confirm to broadcast.");
+        eprintln!("\nAdd --confirm to broadcast.");
         return Ok(());
     }
 
@@ -179,7 +180,7 @@ pub async fn run(args: RemoveLiquidityArgs) -> anyhow::Result<()> {
         if allowance < liquidity_raw {
             eprintln!("[aerodrome-amm] Approving LP token for Router...");
             let approve_data   = build_approve_calldata(rtr, u128::MAX);
-            let approve_result = wallet_contract_call(CHAIN_ID, &pool, &approve_data, true, false).await?;
+            let approve_result = wallet_contract_call(CHAIN_ID, &pool, &approve_data, true, false, Some(&recipient)).await?;
             let approve_hash   = extract_tx_hash(&approve_result);
             eprintln!("[aerodrome-amm] Approve tx: {}. Waiting...", approve_hash);
             sleep(Duration::from_secs(5)).await;
@@ -187,7 +188,7 @@ pub async fn run(args: RemoveLiquidityArgs) -> anyhow::Result<()> {
     }
 
     // ── Execute ────────────────────────────────────────────────────────────────
-    let result  = wallet_contract_call(CHAIN_ID, rtr, &calldata, true, args.dry_run).await?;
+    let result  = wallet_contract_call(CHAIN_ID, rtr, &calldata, true, args.dry_run, Some(&recipient)).await?;
     let tx_hash = extract_tx_hash(&result);
 
     let mut out = serde_json::json!({

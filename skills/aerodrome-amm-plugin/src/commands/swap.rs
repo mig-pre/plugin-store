@@ -152,12 +152,13 @@ pub async fn run(args: SwapArgs) -> anyhow::Result<()> {
         "slippage": format!("{}%", args.slippage),
         "pool_type": if best_stable { "stable" } else { "volatile" },
         "router": rtr,
+        "wallet": recipient,
         "chain": "Base (8453)"
     });
 
     if !args.confirm && !args.dry_run {
         println!("{}", serde_json::to_string_pretty(&preview)?);
-        println!("\nAdd --confirm to broadcast this swap.");
+        eprintln!("\nAdd --confirm to broadcast this swap.");
         return Ok(());
     }
 
@@ -180,7 +181,7 @@ pub async fn run(args: SwapArgs) -> anyhow::Result<()> {
         if allowance < amount_in_raw {
             eprintln!("[aerodrome-amm] Approving {} {} for Router...", sym_in, args.amount_in);
             let approve_data   = build_approve_calldata(rtr, u128::MAX);
-            let approve_result = wallet_contract_call(CHAIN_ID, &token_in, &approve_data, true, false).await?;
+            let approve_result = wallet_contract_call(CHAIN_ID, &token_in, &approve_data, true, false, Some(&recipient)).await?;
             let approve_hash   = extract_tx_hash(&approve_result);
             eprintln!("[aerodrome-amm] Approve tx: {}. Waiting for confirmation...", approve_hash);
             sleep(Duration::from_secs(5)).await;
@@ -188,7 +189,7 @@ pub async fn run(args: SwapArgs) -> anyhow::Result<()> {
     }
 
     // ── 5. Execute swap ────────────────────────────────────────────────────────
-    let result  = wallet_contract_call(CHAIN_ID, rtr, &calldata, true, args.dry_run).await?;
+    let result  = wallet_contract_call(CHAIN_ID, rtr, &calldata, true, args.dry_run, Some(&recipient)).await?;
     let tx_hash = extract_tx_hash(&result);
 
     let mut out = serde_json::json!({

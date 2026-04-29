@@ -151,12 +151,13 @@ pub async fn run(args: AddLiquidityArgs) -> anyhow::Result<()> {
         "amount_b_used": format_amount(used_b, dec_b),
         "lp_tokens_expected": format_amount(lp_out, 18),
         "slippage": format!("{}%", args.slippage),
+        "wallet": recipient,
         "chain": "Base (8453)"
     });
 
     if !args.confirm && !args.dry_run {
         println!("{}", serde_json::to_string_pretty(&preview)?);
-        println!("\nAdd --confirm to broadcast.");
+        eprintln!("\nAdd --confirm to broadcast.");
         return Ok(());
     }
 
@@ -167,7 +168,7 @@ pub async fn run(args: AddLiquidityArgs) -> anyhow::Result<()> {
             if allowance < amount {
                 eprintln!("[aerodrome-amm] Approving {} {} for Router...", sym, format_amount(amount, if token == &token_a { dec_a } else { dec_b }));
                 let approve_data   = build_approve_calldata(rtr, u128::MAX);
-                let approve_result = wallet_contract_call(CHAIN_ID, token, &approve_data, true, false).await?;
+                let approve_result = wallet_contract_call(CHAIN_ID, token, &approve_data, true, false, Some(&recipient)).await?;
                 let approve_hash   = extract_tx_hash(&approve_result);
                 eprintln!("[aerodrome-amm] Approve tx: {}. Waiting...", approve_hash);
                 sleep(Duration::from_secs(5)).await;
@@ -176,7 +177,7 @@ pub async fn run(args: AddLiquidityArgs) -> anyhow::Result<()> {
     }
 
     // ── 6. Execute ─────────────────────────────────────────────────────────────
-    let result  = wallet_contract_call(CHAIN_ID, rtr, &calldata, true, args.dry_run).await?;
+    let result  = wallet_contract_call(CHAIN_ID, rtr, &calldata, true, args.dry_run, Some(&recipient)).await?;
     let tx_hash = extract_tx_hash(&result);
 
     let mut out = serde_json::json!({
