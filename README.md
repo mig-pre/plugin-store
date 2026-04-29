@@ -29,9 +29,7 @@ npx skills add okx/plugin-store --skill <plugin-name>
 
 ## Contributing
 
-To submit a plugin, see the developer guide: [English](docs/FOR-DEVELOPERS.md) | [中文](docs/FOR-DEVELOPERS-ZH.md)
-
-The workflow is Fork, develop, then open a Pull Request.
+External submissions from independent developers are not accepted at this time. Popular plugins are proactively curated and added by our team. This repository publishes the full source code of every curated plugin for reference. Technical reference: [English](docs/FOR-DEVELOPERS.md) | [中文](docs/FOR-DEVELOPERS-ZH.md).
 
 ## Security
 

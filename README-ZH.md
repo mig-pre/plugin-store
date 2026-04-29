@@ -29,9 +29,7 @@ npx skills add okx/plugin-store --skill <plugin-name>
 
 ## 贡献
 
-提交 Plugin 请参阅开发者指南：[English](docs/FOR-DEVELOPERS.md) | [中文](docs/FOR-DEVELOPERS-ZH.md)
-
-流程为 Fork 仓库、开发 Plugin，然后提交 Pull Request。
+暂时不接受外部独立开发者的提交。我们会主动收录市场上流行的 Plugin。本仓库公开展示所有已收录 Plugin 的源码，供大家参考。技术参考：[English](docs/FOR-DEVELOPERS.md) | [中文](docs/FOR-DEVELOPERS-ZH.md)。
 
 ## 安全
 
