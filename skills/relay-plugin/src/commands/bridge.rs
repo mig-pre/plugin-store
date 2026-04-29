@@ -81,7 +81,9 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
     }
 
     let wallet = if args.dry_run {
-        "0x0000000000000000000000000000000000000000".to_string()
+        // Resolve for display only; fall back to placeholder string
+        resolve_wallet(args.from_chain)
+            .unwrap_or_else(|_| "0x0000000000000000000000000000000000000000".to_string())
     } else if args.confirm {
         // Wallet required for actual broadcast
         resolve_wallet(args.from_chain)?
