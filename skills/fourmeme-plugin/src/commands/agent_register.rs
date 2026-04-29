@@ -32,8 +32,10 @@ pub struct AgentRegisterArgs {
     #[arg(long, default_value_t = 56)]
     pub chain: u64,
 
-    #[arg(long)]
-    pub dry_run: bool,
+    /// Pass --confirm to actually submit the on-chain tx. Default is preview-only
+    /// (prints the planned tx without spending gas) so accidental invocation is safe.
+    #[arg(long, default_value_t = false)]
+    pub confirm: bool,
 }
 
 pub async fn run(args: AgentRegisterArgs) -> Result<()> {
@@ -69,10 +71,10 @@ async fn run_inner(args: AgentRegisterArgs) -> Result<()> {
     let agent_uri = format!("data:application/json;base64,{}", b64);
     let calldata = crate::calldata::build_8004_register(&agent_uri);
 
-    if args.dry_run {
+    if !args.confirm {
         let resp = serde_json::json!({
             "ok": true,
-            "dry_run": true,
+            "preview_only": true,
             "data": {
                 "action": "agent-register",
                 "chain": chain_name(args.chain),
@@ -85,7 +87,7 @@ async fn run_inner(args: AgentRegisterArgs) -> Result<()> {
                 "image_url": args.image_url,
                 "tx_plan": format!("ERC8004NFT.register(\"data:application/json;base64,...{}b\") at {}",
                                    agent_uri.len(), NFT_8004),
-                "note": "dry-run: no transactions submitted.",
+                "note": "preview only (--confirm omitted): no transactions submitted.",
             }
         });
         println!("{}", serde_json::to_string_pretty(&resp)?);

@@ -29,4 +29,5 @@ api_calls:
   - "https://bsc-dataseed.binance.org"
   - "https://api.dexscreener.com"
   - "https://four.meme"
+  - "https://static.four.meme"
   - "https://bscscan.com"

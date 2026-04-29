@@ -32,8 +32,10 @@ pub struct SellArgs {
     #[arg(long, default_value_t = 56)]
     pub chain: u64,
 
-    #[arg(long)]
-    pub dry_run: bool,
+    /// Pass --confirm to actually submit the on-chain tx. Default is preview-only
+    /// (prints the planned tx without spending gas) so accidental invocation is safe.
+    #[arg(long, default_value_t = false)]
+    pub confirm: bool,
 }
 
 pub async fn run(args: SellArgs) -> Result<()> {
@@ -86,10 +88,10 @@ async fn run_inner(args: SellArgs) -> Result<()> {
     let q = super::fetch_try_sell(args.chain, &token, amount_raw).await
         .context("trySell preview failed")?;
 
-    if args.dry_run {
+    if !args.confirm {
         let resp = serde_json::json!({
             "ok": true,
-            "dry_run": true,
+            "preview_only": true,
             "data": {
                 "action": "sell",
                 "chain": chain_name(args.chain),
@@ -110,7 +112,7 @@ async fn run_inner(args: SellArgs) -> Result<()> {
                     format!("token.approve({}, {}) — pre-tx, --force", q.token_manager, amount_raw),
                     format!("TokenManager.sellToken({}, {})", token, amount_raw),
                 ],
-                "note": "dry-run: no transactions submitted.",
+                "note": "preview only (--confirm omitted): no transactions submitted.",
             }
         });
         println!("{}", serde_json::to_string_pretty(&resp)?);

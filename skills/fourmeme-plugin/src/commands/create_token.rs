@@ -99,8 +99,10 @@ pub struct CreateTokenArgs {
     #[arg(long, default_value_t = 56)]
     pub chain: u64,
 
-    #[arg(long)]
-    pub dry_run: bool,
+    /// Pass --confirm to actually submit the on-chain tx. Default is preview-only
+    /// (prints the planned tx without spending gas) so accidental invocation is safe.
+    #[arg(long, default_value_t = false)]
+    pub confirm: bool,
 }
 
 pub async fn run(args: CreateTokenArgs) -> Result<()> {
@@ -225,10 +227,10 @@ async fn run_inner(args: CreateTokenArgs) -> Result<()> {
     }
     let launch_fee_wei = creation_fee_wei; // rename for downstream sites
 
-    if args.dry_run {
+    if !args.confirm {
         let resp = serde_json::json!({
             "ok": true,
-            "dry_run": true,
+            "preview_only": true,
             "data": {
                 "action": "create-token",
                 "chain": chain_name(args.chain),
@@ -260,7 +262,7 @@ async fn run_inner(args: CreateTokenArgs) -> Result<()> {
                         addresses::TOKEN_MANAGER_V2, launch_fee_wei
                     )
                 ],
-                "note": "dry-run: no transaction submitted. Backend ALREADY recorded \
+                "note": "preview only (--confirm omitted): no transaction submitted. Backend ALREADY recorded \
                          this createArg + signature, valid until launchTime expires.",
             }
         });

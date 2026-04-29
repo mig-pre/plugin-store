@@ -31,8 +31,10 @@ pub struct BuyArgs {
     #[arg(long, default_value_t = 56)]
     pub chain: u64,
 
-    #[arg(long)]
-    pub dry_run: bool,
+    /// Pass --confirm to actually submit the on-chain tx. Default is preview-only
+    /// (prints the planned tx without spending gas) so accidental invocation is safe.
+    #[arg(long, default_value_t = false)]
+    pub confirm: bool,
 }
 
 pub async fn run(args: BuyArgs) -> Result<()> {
@@ -78,10 +80,10 @@ async fn run_inner(args: BuyArgs) -> Result<()> {
 
     let wallet = crate::onchainos::get_wallet_address(args.chain).await?;
 
-    if args.dry_run {
+    if !args.confirm {
         let resp = serde_json::json!({
             "ok": true,
-            "dry_run": true,
+            "preview_only": true,
             "data": {
                 "action": "buy (BNB-quoted)",
                 "chain": chain_name(args.chain),
@@ -108,7 +110,7 @@ async fn run_inner(args: BuyArgs) -> Result<()> {
                         token, funds_wei, min_amount, funds_wei
                     ),
                 ],
-                "note": "dry-run: no transactions submitted.",
+                "note": "preview only (--confirm omitted): no transactions submitted.",
             }
         });
         println!("{}", serde_json::to_string_pretty(&resp)?);

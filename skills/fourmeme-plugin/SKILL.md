@@ -378,7 +378,9 @@ fourmeme-plugin positions --tokens 0x...,0x... [--chain 56]
 
 **Trigger phrases:** "buy four meme TX", "fourmeme buy 0.01 BNB", "purchase four meme token"
 
-**Usage:** `fourmeme-plugin buy --token 0x... --funds <bnb> [--slippage-bps 100] [--chain 56] [--dry-run]`
+**Usage:** `fourmeme-plugin buy --token 0x... --funds <bnb> [--slippage-bps 100] [--chain 56] [--confirm]`
+
+`--confirm` is required to actually submit the on-chain tx. Without it, the command prints a preview and exits without spending gas.
 
 **Auth required:** No (TEE wallet sign only)
 
@@ -386,7 +388,7 @@ fourmeme-plugin positions --tokens 0x...,0x... [--chain 56]
 1. `tryBuy` preview to derive `estimated_amount` and the actual `tokenManager` (V1 vs V2).
 2. Compute `min_amount = estimated * (1 - slippage_bps/10000)` (default 1% slippage).
 3. GAS-001 BNB pre-check (`balance >= funds + gas`).
-4. `onchainos wallet contract-call` with `--amt <funds_wei>` (msg.value), `force=false` (let backend prompt if any).
+4. **Requires explicit `--confirm` from the user** -- without `--confirm` the command stops here and prints the preview JSON instead of spending gas. With `--confirm`, the plugin submits via `onchainos wallet contract-call` with `--amt <funds_wei>` (msg.value), `force=false` (let backend prompt if any).
 5. TX-001 receipt poll until `status == 0x1`; bail if reverted.
 6. Read post-trade `balanceOf` so the JSON shows the actually-filled amount.
 
@@ -398,7 +400,9 @@ fourmeme-plugin positions --tokens 0x...,0x... [--chain 56]
 
 **Trigger phrases:** "sell four meme", "fourmeme sell all", "exit my fourmeme position"
 
-**Usage:** `fourmeme-plugin sell --token 0x... [--amount <n>|--all] [--chain 56] [--dry-run]`
+**Usage:** `fourmeme-plugin sell --token 0x... [--amount <n>|--all] [--chain 56] [--confirm]`
+
+`--confirm` is required to actually submit the on-chain tx (approve + sell). Without it, the command prints a preview and exits without spending gas.
 
 **Auth required:** No
 
@@ -419,7 +423,9 @@ fourmeme-plugin positions --tokens 0x...,0x... [--chain 56]
 
 **Trigger phrases:** "send BNB", "transfer BNB to <addr>", "send my four meme token to <addr>"
 
-**Usage:** `fourmeme-plugin send --to 0x... --amount <n> [--token 0x...] [--decimals 18] [--chain 56] [--dry-run]`
+**Usage:** `fourmeme-plugin send --to 0x... --amount <n> [--token 0x...] [--decimals 18] [--chain 56] [--confirm]`
+
+`--confirm` is required to actually transfer funds. Without it, the command prints a preview and exits.
 
 **Auth required:** No
 
@@ -441,7 +447,7 @@ fourmeme-plugin create-token \
   --name "<display name>" \
   --symbol "<ticker>" \
   --desc "<one-line>" \
-  --image-file <local path> | --image-url <https://...> \
+  --image-file <local path> | --image-url <four.meme CDN URL> \
   [--quote bnb|usdt] \
   [--label Meme|AI|Defi|Games|Infra|De-Sci|Social|Depin|Charity|Others] \
   [--total-supply 1000000000] \
@@ -451,14 +457,14 @@ fourmeme-plugin create-token \
   [--launch-delay-secs 5] \
   [--tax-options <path-to-tax.json>] \
   [--auth-token <value>] \
-  [--chain 56] [--dry-run]
+  [--chain 56] [--confirm]
 ```
 
 **Auth required:** Yes -- four.meme cookie. Loaded automatically from `~/.fourmeme-plugin/auth.json` (run `quickstart` or `login` first).
 
 **Image input** (mutually exclusive):
 - `--image-file ./logo.png` -- the plugin uploads via `POST four.meme/meme-api/v1/private/token/upload` (multipart/form-data) and uses the returned CDN URL.
-- `--image-url https://static.four.meme/market/...` -- skip upload, use a pre-existing URL.
+- `--image-url <four.meme CDN URL>` (a URL on `static.four.meme` returned by a previous upload) -- skip upload, reuse a pre-existing image.
 
 **Tax token** (optional): pass `--tax-options tax.json` where the JSON contains `{"tokenTaxInfo": {feeRate, burnRate, divideRate, liquidityRate, recipientRate, recipientAddress, minSharing}}`. `feeRate` must be 1, 3, 5, or 10; `burn+divide+liquidity+recipient = 100`.
 
@@ -468,7 +474,7 @@ fourmeme-plugin create-token \
 3. POST `/private/token/create` with full body (name, shortName=symbol, label, raisedToken config, optional tokenTaxInfo, social URLs, presale).
 4. Read `TM2._launchFee()` on-chain. If `--presale > 0` and quote=BNB, also read `_tradingFeeRate()` and compute `msg.value = launch_fee + presale_wei + trading_fee_wei`. Otherwise `msg.value = launch_fee`.
 5. GAS-001 pre-check (`balance >= msg.value + gas`).
-6. `onchainos wallet contract-call` to `TokenManager V2.createToken(createArg, signature)` with computed msg.value.
+6. **Requires explicit `--confirm` from the user** -- without `--confirm` the command stops here and prints the preview JSON. With `--confirm`, the plugin submits via `onchainos wallet contract-call` to `TokenManager V2.createToken(createArg, signature)` with computed msg.value.
 7. TX-001 receipt poll until `status == 0x1`.
 8. Re-fetch `getTokenInfo` to enrich the response with live curve state (`offers`, `funds`, `progress_pct`, `graduated`).
 
@@ -482,13 +488,15 @@ fourmeme-plugin create-token \
 
 **Trigger phrases:** "register as four meme agent", "mint agent NFT", "I want my tokens flagged aiCreator"
 
-**Usage:** `fourmeme-plugin agent-register --name <X> [--description <X>] [--image-url <X>] [--chain 56] [--dry-run]`
+**Usage:** `fourmeme-plugin agent-register --name <X> [--description <X>] [--image-url <X>] [--chain 56] [--confirm]`
+
+(`--confirm` required to actually mint the NFT on chain; default is preview-only.)
 
 **Auth required:** No
 
 **Flow:**
 1. Build `agentURI` = `data:application/json;base64,<base64({type, name, description, image, active, supportedTrust})>`.
-2. `onchainos wallet contract-call` to `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`, calling `register(string)` with the URI.
+2. **Requires explicit `--confirm` from the user** -- without `--confirm` the command stops here and prints a preview JSON. With `--confirm`, the plugin submits via `onchainos wallet contract-call` to `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`, calling `register(string)` with the URI.
 3. TX-001 receipt poll.
 
 **Output fields:** `register_tx`, `on_chain_status`, `contract`, `name`, `tip`. After the tx confirms, future Four.meme tokens this wallet creates will return `aiCreator: true` in API listings.
@@ -503,8 +511,8 @@ Every write command (`buy`, `sell`, `send`, `create-token`, `agent-register`) fo
 2. **Auth resolve** (only `create-token`) -- load token from disk or `--auth-token` flag; bail with `FOURMEME_AUTH_REQUIRED` if missing.
 3. **Quote / preview** -- `tryBuy` / `trySell` for buy/sell; backend `create` API for create-token. Lets the user see the exact predicted outcome before signing.
 4. **Pre-flight checks (GAS-001)** -- read native BNB via `eth_getBalance`, gas price via `eth_gasPrice`, compute `gas_price * 1.2 * gas_limit`, bail with `INSUFFICIENT_BNB` if balance can't cover the trade size + gas.
-5. **Optional approve step** (only `sell` for non-native tokens) -- if existing allowance < required, send `ERC-20.approve(tokenManager, amount)` via `onchainos wallet contract-call --force` and `wait_for_tx_receipt` to confirm before the main tx.
-6. **Main on-chain submit** -- `onchainos wallet contract-call` with the appropriate `--to`, `--input-data`, `--amt`. `force=false` for the main user-facing tx so onchainos backend can prompt if it has policy concerns.
+5. **Optional approve step** (only `sell` for non-native tokens) -- if existing allowance < required, send `ERC-20.approve(tokenManager, amount)` via `onchainos wallet contract-call --force` and `wait_for_tx_receipt` to confirm before the main tx. (This step only runs after the user has already passed `--confirm` to the parent command -- it is part of the confirmed flow, not a separate user prompt.)
+6. **Main on-chain submit** -- only runs if the user passed `--confirm` to the parent command. The plugin submits via `onchainos wallet contract-call` with the appropriate `--to`, `--input-data`, `--amt`. `force=false` for the main user-facing tx so onchainos backend can prompt if it has policy concerns.
 7. **TX-001 receipt poll** -- direct RPC `eth_getTransactionReceipt` polled every 3 seconds for up to 120s; bail on `status == 0x0` (reverted) with `TX_REVERTED`. Onchainos returning `ok:true` only means the tx was broadcast, not that it landed successfully.
 8. **Post-trade reads** -- read post-state (token balance, BNB balance, live curve state) so the JSON returned to the agent reflects ground truth.
 9. **Structured JSON output** (GEN-001) -- success or failure, ALL paths emit JSON to stdout with `ok`, `data`, `error`, `error_code`, `suggestion`. Never exit non-zero on business-logic failures.

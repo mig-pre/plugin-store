@@ -35,8 +35,10 @@ pub struct SendArgs {
     #[arg(long, default_value_t = 56)]
     pub chain: u64,
 
-    #[arg(long)]
-    pub dry_run: bool,
+    /// Pass --confirm to actually submit the on-chain tx. Default is preview-only
+    /// (prints the planned tx without spending gas) so accidental invocation is safe.
+    #[arg(long, default_value_t = false)]
+    pub confirm: bool,
 }
 
 pub async fn run(args: SendArgs) -> Result<()> {
@@ -76,10 +78,10 @@ async fn run_inner(args: SendArgs) -> Result<()> {
         (token_addr, cd, None, GAS_LIMIT_ERC20_SEND, sym)
     };
 
-    if args.dry_run {
+    if !args.confirm {
         let resp = serde_json::json!({
             "ok": true,
-            "dry_run": true,
+            "preview_only": true,
             "data": {
                 "action": "send",
                 "chain": chain_name(args.chain),
