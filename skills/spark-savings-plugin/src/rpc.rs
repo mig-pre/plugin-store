@@ -223,3 +223,33 @@ pub fn ssr_to_apy(ssr_ray: u128) -> f64 {
     if per_second <= 1.0 { return 0.0; }
     per_second.powf(SECS_PER_YEAR) - 1.0
 }
+
+#[cfg(test)]
+mod tests {
+    use super::selectors::*;
+    use sha3::{Digest, Keccak256};
+
+    fn sel(sig: &str) -> String {
+        let h = Keccak256::digest(sig.as_bytes());
+        format!("0x{}", hex::encode(&h[..4]))
+    }
+
+    #[test]
+    fn selectors_match_keccak256() {
+        assert_eq!(sel("balanceOf(address)"),         BALANCE_OF);
+        assert_eq!(sel("allowance(address,address)"), ALLOWANCE);
+        assert_eq!(sel("approve(address,uint256)"),   APPROVE);
+        assert_eq!(sel("asset()"),                    ASSET);
+        assert_eq!(sel("totalAssets()"),              TOTAL_ASSETS);
+        assert_eq!(sel("convertToAssets(uint256)"),   CONVERT_TO_ASSETS);
+        assert_eq!(sel("previewDeposit(uint256)"),    PREVIEW_DEPOSIT);
+        assert_eq!(sel("previewRedeem(uint256)"),     PREVIEW_REDEEM);
+        assert_eq!(sel("ssr()"),                      SSR);
+        assert_eq!(sel("chi()"),                      CHI);
+        assert_eq!(
+            sel("swapExactIn(address,address,uint256,uint256,address,uint256)"),
+            PSM_SWAP_EXACT_IN
+        );
+        assert_eq!(sel("daiToUsds(address,uint256)"), DAI_TO_USDS);
+    }
+}

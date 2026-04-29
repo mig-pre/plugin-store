@@ -1,6 +1,6 @@
 {
   "name": "spark-savings",
-  "description": "Spark Savings — earn Sky Savings Rate (SSR) on USDS via sUSDS yield-bearing vault. Deposit, withdraw, check APY/balance across Ethereum, Base, and Arbitrum.",
+  "description": "Spark Savings - earn Sky Savings Rate (SSR) on USDS via sUSDS yield-bearing vault. Deposit, withdraw, check APY/balance across Ethereum, Base, and Arbitrum.",
   "version": "0.1.0",
   "author": {
     "name": "GeoGu360",

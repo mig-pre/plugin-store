@@ -1,6 +1,6 @@
 ---
 name: spark-savings-plugin
-description: Spark Savings — earn Sky Savings Rate (SSR) on USDS via the sUSDS yield-bearing vault. Deposit USDS or upgrade DAI 1:1, redeem any time, no collateral, no liquidation. Supports Ethereum (ERC-4626 vault), Base & Arbitrum (Spark PSM).
+description: Spark Savings - earn Sky Savings Rate (SSR) on USDS via the sUSDS yield-bearing vault. Deposit USDS or upgrade DAI 1:1, redeem any time, no collateral, no liquidation. Supports Ethereum (ERC-4626 vault), Base & Arbitrum (Spark PSM).
 version: "0.1.0"
 author: GeoGu360
 tags:

@@ -1,7 +1,7 @@
 schema_version: 1
 name: spark-savings-plugin
 version: "0.1.0"
-description: "Spark Savings — earn Sky Savings Rate (SSR) on USDS or DAI via the sUSDS yield-bearing vault. Supports deposit, withdraw, balance, APY queries on Ethereum (ERC-4626) and Base/Arbitrum (Spark PSM)."
+description: "Spark Savings - earn Sky Savings Rate (SSR) on USDS or DAI via the sUSDS yield-bearing vault. Supports deposit, withdraw, balance, APY queries on Ethereum (ERC-4626) and Base/Arbitrum (Spark PSM)."
 author:
   name: GeoGu360
   github: GeoGu360
