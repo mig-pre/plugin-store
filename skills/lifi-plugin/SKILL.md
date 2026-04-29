@@ -436,7 +436,7 @@ lifi-plugin balance --address 0xMyAddr --token USDC
 
 ## Error Handling
 
-All commands follow knowledge-base **GEN-001**: every failure is emitted as **structured JSON on stdout** with `ok:false`, `error`, `error_code`, `suggestion`. Exit code is **always 0** for business-logic failures (bad input, unknown token, no route, insufficient funds). Only fatal panics or clap parse errors produce non-zero exit. This means downstream agents can rely on parsing stdout and matching `error_code`.
+All commands use this output convention: every failure is emitted as **structured JSON on stdout** with `ok:false`, `error`, `error_code`, `suggestion`. Exit code is **always 0** for business-logic failures (bad input, unknown token, no route, insufficient funds). Only fatal panics or clap parse errors produce non-zero exit. This means downstream agents can rely on parsing stdout and matching `error_code`.
 
 | `error_code` | Meaning | Suggested next step |
 |--------------|---------|---------------------|
@@ -506,16 +506,16 @@ Data returned by `lifi-plugin status`, `chains`, `tokens`, `quote`, `routes`, `b
 ### v0.1.0 (2026-04-28)
 
 - **feat**: initial release with 8 commands (`quickstart`, `chains`, `tokens`, `quote`, `routes`, `bridge`, `status`, `balance`)
-- **feat**: `quickstart` — 6-chain parallel native + USDC balance scan in one call; returns `status` enum (`ready` / `low_balance` / `no_funds` / `rpc_degraded`) + a ready-to-run `next_command` (knowledge-base **ONB-001**)
+- **feat**: `quickstart` — 6-chain parallel native + USDC balance scan in one call; returns `status` enum (`ready` / `low_balance` / `no_funds` / `rpc_degraded`) + a ready-to-run `next_command`
 - **feat**: `SUMMARY.md` per fixed template (Overview / Prerequisites / Quick Start) — every Quick Start step branches off a `quickstart` status enum, so the doc and the binary stay in lockstep
 - **feat**: 6-chain whitelist (Ethereum, Arbitrum, Base, Optimism, BSC, Polygon); BSC USDC's non-standard 18-decimal layout is handled correctly in `quickstart` and via LI.FI lookup elsewhere
-- **feat**: native token sentinel handling for non-EVM-style native bridging (ETH/BNB/POL); skips ERC-20 approve for native inputs (knowledge-base **EVM-005**)
-- **feat**: pre-flight RPC balance check before approve in `bridge` (**EVM-001**)
-- **feat**: ERC-20 approve uses onchainos `wallet contract-call`; tx hash extracted and **polled via `eth_getTransactionReceipt`** until status `0x1` — no blind sleep (**EVM-006**)
-- **feat**: every command emits **structured JSON on stdout** (`ok`, `error`, `error_code`, `suggestion`) with exit code 0 for business-logic failures (**GEN-001**)
-- **feat**: every amount field is paired (`amount` + `amount_raw`) so downstream agents can read either (**EVM-002**)
-- **fix**: `bridge` (only after the user passes `--confirm` to the bridge command) -- the inner `onchainos wallet contract-call` is now invoked with `--force` (was silently failing with cryptic "execution reverted" on unlimited-approve and unknown-contract calls; the comment "intentionally omitted" copied from hyperliquid-plugin was wrong for direct EVM contract calls) (**ONC-001**)
-- **feat**: `bridge` — pre-flight native gas balance check using `quote.estimate.gasCosts[].amount` sum; new error code `INSUFFICIENT_GAS` with shortfall amount in suggestion (**GAS-001**)
-- **feat**: `bridge` — `reliability` field in preview output flags solver-quote tools (mayan/near/relayer) that may revert due to signed-quote latency (**AGG-001**)
-- **feat**: `bridge` — `liquidity_check` field in preview output enumerates ALL available tools (via parallel `/routes` call) and computes `verdict` ∈ {OK, BELOW_LP_MINIMUM, UNKNOWN}; `--confirm` is refused on BELOW_LP_MINIMUM unless `--accept-relayer-risk` is passed (**AGG-002**)
+- **feat**: native token sentinel handling for non-EVM-style native bridging (ETH/BNB/POL); skips ERC-20 approve for native inputs
+- **feat**: pre-flight RPC balance check before approve in `bridge`
+- **feat**: ERC-20 approve uses onchainos `wallet contract-call`; tx hash extracted and **polled via `eth_getTransactionReceipt`** until status `0x1` — no blind sleep
+- **feat**: every command emits **structured JSON on stdout** (`ok`, `error`, `error_code`, `suggestion`) with exit code 0 for business-logic failures
+- **feat**: every amount field is paired (`amount` + `amount_raw`) so downstream agents can read either
+- **fix**: `bridge` (only after the user passes `--confirm` to the bridge command) -- the inner `onchainos wallet contract-call` is now invoked with `--force` (was silently failing with cryptic "execution reverted" on unlimited-approve and unknown-contract calls; the comment "intentionally omitted" copied from hyperliquid-plugin was wrong for direct EVM contract calls)
+- **feat**: `bridge` — pre-flight native gas balance check using `quote.estimate.gasCosts[].amount` sum; new error code `INSUFFICIENT_GAS` with shortfall amount in suggestion
+- **feat**: `bridge` — `reliability` field in preview output flags solver-quote tools (mayan/near/relayer) that may revert due to signed-quote latency
+- **feat**: `bridge` — `liquidity_check` field in preview output enumerates ALL available tools (via parallel `/routes` call) and computes `verdict` ∈ {OK, BELOW_LP_MINIMUM, UNKNOWN}; `--confirm` is refused on BELOW_LP_MINIMUM unless `--accept-relayer-risk` is passed
 - Verified: 6 parallel agents — one per chain — confirmed read paths, error paths, and bridge `--dry-run` work on every supported chain; quickstart status enum verified against all 4 documented branches; real ARB→BASE 1 USDC bridge succeeded end-to-end with the ONC-001 fix
