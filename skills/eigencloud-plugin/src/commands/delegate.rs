@@ -1,6 +1,6 @@
 use clap::Args;
-use crate::abi::{selector, encode_address, zero32};
-use crate::chain::CHAIN_ID;
+use crate::abi::{selector, encode_address, zero32, calldata};
+use crate::chain::{CHAIN_ID, eth_call, decode_word, decode_address};
 use crate::onchainos::{resolve_wallet, wallet_contract_call, extract_tx_hash};
 
 const DELEGATION_MANAGER: &str = "0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A";
@@ -19,11 +19,15 @@ pub struct DelegateArgs {
 }
 
 pub async fn run(args: DelegateArgs) -> anyhow::Result<()> {
-    // Validate operator address
+    // Validate operator address format
     if !args.operator.starts_with("0x") || args.operator.len() != 42
         || !args.operator[2..].chars().all(|c| c.is_ascii_hexdigit())
     {
         anyhow::bail!("Invalid operator address '{}': must be a 42-character hex address (0x...)", args.operator);
+    }
+    // N3: Reject the zero address — it is never a registered operator
+    if args.operator[2..].chars().all(|c| c == '0') {
+        anyhow::bail!("Invalid operator address: 0x000...000 is not a registered EigenLayer operator");
     }
 
     let wallet = if args.dry_run {
@@ -33,6 +37,24 @@ pub async fn run(args: DelegateArgs) -> anyhow::Result<()> {
     } else {
         resolve_wallet(CHAIN_ID).unwrap_or_else(|_| "0x0000000000000000000000000000000000000000".to_string())
     };
+
+    // N1/N2: Check current delegation status before preview or execution.
+    let current_operator = {
+        let delegated_sel = selector("delegatedTo(address)");
+        let check_data = calldata(delegated_sel, &[encode_address(&wallet)]);
+        eth_call(DELEGATION_MANAGER, &check_data).await
+            .ok()
+            .and_then(|r| decode_word(&r, 0))
+            .map(|w| decode_address(&w))
+            .unwrap_or_else(|| "0x0000000000000000000000000000000000000000".to_string())
+    };
+    let is_already_delegated = current_operator != "0x0000000000000000000000000000000000000000";
+    if is_already_delegated {
+        anyhow::bail!(
+            "Already delegated to operator {}. Run `eigencloud undelegate --confirm` first, then wait 7 days before re-delegating.",
+            current_operator
+        );
+    }
 
     // Build delegateTo calldata.
     // Signature: delegateTo(address operator, (bytes signature, uint256 expiry), bytes32 salt)

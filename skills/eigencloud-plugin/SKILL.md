@@ -1,7 +1,7 @@
 ---
 name: EigenCloud
 description: Restake LSTs on EigenLayer to earn AVS operator yield — stake, delegate, and manage your restaking positions
-version: "0.1.0"
+version: "0.1.1"
 ---
 
 # EigenCloud
@@ -328,5 +328,5 @@ Run `eigencloud strategies` for full addresses.
 
 ```bash
 npx skills add okx/plugin-store --skill eigencloud-plugin
-eigencloud --version   # Expected: 0.1.0
+eigencloud --version   # Expected: 0.1.1
 ```
