@@ -1,6 +1,6 @@
 ---
 name: lifi-plugin
-description: LI.FI cross-chain bridge & swap aggregator — list chains/tokens, get quotes, plan multi-hop routes, execute bridges/swaps, track tx status across Ethereum, Arbitrum, Base, Optimism, BSC, and Polygon.
+description: LI.FI cross-chain bridge & swap aggregator - list chains/tokens, get quotes, plan multi-hop routes, execute bridges/swaps, track tx status across Ethereum, Arbitrum, Base, Optimism, BSC, and Polygon.
 version: "0.1.0"
 author: GeoGu360
 tags:

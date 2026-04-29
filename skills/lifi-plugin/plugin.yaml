@@ -1,7 +1,7 @@
 schema_version: 1
 name: lifi-plugin
 version: "0.1.0"
-description: "LI.FI cross-chain bridge & swap aggregator — list chains/tokens, get quotes, bridge or swap, track tx status across Ethereum, Arbitrum, Base, BSC, Polygon, and Optimism"
+description: "LI.FI cross-chain bridge & swap aggregator - list chains/tokens, get quotes, bridge or swap, track tx status across Ethereum, Arbitrum, Base, BSC, Polygon, and Optimism"
 author:
   name: GeoGu360
   github: GeoGu360
