@@ -300,28 +300,6 @@ dolomite-plugin repay --token USDT --all --position-account-number 100 --from-ac
 
 ---
 
-## Knowledge-Base Compliance
-
-| Rule | Implementation |
-|------|---------------|
-| **GEN-001** | All 7 commands emit structured JSON on stdout (no exit-non-zero / stderr-only failures) |
-| **ONB-001** | `quickstart` + `SUMMARY.md` + `LICENSE` all shipped from v0.1.0 (mandatory tri-set) |
-| **ONC-001** | `wallet contract-call` always invoked with `--force` (defensive against backend risk-control silent reverts). All write commands (supply, withdraw, borrow, repay) require explicit user `--confirm` flag before any signing/broadcast - preview/dry-run is the default. |
-| **EVM-001** | Pre-flight token balance check before approve (supply/repay-partial) and before withdraw/borrow |
-| **EVM-002** | Every amount field paired (display + `_raw`) |
-| **EVM-006** | Approve followed by `wait_for_tx` polling, no blind sleep |
-| **EVM-014** | Retry-on-allowance-revert with 3 patterns (standard ERC-20, DAI custom, OZ v5) |
-| **EVM-015** | Explicit `--gas-limit`: approve 60k, deposit/withdraw 400k, borrow steps 450k |
-| **TX-001** | `wait_for_tx` after main submit confirms `status=0x1` before reporting success; output includes `on_chain_status: "0x1"` |
-| **GAS-001** | Native ETH gas balance check before any approve+submit pair |
-| **LEND-001** | `repay --all` uses Dolomite's native `repayAllForBorrowPosition` (exact-debt sentinel - Dolomite analog of Aave V3 `type(uint256).max`). Three-branch decision (A/B/C) guarantees zero dust regardless of where the user's funds are |
-
-Not applicable:
-- **EVM-005** - no native ETH sentinel handling needed; Dolomite operates on ERC-20s
-- **AGG-001/002/003** - single-protocol skill, not an aggregator
-
----
-
 ## Skill Routing
 
 - For Aave V3 lending: `aave-v3-plugin`
