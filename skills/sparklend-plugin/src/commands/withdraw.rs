@@ -26,6 +26,11 @@ pub async fn run(
     if amount.is_none() && !all {
         anyhow::bail!("Specify either --amount <value> or --all for full withdrawal");
     }
+    if let Some(amt) = amount {
+        if amt <= 0.0 {
+            anyhow::bail!("--amount must be greater than 0");
+        }
+    }
 
     let from_addr = resolve_from(from, chain_id)?;
 

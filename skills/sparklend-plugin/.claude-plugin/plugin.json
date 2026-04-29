@@ -1,20 +1,5 @@
 {
   "name": "sparklend-plugin",
-  "version": "0.1.0",
   "description": "SparkLend lending and borrowing on Ethereum Mainnet — supply, withdraw, borrow, repay, positions, health factor, reserves.",
-  "author": "skylavis-sky",
-  "license": "MIT",
-  "homepage": "https://spark.fi",
-  "tags": ["defi", "lending", "ethereum", "sparklend", "aave"],
-  "chains": ["ethereum"],
-  "binary": "sparklend",
-  "commands": [
-    "supply",
-    "withdraw",
-    "borrow",
-    "repay",
-    "positions",
-    "health-factor",
-    "reserves"
-  ]
+  "version": "0.1.0"
 }
