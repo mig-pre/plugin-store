@@ -9,11 +9,25 @@
 
 name: "Phase 1: Structure Validation"
 
+# ═══════════════════════════════════════════════════════════════════
+# MANUAL GATE — this workflow does NOT auto-run on PR open.
+# A maintainer must add the 'ci-approved' label to a PR to start it.
+# Re-runs: remove + re-add the label, or use workflow_dispatch.
+# Rationale: prevents fork PRs from auto-triggering build/AI-review with
+# secrets exposed before code is reviewed (post-incident hardening).
+# ═══════════════════════════════════════════════════════════════════
 on:
   pull_request_target:
     paths:
       - 'skills/**'
-    types: [opened, synchronize, reopened]
+    types: [labeled]
+  # Manual fallback for re-runs without label churn
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to gate-bypass run on'
+        required: false
+        default: ''
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -25,6 +39,10 @@ jobs:
   # ═══════════════════════════════════════════════════════════════
   gate:
     name: Security gate
+    # Label-gate: only fire when the 'ci-approved' label is added or via manual dispatch.
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request_target' && github.event.label.name == 'ci-approved')
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
