@@ -1,6 +1,6 @@
 {
   "name": "dolomite",
-  "description": "Dolomite Finance lending/borrowing on Arbitrum — supply assets to earn interest, open isolated borrow positions, repay, withdraw via DolomiteMargin.",
+  "description": "Dolomite Finance lending/borrowing on Arbitrum - supply assets to earn interest, open isolated borrow positions, repay, withdraw via DolomiteMargin.",
   "version": "0.1.0",
   "author": {
     "name": "GeoGu360",

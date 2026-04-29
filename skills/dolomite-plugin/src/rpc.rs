@@ -336,3 +336,59 @@ pub fn rate_to_apy(rate_1e18: u128) -> f64 {
     // Per-second compounding to APY
     (1.0 + per_second).powf(SECS_PER_YEAR) - 1.0
 }
+
+#[cfg(test)]
+mod tests {
+    use super::selectors::*;
+    use sha3::{Digest, Keccak256};
+
+    fn sel(sig: &str) -> String {
+        let h = Keccak256::digest(sig.as_bytes());
+        format!("0x{}", hex::encode(&h[..4]))
+    }
+
+    /// Recompute every selector via keccak256 at runtime so any copy/paste
+    /// typo in the hardcoded constants would fail this test instead of
+    /// silently misrouting calls on-chain. Pattern matches euler-v2 /
+    /// aave-v2 / compound-v2 / fourmeme. Dolomite uses Account.Info struct
+    /// which encodes as `(address,uint256)` in ABI signatures.
+    #[test]
+    fn selectors_match_keccak256() {
+        // ERC-20
+        assert_eq!(sel("balanceOf(address)"),         BALANCE_OF);
+        assert_eq!(sel("allowance(address,address)"), ALLOWANCE);
+        assert_eq!(sel("approve(address,uint256)"),   APPROVE);
+        assert_eq!(sel("decimals()"),                 DECIMALS);
+        assert_eq!(sel("symbol()"),                   SYMBOL);
+        // DolomiteMargin writes
+        assert_eq!(sel("depositWei(uint256,uint256,uint256)"),
+                   DEPOSIT_WEI);
+        assert_eq!(sel("withdrawWei(uint256,uint256,uint256,uint8)"),
+                   WITHDRAW_WEI);
+        assert_eq!(sel("openBorrowPosition(uint256,uint256,uint256,uint256,uint8)"),
+                   OPEN_BORROW_POSITION);
+        assert_eq!(sel("closeBorrowPosition(uint256,uint256,uint256[])"),
+                   CLOSE_BORROW_POSITION);
+        assert_eq!(sel("transferBetweenAccounts(uint256,uint256,uint256,uint256,uint8)"),
+                   TRANSFER_BETWEEN_ACCTS);
+        assert_eq!(sel("repayAllForBorrowPosition(uint256,uint256,uint256,uint8)"),
+                   REPAY_ALL_FOR_POSITION);
+        // Margin reads (no struct args)
+        assert_eq!(sel("getNumMarkets()"),            GET_NUM_MARKETS);
+        assert_eq!(sel("getMarketTokenAddress(uint256)"),
+                   GET_MARKET_TOKEN_ADDR);
+        assert_eq!(sel("getMarketInterestRate(uint256)"),
+                   GET_MARKET_INTEREST_RATE);
+        assert_eq!(sel("getEarningsRate()"),          GET_EARNINGS_RATE);
+        assert_eq!(sel("getMarketTotalPar(uint256)"), GET_MARKET_TOTAL_PAR);
+        assert_eq!(sel("getMarketWithInfo(uint256)"), GET_MARKET_WITH_INFO);
+        assert_eq!(sel("getMarketPrice(uint256)"),    GET_MARKET_PRICE);
+        // Margin reads with Account.Info struct = (address,uint256)
+        assert_eq!(sel("getAccountWei((address,uint256),uint256)"),
+                   GET_ACCOUNT_WEI);
+        assert_eq!(sel("getAccountStatus((address,uint256))"),
+                   GET_ACCOUNT_STATUS);
+        assert_eq!(sel("getAccountValues((address,uint256))"),
+                   GET_ACCOUNT_VALUES);
+    }
+}
