@@ -36,7 +36,7 @@ if [ -f "$UPDATE_CACHE" ]; then
 fi
 
 if [ "$DO_CHECK" = true ]; then
-  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/lifi-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
+  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/mig-pre/plugin-store/main/skills/lifi-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
   if [ -n "$REMOTE_VER" ]; then
     mkdir -p "$HOME/.plugin-store/update-cache"
     echo "$REMOTE_VER" > "$UPDATE_CACHE"
@@ -61,7 +61,7 @@ onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/
 npx skills add okx/onchainos-skills --yes --global
 
 # 3. Install plugin-store skills (enables plugin discovery and management)
-npx skills add okx/plugin-store --skill plugin-store --yes --global
+npx skills add mig-pre/plugin-store --skill plugin-store --yes --global
 ```
 
 ### Install lifi-plugin binary + launcher (auto-injected)
@@ -72,11 +72,11 @@ LAUNCHER="$HOME/.plugin-store/launcher.sh"
 CHECKER="$HOME/.plugin-store/update-checker.py"
 if [ ! -f "$LAUNCHER" ]; then
   mkdir -p "$HOME/.plugin-store"
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/test/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
   chmod +x "$LAUNCHER"
 fi
 if [ ! -f "$CHECKER" ]; then
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/test/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
 fi
 
 # Clean up old installation
@@ -108,7 +108,6 @@ ln -sf "$LAUNCHER" ~/.local/bin/lifi-plugin
 mkdir -p "$HOME/.plugin-store/managed"
 echo "0.1.0" > "$HOME/.plugin-store/managed/lifi-plugin"
 ```
-
 
 ---
 
