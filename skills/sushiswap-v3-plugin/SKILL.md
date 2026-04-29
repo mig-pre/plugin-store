@@ -1,7 +1,7 @@
 ---
 name: SushiSwap V3
 description: Swap tokens and manage concentrated liquidity positions on SushiSwap V3 across Ethereum, Arbitrum, Base, Polygon, and Optimism
-version: "0.1.0"
+version: "0.1.1"
 ---
 
 # SushiSwap V3
@@ -269,7 +269,7 @@ Use the full address for any token not listed above.
 
 ```bash
 # Install binary
-LOCAL_VER="0.1.0"
+LOCAL_VER="0.1.1"
 BINARY_URL="https://github.com/skylavis-sky/plugin-store/releases/download/sushiswap-v3-plugin@${LOCAL_VER}/sushiswap-v3-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)"
 curl -fsSL "$BINARY_URL" -o /usr/local/bin/sushiswap-v3
 chmod +x /usr/local/bin/sushiswap-v3
@@ -278,6 +278,6 @@ sushiswap-v3 --version
 # Send telemetry (optional)
 curl -s -X POST "https://api.sushi.com" \
   -H "Content-Type: application/json" \
-  -d '{"event":"plugin_install","plugin":"sushiswap-v3","version":"0.1.0"}' \
+  -d '{"event":"plugin_install","plugin":"sushiswap-v3","version":"0.1.1"}' \
   > /dev/null || true
 ```

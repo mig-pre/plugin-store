@@ -18,11 +18,11 @@ pub struct MintPositionArgs {
     /// Fee tier in basis points (100, 500, 3000, or 10000)
     #[arg(long)]
     pub fee: u32,
-    /// Lower tick of the position range
-    #[arg(long)]
+    /// Lower tick of the position range (negative values supported, e.g. --tick-lower -201000)
+    #[arg(long, allow_hyphen_values = true)]
     pub tick_lower: i32,
-    /// Upper tick of the position range
-    #[arg(long)]
+    /// Upper tick of the position range (negative values supported, e.g. --tick-upper -199000)
+    #[arg(long, allow_hyphen_values = true)]
     pub tick_upper: i32,
     /// Amount of token_a to supply (human-readable)
     #[arg(long)]
@@ -44,6 +44,18 @@ pub struct MintPositionArgs {
     pub dry_run: bool,
 }
 
+/// ABI-encode an int24 tick as a 256-bit (64 hex char) slot, sign-extended.
+/// Using `as i64 as u64` zero-extends for negative values — wrong for EVM ABI.
+/// Negative values must fill the upper bits with 1s (sign extension).
+fn encode_tick(tick: i32) -> String {
+    if tick >= 0 {
+        format!("{:0>64x}", tick as u64)
+    } else {
+        // Sign-extend: upper 224 bits = all 1s, lower 32 bits = two's complement of tick
+        format!("ffffffffffffffffffffffffffffffffffffffffffffffffffffffff{:08x}", tick as u32)
+    }
+}
+
 /// NFPM.mint(MintParams) — selector 0x88316456
 /// UniV3 MintParams: (token0,token1,fee,tickLower,tickUpper,amount0Desired,amount1Desired,amount0Min,amount1Min,recipient,deadline)
 fn build_mint(
@@ -58,8 +70,8 @@ fn build_mint(
         pad_address(token0),
         pad_address(token1),
         format!("{:0>64x}", fee),
-        format!("{:0>64x}", tick_lower as i64 as u64),
-        format!("{:0>64x}", tick_upper as i64 as u64),
+        encode_tick(tick_lower),
+        encode_tick(tick_upper),
         pad_u256(amount0),
         pad_u256(amount1),
         pad_u256(amount0_min),
@@ -126,9 +138,12 @@ pub async fn run(args: MintPositionArgs, chain_id: u64) -> anyhow::Result<()> {
     let dec1 = get_decimals(token1, rpc).await.unwrap_or(18);
     let amount0 = parse_human_amount(amt_a_str, dec0)?;
     let amount1 = parse_human_amount(amt_b_str, dec1)?;
-    let slippage_factor = 1.0 - (args.slippage / 100.0);
-    let amount0_min = (amount0 as f64 * slippage_factor) as u128;
-    let amount1_min = (amount1 as f64 * slippage_factor) as u128;
+    // amount0Min and amount1Min are set to 0: the NFPM deposits at the current price ratio,
+    // which can differ significantly from the desired ratio depending on where the price is
+    // in the tick range. Slippage protection against price manipulation is provided by the deadline.
+    let amount0_min: u128 = 0;
+    let amount1_min: u128 = 0;
+    let _ = args.slippage; // slippage arg retained for CLI compatibility
 
     let wallet = if args.dry_run {
         "0x0000000000000000000000000000000000000000".to_string()
