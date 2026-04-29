@@ -1,0 +1,27 @@
+schema_version: 1
+name: quickswap-plugin
+version: "0.1.0"
+description: "Swap tokens and provide concentrated liquidity on QuickSwap V3 CLMM on Polygon"
+author:
+  name: skylavis-sky
+  github: skylavis-sky
+category: defi-protocol
+tags:
+  - quickswap
+  - polygon
+  - clmm
+  - swap
+  - defi
+license: MIT
+
+components:
+  skill:
+    dir: .
+
+build:
+  lang: rust
+  binary_name: quickswap
+
+api_calls:
+  - "https://api.quickswap.exchange"
+  - "https://polygon-rpc.com"
