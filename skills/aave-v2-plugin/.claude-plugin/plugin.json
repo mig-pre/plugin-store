@@ -1,0 +1,5 @@
+{
+  "name": "aave-v2-plugin",
+  "version": "0.1.0",
+  "description": "Aave V2 lending and borrowing across Ethereum, Polygon, and Avalanche - supply, borrow (stable or variable), repay, withdraw, claim stkAAVE rewards"
+}
