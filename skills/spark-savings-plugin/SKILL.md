@@ -91,7 +91,7 @@ echo "0.1.0" > "$HOME/.plugin-store/managed/spark-savings-plugin"
 
 # Spark Savings (Sky Protocol)
 
-Spark Savings is the yield-bearing arm of [Sky Protocol](https://sky.money/) (formerly MakerDAO). Deposit USDS or DAI and receive **sUSDS** — an ERC-4626 vault token that auto-accrues the **Sky Savings Rate (SSR)**. No collateral. No liquidation. No fees. Just compounding stablecoin yield.
+Spark Savings is the yield-bearing arm of Sky Protocol (formerly MakerDAO). Deposit USDS or DAI and receive **sUSDS** — an ERC-4626 vault token that auto-accrues the **Sky Savings Rate (SSR)**. No collateral. No liquidation. No fees. Just compounding stablecoin yield.
 
 **Three supported chains in v0.1.0**:
 
@@ -270,7 +270,7 @@ spark-savings-plugin withdraw --chain ETH --all --confirm
 
 ### 5. `upgrade-dai` — Legacy DAI → USDS 1:1 (Ethereum only)
 
-Calls the official Sky [`DaiUsds`](https://etherscan.io/address/0x3225737a9Bbb6473CB4a45b7244ACa2BeFdB276A) migrator. 1:1 atomic, no fees, no slippage. After upgrade, use `deposit` to start earning.
+Calls the official Sky `DaiUsds` migrator at `0x3225737a9Bbb6473CB4a45b7244ACa2BeFdB276A`. 1:1 atomic, no fees, no slippage. After upgrade, use `deposit` to start earning.
 
 ```bash
 spark-savings-plugin upgrade-dai --amount 100 --confirm
@@ -319,7 +319,7 @@ spark-savings-plugin upgrade-dai --all --confirm    # upgrade entire DAI balance
 
 - **feat**: initial release with 6 commands (`quickstart`, `apy`, `balance`, `deposit`, `withdraw`, `upgrade-dai`)
 - **feat**: 3-chain support (Ethereum / Base / Arbitrum) with mechanism-aware deposit/withdraw — Ethereum uses native ERC-4626 vault; Base/Arbitrum use Spark PSM (`swapExactIn`)
-- **feat**: official Sky [`DaiUsds` migrator](https://etherscan.io/address/0x3225737a9Bbb6473CB4a45b7244ACa2BeFdB276A) integration for `upgrade-dai` — 1:1 atomic, no fees
+- **feat**: official Sky `DaiUsds` migrator (`0x3225737a9Bbb6473CB4a45b7244ACa2BeFdB276A`) integration for `upgrade-dai` -- 1:1 atomic, no fees
 - **feat**: live SSR + chi + TVL via direct RPC reads (no API dependency)
 - **feat**: structured GEN-001 errors; ONC-001 `--force` on all contract-calls; EVM-014 allowance-lag retry; EVM-001 / EVM-006 / EVM-002 / GAS-001 / ONB-001 fully honored
 - Verified: live RPC reads on Ethereum (APY 3.65%, TVL $5.4B); `deposit` / `withdraw` / `upgrade-dai` dry-runs return correct calldata + previewed share/asset values; user wallet balances accurately reflected on all 3 chains
