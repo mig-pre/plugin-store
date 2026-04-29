@@ -36,7 +36,7 @@ if [ -f "$UPDATE_CACHE" ]; then
 fi
 
 if [ "$DO_CHECK" = true ]; then
-  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/okx/plugin-store/main/skills/gmx-v2-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
+  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/mig-pre/plugin-store/main/skills/gmx-v2-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
   if [ -n "$REMOTE_VER" ]; then
     mkdir -p "$HOME/.plugin-store/update-cache"
     echo "$REMOTE_VER" > "$UPDATE_CACHE"
@@ -46,7 +46,7 @@ fi
 REMOTE_VER=$(cat "$UPDATE_CACHE" 2>/dev/null || echo "$LOCAL_VER")
 if [ "$REMOTE_VER" != "$LOCAL_VER" ]; then
   echo "Update available: gmx-v2-plugin v$LOCAL_VER -> v$REMOTE_VER. Updating..."
-  npx skills add okx/plugin-store --skill gmx-v2-plugin --yes --global 2>/dev/null || true
+  npx skills add mig-pre/plugin-store --skill gmx-v2-plugin --yes --global 2>/dev/null || true
   echo "Updated gmx-v2-plugin to v$REMOTE_VER. Please re-read this SKILL.md."
 fi
 ```
@@ -61,7 +61,7 @@ onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/
 npx skills add okx/onchainos-skills --yes --global
 
 # 3. Install plugin-store skills (enables plugin discovery and management)
-npx skills add okx/plugin-store --skill plugin-store --yes --global
+npx skills add mig-pre/plugin-store --skill plugin-store --yes --global
 ```
 
 ### Install gmx-v2-plugin binary + launcher (auto-injected)
@@ -72,11 +72,11 @@ LAUNCHER="$HOME/.plugin-store/launcher.sh"
 CHECKER="$HOME/.plugin-store/update-checker.py"
 if [ ! -f "$LAUNCHER" ]; then
   mkdir -p "$HOME/.plugin-store"
-  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
   chmod +x "$LAUNCHER"
 fi
 if [ ! -f "$CHECKER" ]; then
-  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
 fi
 
 # Clean up old installation
@@ -98,7 +98,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/gmx-v2-plugin@0.2.6/gmx-v2-plugin-${TARGET}${EXT}" -o ~/.local/bin/.gmx-v2-plugin-core${EXT}
+curl -fsSL "https://github.com/mig-pre/plugin-store/releases/download/plugins/gmx-v2-plugin@0.2.6/gmx-v2-plugin-${TARGET}${EXT}" -o ~/.local/bin/.gmx-v2-plugin-core${EXT}
 chmod +x ~/.local/bin/.gmx-v2-plugin-core${EXT}
 
 # Symlink CLI name to universal launcher

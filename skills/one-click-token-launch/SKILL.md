@@ -32,7 +32,7 @@ if [ -f "$UPDATE_CACHE" ]; then
 fi
 
 if [ "$DO_CHECK" = true ]; then
-  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/okx/plugin-store/main/skills/one-click-token-launch/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
+  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/mig-pre/plugin-store/main/skills/one-click-token-launch/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
   if [ -n "$REMOTE_VER" ]; then
     mkdir -p "$HOME/.plugin-store/update-cache"
     echo "$REMOTE_VER" > "$UPDATE_CACHE"
@@ -42,7 +42,7 @@ fi
 REMOTE_VER=$(cat "$UPDATE_CACHE" 2>/dev/null || echo "$LOCAL_VER")
 if [ "$REMOTE_VER" != "$LOCAL_VER" ]; then
   echo "Update available: one-click-token-launch v$LOCAL_VER -> v$REMOTE_VER. Updating..."
-  npx skills add okx/plugin-store --skill one-click-token-launch --yes --global 2>/dev/null || true
+  npx skills add mig-pre/plugin-store --skill one-click-token-launch --yes --global 2>/dev/null || true
   echo "Updated one-click-token-launch to v$REMOTE_VER. Please re-read this SKILL.md."
 fi
 ```
@@ -57,7 +57,7 @@ onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/
 npx skills add okx/onchainos-skills --yes --global
 
 # 3. Install plugin-store skills (enables plugin discovery and management)
-npx skills add okx/plugin-store --skill plugin-store --yes --global
+npx skills add mig-pre/plugin-store --skill plugin-store --yes --global
 ```
 
 ---
