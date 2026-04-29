@@ -324,7 +324,7 @@ compound-v2-plugin exit-market --ctoken cDAI --confirm
 |------|---------------|
 | **GEN-001** | All 10 commands emit structured JSON on stdout (no exit-non-zero / stderr-only failures) |
 | **ONB-001** | `quickstart` + `SUMMARY.md` + `LICENSE` all shipped from v0.1.0 (mandatory tri-set) |
-| **ONC-001** | `wallet contract-call` always invoked with `--force` (defensive against backend risk-control silent reverts) |
+| **ONC-001** | `wallet contract-call` always invoked with `--force` (defensive against backend risk-control silent reverts). All write commands (supply, withdraw, borrow, repay, claim-comp, enter-markets, exit-market) require explicit user `--confirm` flag before any signing/broadcast - preview/dry-run is the default. |
 | **EVM-001** | Pre-flight balance check before every approve/submit (supply, repay) and before redeem/borrow |
 | **EVM-002** | Every amount field paired (display + `_raw`) |
 | **EVM-006** | Approve followed by `wait_for_tx` polling, no blind sleep |
