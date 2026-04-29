@@ -43,6 +43,15 @@
       }
     },
     {
+      "name": "dolomite",
+      "description": "Dolomite Finance lending/borrowing on Arbitrum - supply assets to earn interest, open isolated borrow positions, repay, withdraw via DolomiteMargin.",
+      "source": "./skills/dolomite-plugin",
+      "category": "utility",
+      "author": {
+        "name": "GeoGu360"
+      }
+    },
+    {
       "name": "eth-price-demo",
       "description": "Query ETH price via OnchainOS — a simple demo plugin for CI testing",
       "source": "./skills/eth-price-demo",

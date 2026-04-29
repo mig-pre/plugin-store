@@ -129,6 +129,37 @@
       }
     },
     {
+      "name": "dolomite",
+      "version": "0.1.0",
+      "description": "Dolomite Finance lending/borrowing on Arbitrum - supply assets to earn interest, open isolated borrow positions, repay, withdraw via DolomiteMargin.",
+      "author": {
+        "name": "GeoGu360"
+      },
+      "category": "utility",
+      "tags": [
+        "solana",
+        "defi"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/dolomite-plugin"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/dolomite-plugin",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/dolomite-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/dolomite-plugin/SUMMARY.md",
+      "modify_date": "1777454495",
+      "extra": {
+        "chains": [
+          "solana"
+        ],
+        "protocols": [],
+        "risk_level": "medium"
+      }
+    },
+    {
       "name": "eth-price-demo",
       "version": "0.1.0",
       "description": "Query ETH price via OnchainOS — a simple demo plugin for CI testing",
@@ -1002,7 +1033,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/spark-savings-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/spark-savings-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/spark-savings-plugin/SUMMARY.md",
-      "modify_date": "1777454504",
+      "modify_date": "1777463093",
       "extra": {
         "chains": [
           "solana",
