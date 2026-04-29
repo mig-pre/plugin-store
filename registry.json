@@ -816,6 +816,38 @@
       }
     },
     {
+      "name": "puffer",
+      "version": "0.1.0",
+      "description": "Liquid restaking on Puffer Finance - deposit ETH to mint pufETH, instant or queued withdraw, check positions",
+      "author": {
+        "name": "GeoGu360"
+      },
+      "category": "utility",
+      "tags": [
+        "ethereum",
+        "defi"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/puffer-plugin"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/puffer-plugin",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/puffer-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/puffer-plugin/SUMMARY.md",
+      "modify_date": "1777454521",
+      "extra": {
+        "chains": [
+          "ethereum",
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "medium"
+      }
+    },
+    {
       "name": "pump-fun-plugin",
       "version": "0.1.4",
       "description": "Buy and sell tokens on pump.fun bonding curves on Solana mainnet",
