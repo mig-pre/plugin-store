@@ -63,7 +63,7 @@ pub async fn run(args: QuoteArgs) -> anyhow::Result<()> {
         .and_then(|c| c.amount_usd.as_deref())
         .unwrap_or("unknown");
     let time_secs = quote.details.as_ref()
-        .and_then(|d| d.total_time)
+        .and_then(|d| d.time_estimate)
         .unwrap_or(0);
 
     let steps_summary: Vec<&str> = quote.steps.iter().map(|s| s.id.as_str()).collect();

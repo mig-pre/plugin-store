@@ -11,18 +11,20 @@ pub struct StatusArgs {
 pub async fn run(args: StatusArgs) -> anyhow::Result<()> {
     let status = get_status(&args.request_id).await?;
 
+    let origin_tx = status.in_tx_hashes.as_ref()
+        .and_then(|txs| txs.first())
+        .map(|s| s.as_str())
+        .unwrap_or("pending");
     let dest_tx = status.tx_hashes.as_ref()
-        .and_then(|txs| txs.iter().find(|t| t.is_destination_tx == Some(true)))
-        .and_then(|t| t.tx_hash.as_deref());
-    let origin_tx = status.tx_hashes.as_ref()
-        .and_then(|txs| txs.iter().find(|t| t.is_destination_tx != Some(true)))
-        .and_then(|t| t.tx_hash.as_deref());
+        .and_then(|txs| txs.first())
+        .map(|s| s.as_str())
+        .unwrap_or("pending");
 
     let out = serde_json::json!({
         "status":      status.status,
         "request_id":  args.request_id,
-        "origin_tx":   origin_tx.unwrap_or("pending"),
-        "dest_tx":     dest_tx.unwrap_or("pending"),
+        "origin_tx":   origin_tx,
+        "dest_tx":     dest_tx,
         "error":       status.error.as_deref().unwrap_or(""),
     });
 

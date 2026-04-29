@@ -78,7 +78,7 @@ pub struct StepData {
 pub struct Details {
     pub currency_in: Option<CurrencyDetail>,
     pub currency_out: Option<CurrencyDetail>,
-    pub total_time: Option<u64>,
+    pub time_estimate: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -105,17 +105,11 @@ pub struct CurrencyInfo {
 #[derive(Debug, Deserialize)]
 pub struct StatusResponse {
     pub status: String,
+    #[serde(rename = "inTxHashes")]
+    pub in_tx_hashes: Option<Vec<String>>,
     #[serde(rename = "txHashes")]
-    pub tx_hashes: Option<Vec<TxHashEntry>>,
+    pub tx_hashes: Option<Vec<String>>,
     pub error: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TxHashEntry {
-    pub tx_hash: Option<String>,
-    pub chain_id: Option<u64>,
-    pub is_destination_tx: Option<bool>,
 }
 
 pub async fn get_chains() -> anyhow::Result<Vec<RelayChain>> {
