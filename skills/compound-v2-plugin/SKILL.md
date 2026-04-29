@@ -318,28 +318,6 @@ compound-v2-plugin exit-market --ctoken cDAI --confirm
 
 ---
 
-## Knowledge-Base Compliance
-
-| Rule | Implementation |
-|------|---------------|
-| **GEN-001** | All 10 commands emit structured JSON on stdout (no exit-non-zero / stderr-only failures) |
-| **ONB-001** | `quickstart` + `SUMMARY.md` + `LICENSE` all shipped from v0.1.0 (mandatory tri-set) |
-| **ONC-001** | `wallet contract-call` always invoked with `--force` (defensive against backend risk-control silent reverts). All write commands (supply, withdraw, borrow, repay, claim-comp, enter-markets, exit-market) require explicit user `--confirm` flag before any signing/broadcast - preview/dry-run is the default. |
-| **EVM-001** | Pre-flight balance check before every approve/submit (supply, repay) and before redeem/borrow |
-| **EVM-002** | Every amount field paired (display + `_raw`) |
-| **EVM-006** | Approve followed by `wait_for_tx` polling, no blind sleep |
-| **EVM-014** | Retry-on-allowance-revert with 3 patterns (standard ERC-20, DAI custom, OZ v5) |
-| **EVM-015** | Explicit `--gas-limit`: approve 80k, redeem/repay 280k, borrow 450k, claimComp 200k+70kxN, enterMarkets 100k+30kxN, exitMarket 150k |
-| **TX-001** | `wait_for_tx` after main submit confirms `status=0x1` before reporting success; output includes `on_chain_status: "0x1"` |
-| **GAS-001** | Native ETH gas check before any approve+submit pair; floor 0.005 ETH on L1 (mainnet gas-heavy) |
-| **LEND-001** | `repay --all` uses Compound V2's native `cToken.repayBorrow(uint256.max)` sentinel - contract auto-caps to current debt at execution time. Exact-zero dust guarantee, single-tx, no decision-tree complexity (simpler than Dolomite's branching) |
-
-Not applicable:
-- **EVM-005** - cETH IS a native sentinel pattern (payable mint/repay); handled inline in supply/repay (`is_native` branch). Not a generic ETH sentinel issue.
-- **AGG-001/002/003** - single-protocol skill, not an aggregator.
-
----
-
 ## Skill Routing
 
 - For active Compound V3 lending: **`compound-v3-plugin`** <- primary recommendation
