@@ -5,8 +5,8 @@ use crate::config::{parse_chain, supported_chains_help, ChainInfo, SUPPORTED_CHA
 use crate::onchainos::{extract_tx_hash, resolve_wallet, wallet_contract_call};
 use crate::rpc::{
     build_approve_max, erc20_allowance, erc20_balance, erc20_decimals, erc20_symbol,
-    fmt_token_amount, get_reserves_list, human_to_atomic, native_balance, pad_address,
-    pad_u256, selectors, wait_for_tx,
+    fmt_token_amount, get_reserves_list, human_to_atomic, lp_get_reserve_data,
+    native_balance, pad_address, pad_u256, selectors, wait_for_tx,
 };
 
 /// Supply (deposit) underlying token to Aave V2 LendingPool. Emits aTokens 1:1 to the user.
@@ -91,6 +91,29 @@ pub async fn run(args: SupplyArgs) -> anyhow::Result<()> {
         Err(e) => return print_err(&format!("{:#}", e), "WALLET_NOT_FOUND",
             "Run `onchainos wallet addresses` to verify login."),
     };
+
+    // Pre-flight: reserve must not be frozen / inactive / borrowing-disabled at supply path.
+    // Frozen markets reject deposit on-chain with VL_RESERVE_FROZEN ('3'); pre-checking
+    // saves the user the wasted approve gas. All Ethereum V2 mainnet reserves are
+    // currently frozen as part of the V3 migration wind-down.
+    let rd = lp_get_reserve_data(chain.lending_pool, &asset_addr, chain.rpc).await
+        .map_err(|e| anyhow::anyhow!("LendingPool.getReserveData: {}", e))?;
+    let cfg = rd.decode_config();
+    if !cfg.is_active {
+        return print_err(
+            &format!("Reserve {} on {} is inactive (governance-disabled).", symbol, chain.key),
+            "RESERVE_INACTIVE",
+            "Use a different chain (Polygon V2 / Avalanche V2) or aave-v3-plugin for active markets.",
+        );
+    }
+    if cfg.is_frozen {
+        return print_err(
+            &format!("Reserve {} on {} is frozen by Aave governance - new supply rejected on-chain (VL_RESERVE_FROZEN). All Ethereum V2 mainnet reserves are frozen as of the V3 migration; redeem/repay paths still work for legacy positions.",
+                symbol, chain.key),
+            "RESERVE_FROZEN",
+            "Use Polygon V2 / Avalanche V2 (some reserves may still be active), or use aave-v3-plugin for active supply.",
+        );
+    }
 
     // Pre-flight: balance (EVM-001)
     let bal = erc20_balance(&asset_addr, &from_addr, chain.rpc).await

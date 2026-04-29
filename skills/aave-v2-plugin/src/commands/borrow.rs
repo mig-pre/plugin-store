@@ -5,8 +5,8 @@ use crate::config::{parse_chain, supported_chains_help, ChainInfo, RateMode, SUP
 use crate::onchainos::{extract_tx_hash, resolve_wallet, wallet_contract_call};
 use crate::rpc::{
     erc20_decimals, erc20_symbol, fmt_1e18, fmt_token_amount, get_reserves_list,
-    get_user_account_data, human_to_atomic, native_balance, pad_address, pad_u256,
-    selectors, wait_for_tx,
+    get_user_account_data, human_to_atomic, lp_get_reserve_data, native_balance,
+    pad_address, pad_u256, selectors, wait_for_tx,
 };
 
 /// Borrow underlying token from Aave V2 LendingPool. Requires existing collateral
@@ -101,6 +101,42 @@ pub async fn run(args: BorrowArgs) -> anyhow::Result<()> {
         Err(e) => return print_err(&format!("{:#}", e), "WALLET_NOT_FOUND",
             "Run `onchainos wallet addresses`."),
     };
+
+    // Pre-flight: reserve must not be frozen / borrowing-disabled / stable-rate-disabled.
+    // Frozen reserves reject borrow on-chain with VL_RESERVE_FROZEN ('3'); pre-checking
+    // saves wasted gas if borrowingEnabled or stable rate isn't toggled.
+    let rd = lp_get_reserve_data(chain.lending_pool, &asset_addr, chain.rpc).await
+        .map_err(|e| anyhow::anyhow!("LendingPool.getReserveData: {}", e))?;
+    let cfg = rd.decode_config();
+    if !cfg.is_active {
+        return print_err(
+            &format!("Reserve {} on {} is inactive.", symbol, chain.key),
+            "RESERVE_INACTIVE",
+            "Try a different chain or use aave-v3-plugin.",
+        );
+    }
+    if cfg.is_frozen {
+        return print_err(
+            &format!("Reserve {} on {} is frozen by Aave governance - new borrow rejected on-chain (VL_RESERVE_FROZEN). Existing borrows can still be repaid and rate-mode-swapped.",
+                symbol, chain.key),
+            "RESERVE_FROZEN",
+            "Use Polygon V2 / Avalanche V2 or aave-v3-plugin for active borrow markets.",
+        );
+    }
+    if !cfg.borrowing_enabled {
+        return print_err(
+            &format!("Borrowing is disabled for reserve {} on {} (governance toggle).", symbol, chain.key),
+            "BORROWING_DISABLED",
+            "This reserve is supply-only on V2. Use aave-v3-plugin or another reserve.",
+        );
+    }
+    if mode == RateMode::Stable && !cfg.stable_rate_enabled {
+        return print_err(
+            &format!("Stable rate is disabled for reserve {} on {}.", symbol, chain.key),
+            "STABLE_RATE_DISABLED",
+            "Pass --rate-mode 2 (variable) instead.",
+        );
+    }
 
     // Pre-flight: account liquidity & HF
     let (total_collateral_eth, total_debt_eth, available_borrows_eth, _liq_thresh, _ltv, hf) =
