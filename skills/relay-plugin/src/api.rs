@@ -28,6 +28,7 @@ pub struct ChainCurrency {
 #[serde(rename_all = "camelCase")]
 pub struct QuoteRequest {
     pub user: String,
+    pub recipient: String,
     pub origin_chain_id: u64,
     pub destination_chain_id: u64,
     pub origin_currency: String,
@@ -179,6 +180,7 @@ pub fn resolve_token(symbol_or_addr: &str, chain_id: u64) -> String {
         "USDT" => match chain_id {
             1     => "0xdac17f958d2ee523a2206206994597c13d831ec7".to_string(),
             42161 => "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9".to_string(),
+            8453  => "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2".to_string(),
             10    => "0x94b008aa00579c1307b0ef2c499ad98a8ce58e58".to_string(),
             137   => "0xc2132d05d31c914a87c6611c10748aeb04b58e8f".to_string(),
             _     => symbol_or_addr.to_string(),
@@ -205,6 +207,7 @@ pub fn token_symbol(addr: &str, _chain_id: u64) -> &'static str {
         "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359" => "USDC", // Polygon
         "0xdac17f958d2ee523a2206206994597c13d831ec7" => "USDT", // ETH
         "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9" => "USDT", // ARB
+        "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2" => "USDT", // Base
         "0x94b008aa00579c1307b0ef2c499ad98a8ce58e58" => "USDT", // OP
         "0xc2132d05d31c914a87c6611c10748aeb04b58e8f" => "USDT", // Polygon
         "0x6b175474e89094c44da98b954eedeac495271d0f" => "DAI",  // ETH

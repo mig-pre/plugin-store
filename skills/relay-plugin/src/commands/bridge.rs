@@ -27,7 +27,7 @@ pub struct BridgeArgs {
     #[arg(long)]
     pub confirm: bool,
     /// Build calldata without calling onchainos (dry-run)
-    #[arg(long)]
+    #[arg(long, conflicts_with = "confirm")]
     pub dry_run: bool,
 }
 
@@ -95,6 +95,13 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
 
     let recipient = args.recipient.as_deref().unwrap_or(&wallet);
 
+    // Validate recipient is a well-formed EVM address
+    if !recipient.starts_with("0x") || recipient.len() != 42
+        || !recipient[2..].chars().all(|c| c.is_ascii_hexdigit())
+    {
+        anyhow::bail!("Invalid recipient address '{}': must be a 42-character hex address (0x...)", recipient);
+    }
+
     let sym_in = if token_symbol(&origin_token, args.from_chain) != "UNKNOWN" {
         token_symbol(&origin_token, args.from_chain).to_string()
     } else { args.token.clone() };
@@ -104,6 +111,7 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
 
     let quote = get_quote(QuoteRequest {
         user: wallet.clone(),
+        recipient: recipient.to_string(),
         origin_chain_id: args.from_chain,
         destination_chain_id: args.to_chain,
         origin_currency: origin_token.clone(),
@@ -132,6 +140,10 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
         .unwrap_or(0);
 
     let steps_summary: Vec<&str> = quote.steps.iter().map(|s| s.id.as_str()).collect();
+    let preview_fee_usd = quote.fees.as_ref()
+        .and_then(|f| f.pointer("/relayer/amountUsd"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
 
     let preview = serde_json::json!({
         "preview":     true,
@@ -141,6 +153,7 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
         "amount_in":   args.amount,
         "amount_out":  amount_out_fmt,
         "amount_out_usd": amount_out_usd,
+        "fee_usd":     preview_fee_usd,
         "from_chain":  args.from_chain,
         "to_chain":    args.to_chain,
         "recipient":   recipient,
@@ -197,6 +210,11 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
         }
     }
 
+    let fee_usd = quote.fees.as_ref()
+        .and_then(|f| f.pointer("/relayer/amountUsd"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+
     let mut out = serde_json::json!({
         "ok":          true,
         "action":      "bridge",
@@ -204,8 +222,10 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
         "token_out":   sym_out,
         "amount_in":   args.amount,
         "amount_out":  amount_out_fmt,
+        "fee_usd":     fee_usd,
         "from_chain":  args.from_chain,
         "to_chain":    args.to_chain,
+        "wallet":      wallet,
         "recipient":   recipient,
         "request_id":  request_id,
         "txs":         tx_hashes,

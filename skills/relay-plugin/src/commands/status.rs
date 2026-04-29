@@ -20,10 +20,6 @@ pub async fn run(args: StatusArgs) -> anyhow::Result<()> {
         .map(|s| s.as_str())
         .unwrap_or("pending");
 
-    if status.status == "unknown" {
-        eprintln!("Request ID not found or not yet indexed by Relay. Check the ID and try again in a few seconds.");
-    }
-
     let out = serde_json::json!({
         "status":      status.status,
         "request_id":  args.request_id,
@@ -33,5 +29,10 @@ pub async fn run(args: StatusArgs) -> anyhow::Result<()> {
     });
 
     println!("{}", serde_json::to_string_pretty(&out)?);
+
+    if status.status == "unknown" {
+        eprintln!("Request ID not found or not yet indexed by Relay. Check the ID and try again in a few seconds.");
+        std::process::exit(1);
+    }
     Ok(())
 }

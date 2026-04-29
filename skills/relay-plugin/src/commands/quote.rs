@@ -35,6 +35,7 @@ pub async fn run(args: QuoteArgs) -> anyhow::Result<()> {
 
     let quote = get_quote(QuoteRequest {
         user: wallet.clone(),
+        recipient: wallet.clone(),
         origin_chain_id: args.from_chain,
         destination_chain_id: args.to_chain,
         origin_currency: origin_token.clone(),
@@ -66,6 +67,11 @@ pub async fn run(args: QuoteArgs) -> anyhow::Result<()> {
         .and_then(|d| d.time_estimate)
         .unwrap_or(0);
 
+    let fee_usd = quote.fees.as_ref()
+        .and_then(|f| f.pointer("/relayer/amountUsd"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+
     let steps_summary: Vec<&str> = quote.steps.iter().map(|s| s.id.as_str()).collect();
 
     let out = serde_json::json!({
@@ -74,6 +80,7 @@ pub async fn run(args: QuoteArgs) -> anyhow::Result<()> {
         "amount_in":   args.amount,
         "amount_out":  amount_out_fmt,
         "amount_out_usd": amount_out_usd,
+        "fee_usd":     fee_usd,
         "from_chain":  args.from_chain,
         "to_chain":    args.to_chain,
         "estimated_time_secs": time_secs,

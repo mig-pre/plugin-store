@@ -6,7 +6,7 @@ version: "0.1.1"
 
 # Relay
 
-Cross-chain bridge using Relay Protocol's intent-based system. Send ETH, USDC, USDT, and DAI across 70+ chains in seconds.
+Cross-chain bridge using Relay Protocol's intent-based system. Send ETH, USDC, USDT, and DAI across 74 chains in seconds.
 
 ## Pre-flight Dependencies
 
@@ -62,7 +62,7 @@ relay chains --filter arbitrum
 relay quote --from-chain 1 --to-chain 42161 --token ETH --amount 0.01
 ```
 
-Output includes `amount_out`, estimated fees, and `steps` (ETH = 1 step, ERC-20 = 2 steps: approve + deposit).
+Output includes `amount_out`, `fee_usd`, and `steps` (ETH = 1 step, ERC-20 = 2 steps: approve + deposit).
 
 ### Step 5 — Preview the bridge (no tx sent)
 
@@ -95,7 +95,7 @@ Relay Protocol uses an intent-based bridge system. When you call `bridge --confi
 2. A relayer detects the intent and delivers funds on the destination chain — typically within seconds.
 3. For ERC-20 tokens (USDC, USDT, DAI), an approval transaction is sent first, then the deposit.
 
-## Supported Chains (70+)
+## Supported Chains (74)
 
 Common chains:
 
@@ -111,7 +111,7 @@ Common chains:
 | Linea | 59144 |
 | Scroll | 534352 |
 
-Run `relay chains` for the full list of 70+ supported chains.
+Run `relay chains` for the full list of 74 supported chains.
 
 ## Commands
 
@@ -183,7 +183,7 @@ Execution modes:
 | Dry-run | `--dry-run` | Builds calldata; no onchainos call |
 | Execute | `--confirm` | Approves (ERC-20 only) + broadcasts deposit tx |
 
-For ERC-20 tokens (USDC, USDT, DAI), an unlimited approval is sent before the deposit transaction.
+For ERC-20 tokens (USDC, USDT, DAI), an exact-amount approval transaction is sent before the deposit. Each bridge sends a fresh approval because the allowance is consumed by the deposit.
 
 ---
 
@@ -197,7 +197,7 @@ relay status --request-id 0x<id>
 |------|-------------|
 | `--request-id` | Request ID from a previous `bridge` command |
 
-Status values: `unknown` (in-flight), `pending`, `completed`, `failed`.
+Status values: `unknown` (not yet indexed), `pending` (in-flight), `success` (delivered), `failed`.
 
 ---
 
