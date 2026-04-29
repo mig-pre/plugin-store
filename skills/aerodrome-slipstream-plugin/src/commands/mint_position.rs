@@ -104,6 +104,32 @@ pub async fn run(args: MintPositionArgs) -> anyhow::Result<()> {
     let sym_a = if token_symbol(&token_a) != "UNKNOWN" { token_symbol(&token_a).to_string() } else { args.token_a.clone() };
     let sym_b = if token_symbol(&token_b) != "UNKNOWN" { token_symbol(&token_b).to_string() } else { args.token_b.clone() };
 
+    // M1: Validate tick range ordering
+    if args.tick_lower >= args.tick_upper {
+        anyhow::bail!(
+            "Invalid tick range: --tick-lower ({}) must be less than --tick-upper ({}).",
+            args.tick_lower, args.tick_upper
+        );
+    }
+
+    // M2: Validate tick alignment against tick spacing
+    if args.tick_lower % args.tick_spacing != 0 {
+        anyhow::bail!(
+            "--tick-lower {} is not aligned to tick spacing {}. \
+             Use a multiple of {} (e.g. {}).",
+            args.tick_lower, args.tick_spacing, args.tick_spacing,
+            (args.tick_lower / args.tick_spacing) * args.tick_spacing
+        );
+    }
+    if args.tick_upper % args.tick_spacing != 0 {
+        anyhow::bail!(
+            "--tick-upper {} is not aligned to tick spacing {}. \
+             Use a multiple of {} (e.g. {}).",
+            args.tick_upper, args.tick_spacing, args.tick_spacing,
+            (args.tick_upper / args.tick_spacing) * args.tick_spacing
+        );
+    }
+
     // Verify pool exists
     let zero = "0x0000000000000000000000000000000000000000";
     let pool = cl_get_pool(factory, &token_a, &token_b, args.tick_spacing, rpc).await?;
@@ -176,7 +202,7 @@ pub async fn run(args: MintPositionArgs) -> anyhow::Result<()> {
 
     if !args.confirm && !args.dry_run {
         println!("{}", serde_json::to_string_pretty(&preview)?);
-        println!("\nAdd --confirm to mint this position.");
+        eprintln!("\nAdd --confirm to mint this position.");
         return Ok(());
     }
 
@@ -184,25 +210,25 @@ pub async fn run(args: MintPositionArgs) -> anyhow::Result<()> {
     if !args.dry_run {
         let allow0 = get_allowance(&token0, &recipient, nfpm_addr, rpc).await?;
         if allow0 < amount0_desired {
-            println!("Approving {} for NonfungiblePositionManager...", sym0);
+            eprintln!("[aerodrome-slipstream] Approving {} for NonfungiblePositionManager...", sym0);
             let approve0 = build_approve_calldata(nfpm_addr, u128::MAX);
-            let r = wallet_contract_call(CHAIN_ID, &token0, &approve0, true, false).await?;
-            println!("Approve {} tx: {}", sym0, extract_tx_hash(&r));
+            let r = wallet_contract_call(CHAIN_ID, &token0, &approve0, true, false, Some(&recipient)).await?;
+            eprintln!("[aerodrome-slipstream] Approve {} tx: {}", sym0, extract_tx_hash(&r));
             sleep(Duration::from_secs(5)).await;
         }
         // Approve token1 for NFPM
         let allow1 = get_allowance(&token1, &recipient, nfpm_addr, rpc).await?;
         if allow1 < amount1_desired {
-            println!("Approving {} for NonfungiblePositionManager...", sym1);
+            eprintln!("[aerodrome-slipstream] Approving {} for NonfungiblePositionManager...", sym1);
             let approve1 = build_approve_calldata(nfpm_addr, u128::MAX);
-            let r = wallet_contract_call(CHAIN_ID, &token1, &approve1, true, false).await?;
-            println!("Approve {} tx: {}", sym1, extract_tx_hash(&r));
+            let r = wallet_contract_call(CHAIN_ID, &token1, &approve1, true, false, Some(&recipient)).await?;
+            eprintln!("[aerodrome-slipstream] Approve {} tx: {}", sym1, extract_tx_hash(&r));
             sleep(Duration::from_secs(5)).await;
         }
     }
 
     // Mint position
-    let result = wallet_contract_call(CHAIN_ID, nfpm_addr, &calldata, true, args.dry_run).await?;
+    let result = wallet_contract_call(CHAIN_ID, nfpm_addr, &calldata, true, args.dry_run, Some(&recipient)).await?;
     let tx_hash = extract_tx_hash(&result);
 
     let mut out = serde_json::json!({

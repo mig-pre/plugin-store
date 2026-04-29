@@ -108,25 +108,25 @@ pub async fn run(args: RemoveLiquidityArgs) -> anyhow::Result<()> {
 
     if !args.confirm && !args.dry_run {
         println!("{}", serde_json::to_string_pretty(&preview)?);
-        println!("\nAdd --confirm to remove liquidity from position {}.", args.token_id);
+        eprintln!("\nAdd --confirm to remove liquidity from position {}.", args.token_id);
         return Ok(());
     }
 
     // Tx 1: decreaseLiquidity
-    println!("Step 1/2: decreaseLiquidity...");
-    let r1 = wallet_contract_call(CHAIN_ID, nfpm_addr, &decrease_calldata, true, args.dry_run).await?;
+    eprintln!("[aerodrome-slipstream] Step 1/2: decreaseLiquidity...");
+    let r1 = wallet_contract_call(CHAIN_ID, nfpm_addr, &decrease_calldata, true, args.dry_run, Some(&recipient)).await?;
     let h1 = extract_tx_hash(&r1);
-    println!("decreaseLiquidity tx: {}", h1);
+    eprintln!("[aerodrome-slipstream] decreaseLiquidity tx: {}", h1);
 
     if !args.dry_run {
         sleep(Duration::from_secs(5)).await;
     }
 
     // Tx 2: collect (withdraw tokens)
-    println!("Step 2/2: collect...");
-    let r2 = wallet_contract_call(CHAIN_ID, nfpm_addr, &collect_calldata, true, args.dry_run).await?;
+    eprintln!("[aerodrome-slipstream] Step 2/2: collect...");
+    let r2 = wallet_contract_call(CHAIN_ID, nfpm_addr, &collect_calldata, true, args.dry_run, Some(&recipient)).await?;
     let h2 = extract_tx_hash(&r2);
-    println!("collect tx: {}", h2);
+    eprintln!("[aerodrome-slipstream] collect tx: {}", h2);
 
     let mut out = serde_json::json!({
         "ok": true,

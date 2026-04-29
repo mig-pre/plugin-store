@@ -1,6 +1,6 @@
 use clap::Args;
 use crate::config::{nfpm, rpc_url, token_symbol, CHAIN_ID};
-use crate::onchainos::{extract_tx_hash, wallet_contract_call};
+use crate::onchainos::{extract_tx_hash, resolve_wallet, wallet_contract_call};
 use crate::rpc::{format_amount, get_decimals, nfpm_positions};
 
 #[derive(Args)]
@@ -64,6 +64,12 @@ pub async fn run(args: BurnPositionArgs) -> anyhow::Result<()> {
     let sym1 = token_symbol(&pos.token1).to_string();
     let calldata = build_burn(args.token_id);
 
+    let wallet = if args.dry_run {
+        "0x0000000000000000000000000000000000000000".to_string()
+    } else {
+        resolve_wallet(CHAIN_ID)?
+    };
+
     let preview = serde_json::json!({
         "preview": true,
         "action": "burn-position",
@@ -72,17 +78,18 @@ pub async fn run(args: BurnPositionArgs) -> anyhow::Result<()> {
         "token1": sym1,
         "tick_lower": pos.tick_lower,
         "tick_upper": pos.tick_upper,
+        "wallet": wallet,
         "note": "This permanently destroys the NFT. The position has zero liquidity and zero fees.",
         "chain": "Base (8453)"
     });
 
     if !args.confirm && !args.dry_run {
         println!("{}", serde_json::to_string_pretty(&preview)?);
-        println!("\nAdd --confirm to permanently burn position {}.", args.token_id);
+        eprintln!("\nAdd --confirm to permanently burn position {}.", args.token_id);
         return Ok(());
     }
 
-    let result = wallet_contract_call(CHAIN_ID, nfpm_addr, &calldata, true, args.dry_run).await?;
+    let result = wallet_contract_call(CHAIN_ID, nfpm_addr, &calldata, true, args.dry_run, Some(&wallet)).await?;
     let tx_hash = extract_tx_hash(&result);
 
     let mut out = serde_json::json!({

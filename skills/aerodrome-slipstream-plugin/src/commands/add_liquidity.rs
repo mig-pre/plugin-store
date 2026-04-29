@@ -91,30 +91,30 @@ pub async fn run(args: AddLiquidityArgs) -> anyhow::Result<()> {
 
     if !args.confirm && !args.dry_run {
         println!("{}", serde_json::to_string_pretty(&preview)?);
-        println!("\nAdd --confirm to increase liquidity in position {}.", args.token_id);
+        eprintln!("\nAdd --confirm to increase liquidity in position {}.", args.token_id);
         return Ok(());
     }
 
     if !args.dry_run {
         let allow0 = get_allowance(&pos.token0, &recipient, nfpm_addr, rpc).await?;
         if allow0 < amount0_desired {
-            println!("Approving {} for NFPM...", sym0);
+            eprintln!("[aerodrome-slipstream] Approving {} for NFPM...", sym0);
             let approve0 = build_approve_calldata(nfpm_addr, u128::MAX);
-            let r = wallet_contract_call(CHAIN_ID, &pos.token0, &approve0, true, false).await?;
-            println!("Approve {} tx: {}", sym0, extract_tx_hash(&r));
+            let r = wallet_contract_call(CHAIN_ID, &pos.token0, &approve0, true, false, Some(&recipient)).await?;
+            eprintln!("[aerodrome-slipstream] Approve {} tx: {}", sym0, extract_tx_hash(&r));
             sleep(Duration::from_secs(5)).await;
         }
         let allow1 = get_allowance(&pos.token1, &recipient, nfpm_addr, rpc).await?;
         if allow1 < amount1_desired {
-            println!("Approving {} for NFPM...", sym1);
+            eprintln!("[aerodrome-slipstream] Approving {} for NFPM...", sym1);
             let approve1 = build_approve_calldata(nfpm_addr, u128::MAX);
-            let r = wallet_contract_call(CHAIN_ID, &pos.token1, &approve1, true, false).await?;
-            println!("Approve {} tx: {}", sym1, extract_tx_hash(&r));
+            let r = wallet_contract_call(CHAIN_ID, &pos.token1, &approve1, true, false, Some(&recipient)).await?;
+            eprintln!("[aerodrome-slipstream] Approve {} tx: {}", sym1, extract_tx_hash(&r));
             sleep(Duration::from_secs(5)).await;
         }
     }
 
-    let result = wallet_contract_call(CHAIN_ID, nfpm_addr, &calldata, true, args.dry_run).await?;
+    let result = wallet_contract_call(CHAIN_ID, nfpm_addr, &calldata, true, args.dry_run, Some(&recipient)).await?;
     let tx_hash = extract_tx_hash(&result);
 
     let mut out = serde_json::json!({

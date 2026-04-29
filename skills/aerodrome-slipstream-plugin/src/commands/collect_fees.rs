@@ -68,11 +68,11 @@ pub async fn run(args: CollectFeesArgs) -> anyhow::Result<()> {
 
     if !args.confirm && !args.dry_run {
         println!("{}", serde_json::to_string_pretty(&preview)?);
-        println!("\nAdd --confirm to collect fees from position {}.", args.token_id);
+        eprintln!("\nAdd --confirm to collect fees from position {}.", args.token_id);
         return Ok(());
     }
 
-    let result = wallet_contract_call(CHAIN_ID, nfpm_addr, &calldata, true, args.dry_run).await?;
+    let result = wallet_contract_call(CHAIN_ID, nfpm_addr, &calldata, true, args.dry_run, Some(&recipient)).await?;
     let tx_hash = extract_tx_hash(&result);
 
     let mut out = serde_json::json!({

@@ -24,4 +24,3 @@ build:
 
 api_calls:
   - "https://mainnet.base.org"
-  - "https://base-rpc.publicnode.com"
