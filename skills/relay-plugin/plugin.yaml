@@ -24,4 +24,3 @@ build:
 
 api_calls:
   - "https://api.relay.link"
-  - "https://eth.llamarpc.com"
