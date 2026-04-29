@@ -33,10 +33,11 @@ pub async fn run(args: BurnPositionArgs, chain_id: u64) -> anyhow::Result<()> {
     };
 
     // Fetch position and validate it is empty before burning
-    let pos = nfpm_positions(nfpm, args.token_id, rpc).await.map_err(|e| {
+    let pos = nfpm_positions(nfpm, args.token_id, rpc).await.map_err(|_| {
         anyhow::anyhow!(
-            "Could not fetch position {}: {}. Verify the token ID is correct for chain {}.",
-            args.token_id, e, cfg.name
+            "Position {} not found on {}. Verify the token ID is correct and the position \
+             exists on this chain (it may have already been burned).",
+            args.token_id, cfg.name
         )
     })?;
 

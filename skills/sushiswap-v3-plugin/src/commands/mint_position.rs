@@ -184,7 +184,7 @@ pub async fn run(args: MintPositionArgs, chain_id: u64) -> anyhow::Result<()> {
         ] {
             let allowance = get_allowance(token, &wallet, nfpm, rpc).await?;
             if allowance < amount {
-                eprintln!("[sushiswap-v3] Approving {} for NFPM...", sym);
+                eprintln!("[sushiswap-v3] Approving unlimited {} for NFPM...", sym);
                 let approve_data = build_approve_calldata(nfpm, u128::MAX);
                 let r = wallet_contract_call(chain_id, token, &approve_data, true, false, Some(&wallet)).await?;
                 eprintln!("[sushiswap-v3] Approve tx: {}", extract_tx_hash(&r));
@@ -199,14 +199,16 @@ pub async fn run(args: MintPositionArgs, chain_id: u64) -> anyhow::Result<()> {
     let mut out = serde_json::json!({
         "ok": true,
         "action": "mint-position",
-        "token0":     sym0,
-        "token1":     sym1,
-        "fee_bps":    args.fee,
-        "tick_lower": args.tick_lower,
-        "tick_upper": args.tick_upper,
-        "tx_hash":    tx_hash,
-        "explorer":   format!("{}/{}", cfg.explorer, tx_hash),
-        "chain":      cfg.name,
+        "token0":          sym0,
+        "token1":          sym1,
+        "fee_bps":         args.fee,
+        "tick_lower":      args.tick_lower,
+        "tick_upper":      args.tick_upper,
+        "amount0_desired": amt_a_str,
+        "amount1_desired": amt_b_str,
+        "tx_hash":         tx_hash,
+        "explorer":        format!("{}/{}", cfg.explorer, tx_hash),
+        "chain":           cfg.name,
     });
     if args.dry_run { out["dry_run"] = serde_json::json!(true); }
     println!("{}", serde_json::to_string_pretty(&out)?);

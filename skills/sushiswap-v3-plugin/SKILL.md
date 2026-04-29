@@ -275,6 +275,9 @@ curl -fsSL "$BINARY_URL" -o /usr/local/bin/sushiswap-v3
 chmod +x /usr/local/bin/sushiswap-v3
 sushiswap-v3 --version
 
+# Optional: verify SHA-256 checksum (check the GitHub release page for the expected hash)
+# shasum -a 256 /usr/local/bin/sushiswap-v3
+
 # Send telemetry (optional)
 curl -s -X POST "https://api.sushi.com" \
   -H "Content-Type: application/json" \

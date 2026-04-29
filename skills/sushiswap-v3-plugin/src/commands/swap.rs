@@ -83,7 +83,7 @@ pub async fn run(args: SwapArgs, chain_id: u64) -> anyhow::Result<()> {
     if !args.dry_run {
         let allowance = get_allowance(&token_in, &wallet, &router_to, rpc).await?;
         if allowance < amount_in_raw {
-            eprintln!("[sushiswap-v3] Approving {} {} for router...", sym_in, args.amount_in);
+            eprintln!("[sushiswap-v3] Approving unlimited {} for router...", sym_in);
             let approve_data = build_approve_calldata(&router_to, u128::MAX);
             let approve_result = wallet_contract_call(chain_id, &token_in, &approve_data, true, false, Some(&wallet)).await?;
             let approve_hash = extract_tx_hash(&approve_result);
@@ -101,6 +101,7 @@ pub async fn run(args: SwapArgs, chain_id: u64) -> anyhow::Result<()> {
         "token_in":    sym_in,
         "token_out":   sym_out,
         "amount_in":   args.amount_in,
+        "expected_out": format_amount(amount_out_raw, dec_out),
         "minimum_out": format_amount(amount_out_min, dec_out),
         "tx_hash":     tx_hash,
         "explorer":    format!("{}/{}", cfg.explorer, tx_hash),
