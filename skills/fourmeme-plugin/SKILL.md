@@ -450,7 +450,7 @@ fourmeme-plugin create-token \
   [--presale <ether-units>] \
   [--launch-delay-secs 5] \
   [--tax-options <path-to-tax.json>] \
-  [--auth-token <override>] \
+  [--auth-token <value>] \
   [--chain 56] [--dry-run]
 ```
 

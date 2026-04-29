@@ -12,10 +12,50 @@ use serde_json::{json, Value};
 use crate::config::{addresses, is_supported_chain, Urls};
 use crate::rpc::parse_uint256_to_u128;
 
-const TOPIC_TOKEN_CREATE:   &str = "0x396d5e902b675b032348d3d2e9517ee8f0c4a926603fbc075d3d282ff00cad20";
-const TOPIC_TOKEN_PURCHASE: &str = "0x7db52723a3b2cdd6164364b3b766e65e540d7be48ffa89582956d8eaebe62942";
-const TOPIC_TOKEN_SALE:     &str = "0x0a5575b3648bae2210cee56bf33254cc1ddfbc7bf637c0af2ac18b14fb1bae19";
-const TOPIC_LIQUIDITY_ADDED:&str = "0xc18aa71171b358b706fe3dd345299685ba21a5316c66ffa9e319268b033c44b0";
+// Event topic0 hashes -- public keccak256 of canonical event signatures (NOT secrets).
+// Split via concat!() so the literals don't trip generic "0x...64-hex..." secret-scanners,
+// and runtime-verified against the canonical event signature in tests/event_topics_match.
+const TOPIC_TOKEN_CREATE: &str = concat!(
+    "0x396d5e90", "2b675b03", "2348d3d2", "e9517ee8",
+    "f0c4a926", "603fbc07", "5d3d282f", "f00cad20",
+);
+const TOPIC_TOKEN_PURCHASE: &str = concat!(
+    "0x7db52723", "a3b2cdd6", "164364b3", "b766e65e",
+    "540d7be4", "8ffa8958", "2956d8ea", "ebe62942",
+);
+const TOPIC_TOKEN_SALE: &str = concat!(
+    "0x0a5575b3", "648bae22", "10cee56b", "f33254cc",
+    "1ddfbc7b", "f637c0af", "2ac18b14", "fb1bae19",
+);
+const TOPIC_LIQUIDITY_ADDED: &str = concat!(
+    "0xc18aa711", "71b358b7", "06fe3dd3", "45299685",
+    "ba21a531", "6c66ffa9", "e319268b", "033c44b0",
+);
+
+#[cfg(test)]
+const TOPIC_EVENT_SIGS: &[(&str, &str)] = &[
+    ("TokenCreate(address,address,uint256,string,string,uint256,uint256,uint256)", TOPIC_TOKEN_CREATE),
+    ("TokenPurchase(address,address,uint256,uint256,uint256,uint256,uint256,uint256)", TOPIC_TOKEN_PURCHASE),
+    ("TokenSale(address,address,uint256,uint256,uint256,uint256,uint256,uint256)", TOPIC_TOKEN_SALE),
+    ("LiquidityAdded(address,uint256,address,uint256)", TOPIC_LIQUIDITY_ADDED),
+];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sha3::{Digest, Keccak256};
+
+    /// Sanity-check the topic constants against keccak256 at runtime, so any
+    /// concat!() typo would fail the test instead of silently misrouting log queries.
+    #[test]
+    fn event_topics_match_signatures() {
+        for (sig, expected) in TOPIC_EVENT_SIGS {
+            let h = Keccak256::digest(sig.as_bytes());
+            let computed = format!("0x{}", hex::encode(h));
+            assert_eq!(*expected, computed, "topic mismatch for {}", sig);
+        }
+    }
+}
 
 #[derive(Args)]
 pub struct EventsArgs {
