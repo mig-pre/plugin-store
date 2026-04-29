@@ -85,3 +85,28 @@ pub fn build_approve_calldata(spender: &str, amount: u128) -> String {
         pad_u256(amount),
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use sha3::{Digest, Keccak256};
+
+    fn sel(sig: &str) -> String {
+        let h = Keccak256::digest(sig.as_bytes());
+        format!("0x{}", hex::encode(&h[..4]))
+    }
+
+    /// Selectors here are inlined into format!() literals (no `pub const`
+    /// to import). Verify each against keccak256 so any copy/paste typo
+    /// would fail this test instead of silently misrouting calls
+    /// on-chain. Pattern matches euler-v2 / aave-v2 / fourmeme.
+    #[test]
+    fn selectors_match_keccak256() {
+        assert_eq!(sel("depositETH(address)"),                "0x2d2da806");
+        assert_eq!(sel("deposit(uint256,address)"),           "0x6e553f65");
+        assert_eq!(sel("redeem(uint256,address,address)"),    "0xba087652");
+        assert_eq!(sel("withdraw(uint256,address,address)"),  "0xb460af94");
+        assert_eq!(sel("requestWithdrawal(uint128,address)"), "0xef027fbf");
+        assert_eq!(sel("completeQueuedWithdrawal(uint256)"),  "0x6a4800a4");
+        assert_eq!(sel("approve(address,uint256)"),           "0x095ea7b3");
+    }
+}

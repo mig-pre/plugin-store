@@ -2,8 +2,8 @@
 name: puffer-plugin
 description: >
   Liquid restaking on Puffer Finance (Ethereum). Deposit ETH into PufferVault to mint pufETH
-  (ERC-4626 nLRT). Check balance, current pufETH↔ETH rate, and exit fee. Choose between the
-  1-step instant withdraw (single tx, pays the exit fee — default 1%) or the 2-step queued
+  (ERC-4626 nLRT). Check balance, current pufETH<->ETH rate, and exit fee. Choose between the
+  1-step instant withdraw (single tx, pays the exit fee - default 1%) or the 2-step queued
   withdraw (fee-free, ~14 days). All write commands print structured JSON to stdout so external
   agents can decide the next step without parsing stderr.
 version: 0.1.0

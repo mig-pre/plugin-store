@@ -1,6 +1,6 @@
 {
   "name": "puffer",
-  "description": "Liquid restaking on Puffer Finance — deposit ETH to mint pufETH, instant or queued withdraw, check positions",
+  "description": "Liquid restaking on Puffer Finance - deposit ETH to mint pufETH, instant or queued withdraw, check positions",
   "version": "0.1.0",
   "author": {
     "name": "GeoGu360",
