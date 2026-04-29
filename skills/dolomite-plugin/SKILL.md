@@ -202,7 +202,7 @@ dolomite-plugin supply --token WETH --amount 0.5 --to-account-number 1 --confirm
 2. Pre-flight: check token balance (EVM-001) + native gas (GAS-001)
 3. Build calldata: `depositWei(0, to_account, market_id, amount, EventFlag.None)`
 4. Approve token to `DepositWithdrawalProxy` if needed (EVM-006)
-5. Submit deposit via onchainos `wallet contract-call --force --gas-limit 400_000` (ONC-001 + EVM-015)
+5. Submit deposit via onchainos `wallet contract-call --force --gas-limit 400_000` (ONC-001 + EVM-015) - this step only runs when the user passes `--confirm`; otherwise the command exits in preview mode after step 4
 6. Retry on allowance-revert (EVM-014, 3 patterns)
 7. `wait_for_tx` confirms `status=0x1` (TX-001) before reporting success
 8. Output `on_chain_status: "0x1"` + tip
@@ -306,7 +306,7 @@ dolomite-plugin repay --token USDT --all --position-account-number 100 --from-ac
 |------|---------------|
 | **GEN-001** | All 7 commands emit structured JSON on stdout (no exit-non-zero / stderr-only failures) |
 | **ONB-001** | `quickstart` + `SUMMARY.md` + `LICENSE` all shipped from v0.1.0 (mandatory tri-set) |
-| **ONC-001** | `wallet contract-call` always invoked with `--force` (defensive against backend risk-control silent reverts) |
+| **ONC-001** | `wallet contract-call` always invoked with `--force` (defensive against backend risk-control silent reverts). All write commands (supply, withdraw, borrow, repay) require explicit user `--confirm` flag before any signing/broadcast - preview/dry-run is the default. |
 | **EVM-001** | Pre-flight token balance check before approve (supply/repay-partial) and before withdraw/borrow |
 | **EVM-002** | Every amount field paired (display + `_raw`) |
 | **EVM-006** | Approve followed by `wait_for_tx` polling, no blind sleep |
