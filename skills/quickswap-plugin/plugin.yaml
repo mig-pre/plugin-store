@@ -1,7 +1,7 @@
 schema_version: 1
 name: quickswap-plugin
 version: "0.1.0"
-description: "Swap tokens and provide concentrated liquidity on QuickSwap V3 CLMM on Polygon"
+description: "Swap tokens on QuickSwap V3 (Algebra CLMM) on Polygon — with price quotes and pool discovery"
 author:
   name: skylavis-sky
   github: skylavis-sky
@@ -23,5 +23,5 @@ build:
   binary_name: quickswap
 
 api_calls:
-  - "https://api.quickswap.exchange"
-  - "https://polygon-rpc.com"
+  - "https://polygon.publicnode.com"
+  - "https://api.thegraph.com"

@@ -53,6 +53,8 @@ If `onchainos wallet addresses` returns no addresses, configure a Polygon wallet
 
 **Rule:** Never use subgraph data for trade execution amounts. All swap parameters (amountIn, amountOut, slippage) are derived from on-chain Quoter calls only.
 
+> ⚠️ **Partial-state risk**: `swap --confirm` executes up to 3 sequential transactions (wrap → approve → swap). If a transaction confirms but the binary times out waiting for the next (60-second poll), the swap halts mid-sequence. In that case: check your WMATIC/token balance to determine what was completed, then re-run the command — the approve step is idempotent (skipped if allowance is sufficient). Do not resubmit without checking state first.
+
 ---
 
 ## Proactive Onboarding
