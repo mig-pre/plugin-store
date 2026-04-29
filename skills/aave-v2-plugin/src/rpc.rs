@@ -432,3 +432,55 @@ pub fn ray_to_apr_pct(rate_1e27: u128) -> f64 {
 pub fn bps_to_pct(bps: u128) -> String {
     format!("{:.2}", bps as f64 / 100.0)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::selectors::*;
+    use sha3::{Digest, Keccak256};
+
+    /// Recompute every selector via keccak256 at runtime so any copy/paste typo in
+    /// the hardcoded constants would fail this test instead of silently misrouting
+    /// calls on-chain. Pattern matches euler-v2-plugin / fourmeme-plugin.
+    fn sel(sig: &str) -> String {
+        let h = Keccak256::digest(sig.as_bytes());
+        format!("0x{}", hex::encode(&h[..4]))
+    }
+
+    #[test]
+    fn selectors_match_keccak256() {
+        // ERC-20
+        assert_eq!(sel("balanceOf(address)"),         BALANCE_OF);
+        assert_eq!(sel("allowance(address,address)"), ALLOWANCE);
+        assert_eq!(sel("approve(address,uint256)"),   APPROVE);
+        assert_eq!(sel("decimals()"),                 DECIMALS);
+        assert_eq!(sel("symbol()"),                   SYMBOL);
+        // LendingPool (Aave V2)
+        assert_eq!(sel("deposit(address,uint256,address,uint16)"),   DEPOSIT);
+        assert_eq!(sel("withdraw(address,uint256,address)"),         WITHDRAW);
+        assert_eq!(sel("borrow(address,uint256,uint256,uint16,address)"), BORROW);
+        assert_eq!(sel("repay(address,uint256,uint256,address)"),    REPAY);
+        assert_eq!(sel("swapBorrowRateMode(address,uint256)"),       SWAP_BORROW_RATE_MODE);
+        assert_eq!(sel("setUserUseReserveAsCollateral(address,bool)"), SET_USER_USE_RESERVE_AS_COLL);
+        assert_eq!(sel("getReservesList()"),                         GET_RESERVES_LIST);
+        assert_eq!(sel("getReserveData(address)"),                   POOL_GET_RESERVE_DATA);
+        assert_eq!(sel("getUserAccountData(address)"),               GET_USER_ACCOUNT_DATA);
+        // ProtocolDataProvider
+        assert_eq!(sel("getAllReservesTokens()"),                    PDP_GET_ALL_RESERVES_TOKENS);
+        assert_eq!(sel("getReserveTokensAddresses(address)"),        PDP_GET_RESERVE_TOKENS_ADDRS);
+        assert_eq!(sel("getReserveConfigurationData(address)"),      PDP_GET_RESERVE_CONFIG_DATA);
+        // PDP_GET_RESERVE_DATA shares its hex with POOL_GET_RESERVE_DATA — both are
+        // `getReserveData(address)`, just exposed by different contracts. Verify once.
+        assert_eq!(sel("getReserveData(address)"),                   PDP_GET_RESERVE_DATA);
+        assert_eq!(sel("getUserReserveData(address,address)"),       PDP_GET_USER_RESERVE_DATA);
+        // WETHGateway
+        assert_eq!(sel("depositETH(address,address,uint16)"),        WG_DEPOSIT_ETH);
+        assert_eq!(sel("withdrawETH(address,uint256,address)"),      WG_WITHDRAW_ETH);
+        assert_eq!(sel("borrowETH(address,uint256,uint256,uint16)"), WG_BORROW_ETH);
+        assert_eq!(sel("repayETH(address,uint256,uint256,address)"), WG_REPAY_ETH);
+        // IncentivesController
+        assert_eq!(sel("claimRewards(address[],uint256,address)"),   CLAIM_REWARDS);
+        assert_eq!(sel("getUserUnclaimedRewards(address)"),          GET_USER_UNCLAIMED_REWARDS);
+        assert_eq!(sel("getRewardsBalance(address[],address)"),      GET_REWARDS_BALANCE);
+        assert_eq!(sel("REWARD_TOKEN()"),                            REWARD_TOKEN);
+    }
+}
