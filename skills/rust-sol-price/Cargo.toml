@@ -1,6 +1,6 @@
 [package]
 name = "rust-sol-price"
-version = "13.0.0"
+version = "15.0.0"
 edition = "2021"
 [[bin]]
 name = "rust-sol-price"
