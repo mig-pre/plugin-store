@@ -455,6 +455,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # New plugins have not merged to main yet at this point — their
+      # plugin.yaml only exists on the PR head. Without this step the
+      # "Create releases" loop hits `[ ! -f $YAML_FILE ]` and silently
+      # skips, leaving the PR merged to main with no release/tag. Mirrors
+      # the same step in publish-registry below.
+      - name: Checkout PR head
+        if: inputs.pr_number != ''
+        env:
+          PR_NUM: ${{ github.event.pull_request.number || inputs.pr_number }}
+        run: |
+          git fetch origin "refs/pull/${PR_NUM}/head:pr-head"
+          git checkout pr-head
 
       - name: Install yq
         run: |
