@@ -21,9 +21,10 @@ tags:
 
 ### Version check (auto-injected)
 
-> **AI Agent Instruction**: Run this version check before executing any commands from this skill. If an update is applied, re-read this SKILL.md before proceeding -- the instructions may have changed.
+> **AI Agent Instruction**: Run this version check before executing any commands from this skill. If an update is applied, re-read this SKILL.md before proceeding — the instructions may have changed.
 
 ```bash
+# Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/fourmeme-plugin"
 CACHE_MAX=3600
 LOCAL_VER="0.1.0"
@@ -55,7 +56,7 @@ fi
 ### Install onchainos CLI + Skills (auto-injected)
 
 ```bash
-# 1. Install onchainos CLI (TEE wallet provider)
+# 1. Install onchainos CLI
 onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/okx/onchainos-skills/main/install.sh | sh
 
 # 2. Install onchainos skills (enables AI agent to use onchainos commands)
@@ -68,6 +69,7 @@ npx skills add mig-pre/plugin-store --skill plugin-store --yes --global
 ### Install fourmeme-plugin binary + launcher (auto-injected)
 
 ```bash
+# Install shared infrastructure (launcher + update checker, only once)
 LAUNCHER="$HOME/.plugin-store/launcher.sh"
 CHECKER="$HOME/.plugin-store/update-checker.py"
 if [ ! -f "$LAUNCHER" ]; then
@@ -79,8 +81,10 @@ if [ ! -f "$CHECKER" ]; then
   curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
 fi
 
+# Clean up old installation
 rm -f "$HOME/.local/bin/fourmeme-plugin" "$HOME/.local/bin/.fourmeme-plugin-core" 2>/dev/null
 
+# Download binary
 OS=$(uname -s | tr A-Z a-z)
 ARCH=$(uname -m)
 EXT=""
@@ -92,41 +96,23 @@ case "${OS}_${ARCH}" in
   linux_aarch64) TARGET="aarch64-unknown-linux-musl" ;;
   linux_armv7l)  TARGET="armv7-unknown-linux-musleabihf" ;;
   mingw*_x86_64|msys*_x86_64|cygwin*_x86_64)   TARGET="x86_64-pc-windows-msvc"; EXT=".exe" ;;
-  mingw*_i686|msys*_i686|cygwin*_i686)         TARGET="i686-pc-windows-msvc"; EXT=".exe" ;;
-  mingw*_aarch64|msys*_aarch64|cygwin*_aarch64) TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
+  mingw*_i686|msys*_i686|cygwin*_i686)           TARGET="i686-pc-windows-msvc"; EXT=".exe" ;;
+  mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
 curl -fsSL "https://github.com/mig-pre/plugin-store/releases/download/plugins/fourmeme-plugin@0.1.0/fourmeme-plugin-${TARGET}${EXT}" -o ~/.local/bin/.fourmeme-plugin-core${EXT}
 chmod +x ~/.local/bin/.fourmeme-plugin-core${EXT}
+
+# Symlink CLI name to universal launcher
 ln -sf "$LAUNCHER" ~/.local/bin/fourmeme-plugin
 
+# Register version
 mkdir -p "$HOME/.plugin-store/managed"
 echo "0.1.0" > "$HOME/.plugin-store/managed/fourmeme-plugin"
 ```
 
-### Report install (auto-injected, runs once)
-
-```bash
-REPORT_FLAG="$HOME/.plugin-store/reported/fourmeme-plugin"
-if [ ! -f "$REPORT_FLAG" ]; then
-  mkdir -p "$HOME/.plugin-store/reported"
-  DEV_RAW="$(hostname):$(uname -s):$(uname -m):$HOME"
-  DEV_ID=$(echo -n "$DEV_RAW" | shasum -a 256 | head -c 32)
-  _K=$(echo 'OE9nNWFRUFdfSVJkektrMExOV2RNeTIzV2JibXo3ZWNTbExJUDFIWnVoZw==' | base64 -d 2>/dev/null || echo 'OE9nNWFRUFdfSVJkektrMExOV2RNeTIzV2JibXo3ZWNTbExJUDFIWnVoZw==' | openssl base64 -d)
-  HMAC_SIG=$(echo -n "${_K}${DEV_ID}" | shasum -a 256 | head -c 8)
-  DIV_ID="${DEV_ID}${HMAC_SIG}"
-  unset _K
-  curl -s -X POST "https://plugin-store-dun.vercel.app/install" \
-    -H "Content-Type: application/json" \
-    -d '{"name":"fourmeme-plugin","version":"0.1.0"}' >/dev/null 2>&1 || true
-  curl -s -X POST "https://www.okx.com/priapi/v1/wallet/plugins/download/report" \
-    -H "Content-Type: application/json" \
-    -d '{"pluginName":"fourmeme-plugin","divId":"'"$DIV_ID"'"}' >/dev/null 2>&1 || true
-  touch "$REPORT_FLAG"
-fi
-```
-
 ---
+
 
 ## Data Trust Boundary
 
