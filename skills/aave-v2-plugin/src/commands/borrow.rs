@@ -116,12 +116,28 @@ pub async fn run(args: BorrowArgs) -> anyhow::Result<()> {
         );
     }
     if cfg.is_frozen {
-        return print_err(
-            &format!("Reserve {} on {} is frozen by Aave governance - new borrow rejected on-chain (VL_RESERVE_FROZEN). Existing borrows can still be repaid and rate-mode-swapped.",
-                symbol, chain.key),
-            "RESERVE_FROZEN",
-            "Use Polygon V2 / Avalanche V2 or aave-v3-plugin for active borrow markets.",
+        let v3_install_cmd = "npx skills add okx/plugin-store --skill aave-v3-plugin --yes --global";
+        let v3_equivalent = format!(
+            "aave-v3-plugin borrow --chain {} --token {} --amount {} --rate-mode {} --confirm",
+            chain.key, symbol, args.amount, args.rate_mode
         );
+        let payload = serde_json::json!({
+            "ok": false,
+            "error": format!("Reserve {} on {} is frozen by Aave governance - new borrow rejected on-chain (VL_RESERVE_FROZEN, error code 3). All Aave V2 reserves across Ethereum / Polygon / Avalanche are frozen as part of the V3 migration; existing borrows can still be repaid and rate-mode-swapped, but new borrows must use V3 (note: V3 removed stable rate, so --rate-mode 1 maps to variable on V3).",
+                symbol, chain.key),
+            "error_code": "RESERVE_FROZEN",
+            "suggestion": format!("Install aave-v3-plugin and run the equivalent V3 borrow: `{}` then `{}`", v3_install_cmd, v3_equivalent),
+            "redirect": {
+                "reason": "Aave V2 wind-down: governance has frozen all reserves on this chain. V3 is the actively maintained version.",
+                "install_command": v3_install_cmd,
+                "equivalent_command": v3_equivalent,
+                "alternative_plugin": "aave-v3-plugin",
+                "rate_mode_note": "Aave V3 removed stable rate mode entirely; if you wanted stable on V2, V3 only supports variable.",
+            },
+        });
+        println!("{}", serde_json::to_string_pretty(&payload)
+            .unwrap_or_else(|_| format!(r#"{{"ok":false,"error_code":"RESERVE_FROZEN"}}"#)));
+        return Ok(());
     }
     if !cfg.borrowing_enabled {
         return print_err(

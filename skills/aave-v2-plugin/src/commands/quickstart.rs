@@ -129,12 +129,17 @@ pub async fn run(args: QuickstartArgs) -> anyhow::Result<()> {
     let any_variable_debt = scans.iter().any(|s| s.variable_debt_raw > 0);
     let any_stable_debt = scans.iter().any(|s| s.stable_debt_raw > 0);
     let any_debt = any_variable_debt || any_stable_debt;
-    let any_wallet_balance = scans.iter().any(|s| s.wallet_balance_raw > 0);
     let has_gas = native_bal >= chain.gas_floor_wei;
+    let has_rewards = rewards_accrued >= 50_000_000_000_000_000; // >= 0.05 token threshold
     // HF: 0 means "no debt" or unknown; only flag as unhealthy if HF > 0 (real value) and < threshold
     let unhealthy = hf > 0 && hf < HF_UNHEALTHY && total_debt_eth > 0;
 
-    // 6. Status decision tree (matches SUMMARY.md statuses)
+    // 6. Status decision tree.
+    // Aave V2 is in governance-led wind-down across all 3 chains (Ethereum / Polygon /
+    // Avalanche): every reserve has is_frozen=true, so new supply/borrow reverts on-chain
+    // with VL_RESERVE_FROZEN. This plugin is positioned as an EXIT TOOL - users with
+    // legacy V2 positions can withdraw / repay / claim rewards. New supply/borrow flows
+    // are redirected to aave-v3-plugin.
     let total_reserves = reserves.len();
     let (status, next_command, tip): (&str, Option<String>, String) = if rpc_failures >= 3 {
         ("rpc_degraded", None,
@@ -160,30 +165,26 @@ pub async fn run(args: QuickstartArgs) -> anyhow::Result<()> {
     } else if any_supply {
         let s = scans.iter().filter(|m| m.supply_raw > 0)
             .max_by_key(|m| m.supply_raw).unwrap();
-        ("has_supply_can_borrow",
-         Some(format!("aave-v2-plugin positions --chain {}", chain.key)),
-         format!("You're supplying {} {} on {} (earning {:.2}% APR). Available to borrow: ~{} ETH-equivalent. Use `positions` for the full picture, or `borrow --token X --rate-mode 2 --confirm` to lever up.",
-                 fmt_token_amount(s.supply_raw, s.decimals), s.symbol, chain.key,
-                 s.supply_apr, fmt_1e18(available_borrows_eth)))
+        ("has_supply_can_redeem",
+         Some(format!("aave-v2-plugin withdraw --chain {} --token {} --amount all --confirm",
+                      chain.key, s.symbol)),
+         format!("You have {} {} supplied on {} (earning {:.4}% APR). V2 is in wind-down (all reserves frozen) - redeem to wallet, then redeposit to aave-v3-plugin if you want to keep earning.",
+                 fmt_token_amount(s.supply_raw, s.decimals), s.symbol, chain.key, s.supply_apr))
+    } else if has_rewards {
+        ("has_rewards_accrued",
+         Some(format!("aave-v2-plugin claim-rewards --chain {} --confirm", chain.key)),
+         format!("You have ~{} of accrued rewards (stkAAVE / WMATIC / WAVAX depending on chain). Claim before unsupplying - rewards distribution stops once you have zero supply.",
+                 fmt_token_amount(rewards_accrued, 18)))
     } else if !has_gas {
         ("insufficient_gas", None,
-         format!("Wallet has only {} {} - Aave V2 ops on {} need at least {} {} for gas.",
+         format!("Wallet has only {} {} on {} - V2 exit ops need at least {} {} for gas.",
                  fmt_token_amount(native_bal, 18), chain.native_symbol, chain.key,
                  fmt_token_amount(chain.gas_floor_wei, 18), chain.native_symbol))
-    } else if any_wallet_balance {
-        let s = scans.iter().filter(|m| m.wallet_balance_raw > 0)
-            .max_by_key(|m| m.wallet_balance_raw).unwrap();
-        let suggested = sensible_supply_amount(s.wallet_balance_raw, s.decimals);
-        ("ready_to_supply",
-         Some(format!("aave-v2-plugin supply --chain {} --token {} --amount {} --confirm",
-                      chain.key, s.symbol, suggested)),
-         format!("You have {} {} in wallet on {} (supply APR {:.2}%). Supply to earn interest.",
-                 fmt_token_amount(s.wallet_balance_raw, s.decimals), s.symbol, chain.key, s.supply_apr))
     } else {
-        // Has gas but no supportable tokens
-        ("ready_to_supply", None,
-         format!("You have {} {} gas on {} but no Aave-listed tokens in wallet. Fund with USDC/USDT/DAI/WETH/WBTC/etc, then re-run quickstart. Run `markets` to see all listed reserves.",
-                 fmt_token_amount(native_bal, 18), chain.native_symbol, chain.key))
+        // No V2 positions, has gas - direct user to V3 since V2 supply is frozen
+        ("protocol_winddown",
+         Some("npx skills add okx/plugin-store --skill aave-v3-plugin --yes --global".to_string()),
+         format!("You have no Aave V2 positions on {}. All V2 reserves are governance-frozen (wind-down mode); new supply/borrow rejected on-chain. Install aave-v3-plugin via the next_command above, then run `aave-v3-plugin quickstart --chain {}` for active supply/borrow flows.", chain.key, chain.key))
     };
 
     // 7. Render
@@ -221,6 +222,12 @@ pub async fn run(args: QuickstartArgs) -> anyhow::Result<()> {
     println!("{}", serde_json::to_string_pretty(&json!({
         "ok": true,
         "about": ABOUT,
+        "winddown_warning": "Aave V2 is in governance-led wind-down: all reserves on Ethereum / Polygon / Avalanche are frozen (is_frozen=true). New supply / borrow are rejected on-chain. This plugin is positioned as an EXIT TOOL: redeem aTokens, repay legacy debt, claim rewards, swap rate mode. For active supply/borrow flows install aave-v3-plugin.",
+        "v3_redirect": {
+            "alternative_plugin": "aave-v3-plugin",
+            "install_command": "npx skills add okx/plugin-store --skill aave-v3-plugin --yes --global",
+            "reason": "Aave team's active development is on V3 (Comet architecture). V2 mainnet reserves were frozen as part of V3 migration governance proposals.",
+        },
         "chain": chain.key,
         "chain_id": chain.id,
         "chain_name": chain.name,

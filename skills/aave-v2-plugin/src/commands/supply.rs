@@ -107,12 +107,31 @@ pub async fn run(args: SupplyArgs) -> anyhow::Result<()> {
         );
     }
     if cfg.is_frozen {
-        return print_err(
-            &format!("Reserve {} on {} is frozen by Aave governance - new supply rejected on-chain (VL_RESERVE_FROZEN). All Ethereum V2 mainnet reserves are frozen as of the V3 migration; redeem/repay paths still work for legacy positions.",
-                symbol, chain.key),
-            "RESERVE_FROZEN",
-            "Use Polygon V2 / Avalanche V2 (some reserves may still be active), or use aave-v3-plugin for active supply.",
+        // Structured redirect to aave-v3-plugin: provide install command + equivalent V3 invocation
+        // so an Agent can automatically route. Aave V2 is fully wound-down across all 3 chains
+        // (37/13/7 reserves all frozen as of the V3 migration).
+        let v3_install_cmd = "npx skills add okx/plugin-store --skill aave-v3-plugin --yes --global";
+        let v3_equivalent = format!(
+            "aave-v3-plugin supply --chain {} --token {} --amount {} --confirm",
+            chain.key, symbol, args.amount
         );
+        let payload = serde_json::json!({
+            "ok": false,
+            "error": format!("Reserve {} on {} is frozen by Aave governance - new supply rejected on-chain (VL_RESERVE_FROZEN, error code 3). All Aave V2 reserves across Ethereum / Polygon / Avalanche are frozen as part of the V3 migration; redeem/repay paths still work for legacy positions but new supply must use V3.",
+                symbol, chain.key),
+            "error_code": "RESERVE_FROZEN",
+            "suggestion": format!("Install aave-v3-plugin and run the equivalent V3 supply: `{}` then `{}`", v3_install_cmd, v3_equivalent),
+            "redirect": {
+                "reason": "Aave V2 wind-down: governance has frozen all reserves on this chain. V3 (Comet-style architecture) is the actively maintained version with the same Aave team.",
+                "install_command": v3_install_cmd,
+                "equivalent_command": v3_equivalent,
+                "alternative_chains": [],
+                "alternative_plugin": "aave-v3-plugin",
+            },
+        });
+        println!("{}", serde_json::to_string_pretty(&payload)
+            .unwrap_or_else(|_| format!(r#"{{"ok":false,"error_code":"RESERVE_FROZEN"}}"#)));
+        return Ok(());
     }
 
     // Pre-flight: balance (EVM-001)

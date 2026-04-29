@@ -1,6 +1,6 @@
 ---
 name: aave-v2-plugin
-description: Aave V2 lending and borrowing on Ethereum, Polygon, and Avalanche - supply assets to earn interest, borrow with stable or variable rates, repay debt cleanly via uint256.max sentinel, claim stkAAVE/WMATIC/WAVAX rewards, swap borrow rate mode
+description: Aave V2 exit tool on Ethereum, Polygon, and Avalanche - all reserves are governance-frozen. Redeem aTokens, repay debt cleanly via uint256.max sentinel, claim stkAAVE/WMATIC/WAVAX rewards. New supply/borrow rejected; redirects to aave-v3-plugin
 version: "0.1.0"
 author: GeoGu360
 tags:
@@ -11,6 +11,8 @@ tags:
   - polygon
   - avalanche
   - aave-v2
+  - winddown
+  - exit-tool
   - defi
 ---
 
@@ -87,11 +89,37 @@ echo "0.1.0" > "$HOME/.plugin-store/managed/aave-v2-plugin"
 
 # Aave V2 (Ethereum, Polygon, Avalanche)
 
+> ## !! V2 IS IN GOVERNANCE-LED WIND-DOWN MODE !!
+>
+> **All Aave V2 reserves on Ethereum (37), Polygon (13), and Avalanche (7) have `is_frozen = true`** as part of the V3 migration. New `supply` and new `borrow` revert on-chain with `VL_RESERVE_FROZEN` (error code `3`).
+>
+> **Supply/borrow commands fail at pre-flight** with `RESERVE_FROZEN` error_code (zero gas wasted). The structured error response includes:
+>
+> ```json
+> {
+>   "error_code": "RESERVE_FROZEN",
+>   "redirect": {
+>     "alternative_plugin": "aave-v3-plugin",
+>     "install_command": "npx skills add okx/plugin-store --skill aave-v3-plugin --yes --global",
+>     "equivalent_command": "aave-v3-plugin supply --chain ETH --token USDC --amount 100 --confirm"
+>   }
+> }
+> ```
+>
+> **Agents:** when you receive `RESERVE_FROZEN`, follow the `redirect.install_command` then run the `redirect.equivalent_command`. V3 has the same lending mechanics with the same Aave team.
+>
+> **Still-functional commands** for users with legacy V2 positions:
+> - `withdraw` - redeem your aTokens back to wallet
+> - `repay --all` - clear V2 debt cleanly (uint256.max sentinel, dust-free)
+> - `claim-rewards` - harvest accrued stkAAVE / WMATIC / WAVAX
+> - `swap-borrow-rate-mode` - toggle existing borrow's rate mode (stable <-> variable)
+> - `markets`, `positions`, `quickstart` - read-only
+
 Aave V2 is the original Aave lending protocol with single-pool architecture (one LendingPool per chain handles all assets) and dual-rate borrowing (stable + variable). Supply earns interest as aToken (rebasing 1:1 with underlying via exchangeRate); borrow against collateral with explicit Health Factor management; rewards distributed via IncentivesController as stkAAVE / WMATIC / WAVAX.
 
 **v0.1.0 chain scope:** Ethereum mainnet (chain id 1), Polygon (137), Avalanche C-Chain (43114) - the 3 chains where Aave V2 was officially deployed and where onchainos signing is available. V2 was not deployed officially on any other chain (BSC/Polygon V2 instances are non-official forks: Venus, CREAM, etc.).
 
-**V2 vs V3:** V3 (use `aave-v3-plugin`) is the actively maintained version with better gas, isolation mode, and eMode. V2 supply and borrow are NOT paused (unlike Compound V2) and continue to serve legacy positions. Use this plugin for legacy V2 positions, V2-integrated protocols (Maker DSS legacy paths, Yearn V2 strategies), or stable-rate borrows (V3 removed stable mode).
+**V2 vs V3:** V3 (use `aave-v3-plugin`) is the actively maintained version with better gas, isolation mode, and eMode. V2 has been governance-frozen across all 3 chains - this plugin handles legacy V2 position management only. Use V3 for any new supply/borrow.
 
 ---
 
@@ -171,18 +199,19 @@ aave-v2-plugin quickstart --chain POLYGON
 aave-v2-plugin quickstart --address 0xYour
 ```
 
-**Status enum:**
+**Status enum** (priority-ordered, exit-tool-oriented):
 
 | `status` | Meaning | `next_command` |
 |----------|---------|----------------|
 | `rpc_degraded` | >= 3 reserve scans failed | (none - retry) |
-| `unhealthy_position` | HF < 1.05 with active debt | `positions` |
-| `has_active_borrow` | Active borrow position | `repay --token X --all --rate-mode N --confirm` |
-| `has_supply_can_borrow` | Existing supply (collateral) | `positions` |
-| `insufficient_gas` | Native < gas floor + no V2 history | (none - top up) |
-| `ready_to_supply` | Has wallet token, ready to supply | `supply --token X --amount Y --confirm` |
+| `unhealthy_position` | HF < 1.05 with active debt - urgent! | `positions --chain X` |
+| `has_active_borrow` | Active borrow position to clear | `repay --chain X --token Y --all --rate-mode N --confirm` |
+| `has_supply_can_redeem` | Existing supply, redeem to exit V2 | `withdraw --chain X --token Y --amount all --confirm` |
+| `has_rewards_accrued` | >= 0.05 stkAAVE/WMATIC/WAVAX claimable | `claim-rewards --chain X --confirm` |
+| `insufficient_gas` | Native < gas floor + no V2 history | (none - top up gas) |
+| `protocol_winddown` | No V2 history, supply frozen - redirect to V3 | `npx skills add okx/plugin-store --skill aave-v3-plugin --yes --global` |
 
-**Output:** `chain`, `wallet`, `native_balance`, `account` (`total_collateral_eth_1e18`, `total_debt_eth_1e18`, `available_borrows_eth_1e18`, `health_factor_1e18`), `rewards_accrued`, `status`, `next_command`, `tip`, `reserves[]` (per-asset `wallet_balance` + `supply` + `variable_debt` + `stable_debt` + APRs).
+**Output:** `chain`, `wallet`, `winddown_warning`, `v3_redirect` (`alternative_plugin`, `install_command`, `reason`), `native_balance`, `account` (HF, totalCollateral, totalDebt, availableBorrows), `rewards_accrued`, `status`, `next_command`, `tip`, `reserves[]`.
 
 ---
 
@@ -214,14 +243,24 @@ aave-v2-plugin positions --address 0x...
 
 ---
 
-### 3. `supply` - Deposit token (requires `--confirm`)
+### 3. `supply` - !! BLOCKED in v0.1.0 (all reserves frozen); redirects to V3 (requires `--confirm`)
 
-Calls `LendingPool.deposit(asset, amount, onBehalfOf, referralCode)`. User receives aTokens 1:1 with underlying. v0.1.0 ERC-20 only - native ETH/MATIC/AVAX should be wrapped first (W*) and supplied as wrapped.
+Pre-flight `is_frozen` check. **All reserves on all 3 chains are governance-frozen** in v0.1.0 -> returns `RESERVE_FROZEN` error before any approve happens (zero gas wasted). Structured `redirect` field includes `install_command` + `equivalent_command` for `aave-v3-plugin`.
 
 ```bash
 aave-v2-plugin supply --chain ETH --token USDC --amount 100 --confirm
-aave-v2-plugin supply --chain POLYGON --token WMATIC --amount 50 --confirm
+# Returns:
+# {
+#   "ok": false,
+#   "error_code": "RESERVE_FROZEN",
+#   "redirect": {
+#     "install_command": "npx skills add okx/plugin-store --skill aave-v3-plugin --yes --global",
+#     "equivalent_command": "aave-v3-plugin supply --chain ETH --token USDC --amount 100 --confirm"
+#   }
+# }
 ```
+
+The full implementation (`LendingPool.deposit(asset, amount, onBehalfOf, referralCode)` with approve + EVM-014 retry + TX-001 confirm) is preserved for future where governance might unfreeze any reserve, OR for chains where additional V2 deployments come online.
 
 **Parameters:**
 
@@ -258,19 +297,24 @@ aave-v2-plugin withdraw --chain ETH --token DAI --amount all --confirm
 
 ---
 
-### 5. `borrow` - Borrow against collateral (requires `--confirm`)
+### 5. `borrow` - !! BLOCKED in v0.1.0 (all reserves frozen); redirects to V3 (requires `--confirm`)
 
-Calls `LendingPool.borrow(asset, amount, rateMode, referralCode, onBehalfOf)`. Requires existing collateral such that availableBorrowsETH > requested amount in oracle-priced equivalent.
-
-`--rate-mode 1` = stable (V2 only; V3 removed); `--rate-mode 2` = variable (recommended).
+Same pre-flight as supply: `is_frozen` returns `RESERVE_FROZEN` for all chains in v0.1.0. Also pre-checks `is_active`, `borrowing_enabled`, and `stable_rate_enabled` (when `--rate-mode 1`).
 
 ```bash
 aave-v2-plugin borrow --chain ETH --token USDT --amount 50 --rate-mode 2 --confirm
+# Returns RESERVE_FROZEN with redirect:
+# {
+#   "redirect": {
+#     "equivalent_command": "aave-v3-plugin borrow --chain ETH --token USDT --amount 50 --rate-mode 2 --confirm",
+#     "rate_mode_note": "Aave V3 removed stable rate mode entirely"
+#   }
+# }
 ```
 
-**Pre-flight:** `getUserAccountData` returns (totalCollateralETH, totalDebtETH, availableBorrowsETH, ltv, liqThreshold, healthFactor). Refuses borrow if `healthFactor < 1.10e18` even though Aave allows down to 1.0 (safe margin).
+**For users with existing V2 collateral** (rare since wind-down): the full implementation (`LendingPool.borrow(asset, amount, rateMode, referralCode, onBehalfOf)` with HF pre-flight + TX-001 confirm) is preserved. HF refuses if pre-flight `< 1.10e18` (safe margin).
 
-**Errors:** `TOKEN_NOT_FOUND` | `INVALID_ARGUMENT` | `NO_COLLATERAL` | `NO_BORROW_CAPACITY` | `UNHEALTHY_HF` | `BORROW_SUBMIT_FAILED` | `TX_REVERTED`.
+**Errors:** `TOKEN_NOT_FOUND` | `INVALID_ARGUMENT` | **`RESERVE_FROZEN`** | `RESERVE_INACTIVE` | `BORROWING_DISABLED` | `STABLE_RATE_DISABLED` | `NO_COLLATERAL` | `NO_BORROW_CAPACITY` | `UNHEALTHY_HF` | `BORROW_SUBMIT_FAILED` | `TX_REVERTED`.
 
 ---
 
@@ -398,6 +442,7 @@ The borrow command refuses to submit if pre-flight HF < 1.10. `repay` always suc
 - **feat**: stable + variable rate modes (V2 unique; V3 removed stable). `borrow` takes `--rate-mode 1|2`; `swap-borrow-rate-mode` flips between modes for an existing borrow.
 - **feat**: rewards via IncentivesController.claimRewards (stkAAVE on mainnet, WMATIC on Polygon, WAVAX on Avalanche)
 - **feat**: pre-flight Health Factor gate (refuse borrow if HF < 1.10 even though Aave allows down to 1.0)
+- **feat**: positioned as exit tool with structured V3 redirect. Live reality check: ALL 57 reserves across all 3 chains (37 ETH + 13 Polygon + 7 Avalanche) have `is_frozen=true` (governance-led wind-down for V3 migration). `supply` and `borrow` pre-flight `is_frozen` and return `RESERVE_FROZEN` with structured `redirect` field (`install_command` + `equivalent_command`) so Agents can auto-route to `aave-v3-plugin`. Pre-flight saves users wasted approve gas (verified ~$0.36 saved per attempted supply on ETH at current 1.83 gwei). Quickstart returns `protocol_winddown` status with V3 install command for users with no V2 history.
 - **architecture**: PDP-free design. Canonical Aave V2 mainnet PDP at `0x057835aDc8d6F0b9bA17f5b56C71f7Db84B16B36` has no code on Ethereum (Polygon/Avalanche PDPs alive but we use unified path). All read paths source from LendingPool + ERC-20 calls on aToken/sDebt/vDebt addresses.
 - **selectors**: keccak256 verified - LendingPool deposit `0xe8eda9df`, withdraw `0x69328dec`, borrow `0xa415bcad`, repay `0x573ade81`, swapBorrowRateMode `0x94ba89a2`, getReservesList `0xd1946dbc`, getReserveData `0x35ea6a75`, getUserAccountData `0xbf92857c`. IncentivesController claimRewards `0x3111e7b3`.
-- Verified end-to-end on all 3 chains: read commands return real on-chain APRs (ETH USDC supply 0.43%, variable borrow 10.65%; Polygon USDC borrow 16.82%; Avalanche DAI.e supply 2.22%); error paths (NO_COLLATERAL, NO_DEBT, INSUFFICIENT_BALANCE, INSUFFICIENT_GAS, NATIVE_NOT_SUPPORTED_V01) return structured GEN-001 JSON via stdout
+- Verified end-to-end on all 3 chains: read commands return real on-chain APRs (ETH USDC supply 0.43%, variable borrow 10.65%; Polygon USDC borrow 16.82%; Avalanche DAI.e supply 2.22%); supply USDC 0.5 on ETH correctly returned `RESERVE_FROZEN` after pre-flight (zero gas) post-fix; error paths (`NO_COLLATERAL`, `NO_DEBT`, `INSUFFICIENT_BALANCE`, `INSUFFICIENT_GAS`, `NATIVE_NOT_SUPPORTED_V01`, `RESERVE_FROZEN`) return structured GEN-001 JSON via stdout
