@@ -35,7 +35,7 @@ The workflow is Fork, develop, then open a Pull Request.
 
 ## Security
 
-To report a security issue, please email [security@okx.com](mailto:security@okx.com). Do not open a public issue for security vulnerabilities.
+To report a security issue, please submit reports to us on our bug bounty program - HackerOne [https://hackerone.com/okg?type=team](https://hackerone.com/okg?type=team). Do not open a public issue for security vulnerabilities.
 
 ## License
 
