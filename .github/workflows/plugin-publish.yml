@@ -167,7 +167,7 @@ jobs:
             SKILL_COMMIT=$(yq '.components.skill.commit // ""' "$YAML")
 
             # External = has repo field AND it's not our own repo
-            if [ -n "$SKILL_REPO" ] && [ "$SKILL_REPO" != "okx/plugin-store" ]; then
+            if [ -n "$SKILL_REPO" ] && [ "$SKILL_REPO" != "$GITHUB_REPOSITORY" ]; then
               ITEM=$(jq -n \
                 --arg name "$PLUGIN_NAME" \
                 --arg repo "$SKILL_REPO" \
@@ -533,7 +533,7 @@ jobs:
               else
                 SRC_LINE="Source: skills/${NAME}/ (included in submission)"
               fi
-              printf '%s\n' "## What's Changed" "" "- **${NAME}** v${VERSION} -- ${DESC}" "- Language: ${LANG} | Platforms: ${PLATFORM_COUNT}" "- Install: npx skills add okx/plugin-store --skill ${NAME}" "- ${SRC_LINE}" "" "## New Contributors" "" "- **${CONTRIBUTOR}** made their first contribution" "" "## Contributors" "" "- **${CONTRIBUTOR}**" "" "---" "Published by OKX Plugin Store CI" > "$NOTES_FILE"
+              printf '%s\n' "## What's Changed" "" "- **${NAME}** v${VERSION} -- ${DESC}" "- Language: ${LANG} | Platforms: ${PLATFORM_COUNT}" "- Install: npx skills add ${GITHUB_REPOSITORY} --skill ${NAME}" "- ${SRC_LINE}" "" "## New Contributors" "" "- **${CONTRIBUTOR}** made their first contribution" "" "## Contributors" "" "- **${CONTRIBUTOR}**" "" "---" "Published by OKX Plugin Store CI" > "$NOTES_FILE"
 
               echo "Creating release: $TAG with ${PLATFORM_COUNT} binaries"
 
@@ -727,7 +727,7 @@ jobs:
           if candidates:
               skill_md_path = candidates[0]
 
-          REPO = "okx/plugin-store"
+          REPO = os.environ.get("GITHUB_REPOSITORY", "okx/plugin-store")
           BASE = f"https://raw.githubusercontent.com/{REPO}/main"
           GUI  = f"https://github.com/{REPO}/tree/main"
 
@@ -783,7 +783,7 @@ jobs:
               else:
                   # Rust/Go: binary Release on plugin-store repo
                   entry["components"]["binary"] = {
-                      "repo": "okx/plugin-store",
+                      "repo": REPO,
                       "asset_pattern": bin_name + "-{target}",
                       "checksums_asset": "checksums.txt",
                       "release_tag": f"plugins/{name}@{version}"

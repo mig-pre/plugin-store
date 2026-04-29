@@ -5,6 +5,10 @@ import sys, os, re, subprocess
 name = sys.argv[1]
 plugin_dir = sys.argv[2]
 
+# Repo currently publishing this skill. GITHUB_REPOSITORY is auto-set by GitHub
+# Actions; falls back to the canonical store for local invocations.
+PUBLISH_REPO = os.environ.get("GITHUB_REPOSITORY", "okx/plugin-store")
+
 yaml_path = os.path.join(plugin_dir, "plugin.yaml")
 skill_files = []
 for root, dirs, files in os.walk(plugin_dir):
@@ -131,7 +135,7 @@ if [ -f "$UPDATE_CACHE" ]; then
 fi
 
 if [ "$DO_CHECK" = true ]; then
-  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/okx/plugin-store/main/skills/{name}/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{{print $2}}')
+  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/{PUBLISH_REPO}/main/skills/{name}/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{{print $2}}')
   if [ -n "$REMOTE_VER" ]; then
     mkdir -p "$HOME/.plugin-store/update-cache"
     echo "$REMOTE_VER" > "$UPDATE_CACHE"
@@ -141,7 +145,7 @@ fi
 REMOTE_VER=$(cat "$UPDATE_CACHE" 2>/dev/null || echo "$LOCAL_VER")
 if [ "$REMOTE_VER" != "$LOCAL_VER" ]; then
   echo "Update available: {name} v$LOCAL_VER -> v$REMOTE_VER. Updating..."
-  npx skills add okx/plugin-store --skill {name} --yes --global 2>/dev/null || true
+  npx skills add {PUBLISH_REPO} --skill {name} --yes --global 2>/dev/null || true
   echo "Updated {name} to v$REMOTE_VER. Please re-read this SKILL.md."
 fi
 ```
@@ -150,7 +154,7 @@ parts.append(version_check_block)
 print(f"  Injecting: version check ({name} v{version})")
 
 if needs_onchainos and not has_onchainos_install:
-    parts.append("### Install onchainos CLI + Skills (auto-injected)\n\n```bash\n# 1. Install onchainos CLI\nonchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/okx/onchainos-skills/main/install.sh | sh\n\n# 2. Install onchainos skills (enables AI agent to use onchainos commands)\nnpx skills add okx/onchainos-skills --yes --global\n\n# 3. Install plugin-store skills (enables plugin discovery and management)\nnpx skills add okx/plugin-store --skill plugin-store --yes --global\n```\n")
+    parts.append(f"### Install onchainos CLI + Skills (auto-injected)\n\n```bash\n# 1. Install onchainos CLI\nonchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/okx/onchainos-skills/main/install.sh | sh\n\n# 2. Install onchainos skills (enables AI agent to use onchainos commands)\nnpx skills add okx/onchainos-skills --yes --global\n\n# 3. Install plugin-store skills (enables plugin discovery and management)\nnpx skills add {PUBLISH_REPO} --skill plugin-store --yes --global\n```\n")
     print("  Injecting: onchainos CLI + skills + plugin-store skill")
 
 if needs_binary and not has_binary_install:
@@ -162,11 +166,11 @@ LAUNCHER="$HOME/.plugin-store/launcher.sh"
 CHECKER="$HOME/.plugin-store/update-checker.py"
 if [ ! -f "$LAUNCHER" ]; then
   mkdir -p "$HOME/.plugin-store"
-  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/{PUBLISH_REPO}/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
   chmod +x "$LAUNCHER"
 fi
 if [ ! -f "$CHECKER" ]; then
-  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/{PUBLISH_REPO}/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
 fi
 
 # Clean up old installation
@@ -188,7 +192,7 @@ case "${{OS}}_${{ARCH}}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/{name}@{version}/{bin_name}-${{TARGET}}${{EXT}}" -o ~/.local/bin/.{bin_name}-core${{EXT}}
+curl -fsSL "https://github.com/{PUBLISH_REPO}/releases/download/plugins/{name}@{version}/{bin_name}-${{TARGET}}${{EXT}}" -o ~/.local/bin/.{bin_name}-core${{EXT}}
 chmod +x ~/.local/bin/.{bin_name}-core${{EXT}}
 
 # Symlink CLI name to universal launcher
