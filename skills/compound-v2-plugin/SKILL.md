@@ -246,8 +246,7 @@ compound-v2-plugin borrow --token DAI --amount 50 --confirm
 ### 6. `repay` - Pay back debt (requires `--confirm`)
 
 `--all`: passes `uint256.max` (`0xff...ff`). Compound V2's `cToken.repayBorrow(amount)` auto-caps
-to `min(amount, currentBorrowBalance)` at execution time -> settles to **exactly zero (no dust)** -
-addresses **LEND-001**. Same mechanism as Aave V3's max-sentinel.
+to `min(amount, currentBorrowBalance)` at execution time -> settles to **exactly zero (no dust)** -. Same mechanism as Aave V3's max-sentinel.
 
 `--amount X`: partial repay; `cToken.repayBorrow(X)`. Excess (X > debt) auto-clamped at debt by
 the contract. We pre-cap at `min(user_amount, current_debt)` for clearer wallet-balance pre-flight.
