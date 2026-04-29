@@ -287,23 +287,6 @@ spark-savings-plugin upgrade-dai --all --confirm    # upgrade entire DAI balance
 
 ---
 
-## Knowledge-Base Compliance
-
-| Rule | Implementation |
-|------|----------------|
-| **GEN-001** | All 6 commands emit structured JSON on stdout; exit 0 for business-logic failures |
-| **EVM-001** | `deposit` / `withdraw` / `upgrade-dai` run pre-flight token balance checks before approve |
-| **EVM-002** | Every amount field paired (`amount` + `_raw`) |
-| **EVM-006** | `wait_for_tx` polls `eth_getTransactionReceipt`, no blind sleep |
-| **EVM-014** | Submit calls have retry-on-allowance-revert (5s sleep, 1 retry) |
-| **ONC-001** | `wallet contract-call` always invoked with `--force` |
-| **GAS-001** | All write commands check native gas before approve+main tx |
-| **ONB-001** | `quickstart` + `SUMMARY.md` shipped from v0.1.0 |
-| **(N/A)** | EVM-005 (no native sentinel — USDS/DAI/sUSDS all ERC-20) |
-| **(N/A)** | AGG-001/002/003 (single-protocol skill, not an aggregator) |
-
----
-
 ## Skill Routing
 
 - For ETH-LST yield (EigenLayer / Lido / etherfi), use those plugins instead
