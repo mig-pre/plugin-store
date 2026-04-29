@@ -344,3 +344,59 @@ pub fn rate_per_block_to_apr(rate_1e18: u128, blocks_per_year: u128) -> f64 {
     let per_block = rate_1e18 as f64 / 1e18;
     per_block * blocks_per_year as f64
 }
+
+#[cfg(test)]
+mod tests {
+    use super::selectors::*;
+    use sha3::{Digest, Keccak256};
+
+    fn sel(sig: &str) -> String {
+        let h = Keccak256::digest(sig.as_bytes());
+        format!("0x{}", hex::encode(&h[..4]))
+    }
+
+    /// Recompute every selector via keccak256 at runtime so any copy/paste typo
+    /// would fail this test instead of silently misrouting calls on-chain.
+    /// Pattern matches euler-v2 / aave-v2 / fourmeme.
+    #[test]
+    fn selectors_match_keccak256() {
+        // ERC-20
+        assert_eq!(sel("balanceOf(address)"),            BALANCE_OF);
+        assert_eq!(sel("allowance(address,address)"),    ALLOWANCE);
+        assert_eq!(sel("approve(address,uint256)"),      APPROVE);
+        assert_eq!(sel("decimals()"),                    DECIMALS);
+        assert_eq!(sel("symbol()"),                      SYMBOL);
+        // cToken writes
+        assert_eq!(sel("mint(uint256)"),                 MINT_ERC20);
+        assert_eq!(sel("mint()"),                        MINT_NATIVE);
+        assert_eq!(sel("redeem(uint256)"),               REDEEM);
+        assert_eq!(sel("redeemUnderlying(uint256)"),     REDEEM_UNDERLYING);
+        assert_eq!(sel("borrow(uint256)"),               BORROW);
+        assert_eq!(sel("repayBorrow(uint256)"),          REPAY_BORROW);
+        // cToken views
+        assert_eq!(sel("balanceOfUnderlying(address)"),  BALANCE_OF_UNDERLYING);
+        assert_eq!(sel("borrowBalanceCurrent(address)"), BORROW_BALANCE_CURRENT);
+        assert_eq!(sel("borrowBalanceStored(address)"),  BORROW_BALANCE_STORED);
+        assert_eq!(sel("supplyRatePerBlock()"),          SUPPLY_RATE_PER_BLOCK);
+        assert_eq!(sel("borrowRatePerBlock()"),          BORROW_RATE_PER_BLOCK);
+        assert_eq!(sel("exchangeRateStored()"),          EXCHANGE_RATE_STORED);
+        assert_eq!(sel("totalBorrows()"),                TOTAL_BORROWS);
+        assert_eq!(sel("totalSupply()"),                 TOTAL_SUPPLY);
+        assert_eq!(sel("totalReserves()"),               TOTAL_RESERVES);
+        assert_eq!(sel("getCash()"),                     GET_CASH);
+        assert_eq!(sel("underlying()"),                  UNDERLYING);
+        // Comptroller
+        assert_eq!(sel("enterMarkets(address[])"),       ENTER_MARKETS);
+        assert_eq!(sel("exitMarket(address)"),           EXIT_MARKET);
+        assert_eq!(sel("claimComp(address,address[])"),  CLAIM_COMP_HOLDER_LIST);
+        assert_eq!(sel("compAccrued(address)"),          COMP_ACCRUED);
+        assert_eq!(sel("compSupplySpeeds(address)"),     COMP_SUPPLY_SPEEDS);
+        assert_eq!(sel("compBorrowSpeeds(address)"),     COMP_BORROW_SPEEDS);
+        assert_eq!(sel("getAllMarkets()"),               GET_ALL_MARKETS);
+        assert_eq!(sel("getAccountLiquidity(address)"),  GET_ACCOUNT_LIQUIDITY);
+        assert_eq!(sel("getAssetsIn(address)"),          GET_ASSETS_IN);
+        assert_eq!(sel("markets(address)"),              MARKETS);
+        assert_eq!(sel("mintGuardianPaused(address)"),   MINT_GUARDIAN_PAUSED);
+        assert_eq!(sel("borrowGuardianPaused(address)"), BORROW_GUARDIAN_PAUSED);
+    }
+}
