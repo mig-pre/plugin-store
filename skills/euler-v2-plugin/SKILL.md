@@ -227,5 +227,5 @@ If OKX adds Euler v2 contracts to its TEE whitelist in the future, the plugin ca
 ## Architecture / Source
 
 - Source code: https://github.com/GeoGu360/plugin-store/tree/main/skills/euler-v2-plugin
-- Euler v2 docs: https://docs.euler.finance/euler-vault-kit-white-paper
+- Euler v2 docs: see the EVK whitepaper on the Euler Finance docs site
 - Euler app: https://app.euler.finance
