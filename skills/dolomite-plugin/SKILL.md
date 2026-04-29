@@ -265,7 +265,7 @@ dolomite-plugin borrow --token USDT --amount 0.2 --collateral-amount 0 --positio
 
 ### 6. `repay` - Pay back debt (requires `--confirm`)
 
-`--all` uses Dolomite's native exact-debt sentinel `BorrowPositionProxyV2.repayAllForBorrowPosition(fromAccount, borrowAccount, marketId, BalanceCheckFlag.From=1)` - reads the precise on-chain debt at execution time and settles to **exactly zero (no dust)**, addressing knowledge-base **LEND-001**. This is Dolomite's analog of Aave V3's `type(uint256).max` repay.
+`--all` uses Dolomite's native exact-debt sentinel `BorrowPositionProxyV2.repayAllForBorrowPosition(fromAccount, borrowAccount, marketId, BalanceCheckFlag.From=1)` - reads the precise on-chain debt at execution time and settles to **exactly zero (no dust)**. This is Dolomite's analog of Aave V3's `type(uint256).max` repay.
 
 Three-branch decision tree for `--all`:
 - **Branch A** (preferred): main account 0 has supply >= debt -> single `repayAllForBorrowPosition` tx, no approve, exact 0
@@ -346,7 +346,7 @@ dolomite-plugin repay --token USDT --all --position-account-number 100 --from-ac
 - **feat**: live APY computation - borrow rate from `getMarketInterestRate`, supply rate derived as `borrow x earnings_rate / 1e18` (per-second compounded to APY)
 - **feat**: position-aware quickstart with 6 status enum values covering full onboarding spectrum
 - **feat**: isolated borrow positions - `borrow` opens a non-zero account number with collateral transfer + creates real debt via `BorrowPositionProxyV2.transferBetweenAccounts` (main account 0 cannot go negative on Dolomite, so real borrowing requires isolated accounts). `--collateral-amount 0` skips step 1 to re-borrow against existing position collateral
-- **feat**: dust-free `repay --all` - uses Dolomite's native `BorrowPositionProxyV2.repayAllForBorrowPosition` exact-debt sentinel (analogous to Aave V3 `type(uint256).max`). Three-branch decision tree: (A) main supply >= debt single-tx, (B) main short -> top-up + repayAll, (C) insufficient -> error. Settles to exactly zero, addressing **LEND-001**
+- **feat**: dust-free `repay --all` - uses Dolomite's native `BorrowPositionProxyV2.repayAllForBorrowPosition` exact-debt sentinel (analogous to Aave V3 `type(uint256).max`). Three-branch decision tree: (A) main supply >= debt single-tx, (B) main short -> top-up + repayAll, (C) insufficient -> error. Settles to exactly zero
 - **selectors**: all function selectors verified directly against on-chain bytecode (DepositWithdrawalProxy + BorrowPositionProxyV2). Initial 5-arg `depositWei` / `withdrawWei` and 6-arg `transferBetweenAccounts` were `operate`-style signatures from the core contract that don't exist on the user-facing proxies; replaced with the proxy's actual 3-arg / 4-arg / 5-arg variants
 - **feat**: structured GEN-001 errors; ONC-001 `--force`; EVM-014 retry (3 patterns); EVM-015 explicit gas-limit (60k approve, 400k writes, 450k borrow steps); TX-001 on-chain confirmation; EVM-001 / EVM-002 / EVM-006 / GAS-001 / ONB-001 / LEND-001 fully honored
 - Verified end-to-end on Arbitrum mainnet: supply USDC + USDT, open position 100 with 0.3 USDC collateral, borrow 0.2 USDT, repay --all exact-zero (link `0xca8aa1...9777`), withdraw collateral back to wallet
