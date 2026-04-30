@@ -1,5 +1,7 @@
 use clap::Args;
-use crate::api::{get_asset_index, get_meta, get_open_orders};
+use crate::api::{
+    fetch_perp_dexs, get_asset_meta_for_coin, get_meta, get_open_orders_for_dex, parse_coin,
+};
 use crate::config::{info_url, exchange_url, normalize_coin, now_ms, CHAIN_ID, ARBITRUM_CHAIN_ID};
 use crate::onchainos::{onchainos_hl_sign, resolve_wallet};
 use crate::signing::{build_cancel_action, build_batch_cancel_action, submit_exchange_request};
@@ -34,18 +36,41 @@ pub async fn run(args: CancelArgs) -> anyhow::Result<()> {
     let exchange = exchange_url();
     let nonce = now_ms();
 
-    let wallet = resolve_wallet(CHAIN_ID)?;
+    let wallet = match resolve_wallet(CHAIN_ID) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "WALLET_NOT_FOUND", "Run onchainos wallet addresses to verify login."));
+            return Ok(());
+        }
+    };
 
     // ── Determine which orders to cancel ──────────────────────────────────────
 
     // Case 1: single order by ID
     if let Some(oid) = args.order_id {
-        let coin = args
-            .coin
-            .as_deref()
-            .ok_or_else(|| anyhow::anyhow!("--coin is required when using --order-id"))?;
-        let coin = normalize_coin(coin);
-        let asset_idx = get_asset_index(info, &coin).await?;
+        let raw_coin = match args.coin.as_deref() {
+            Some(c) => c,
+            None => {
+                println!("{}", super::error_response("--coin is required when using --order-id", "INVALID_ARGUMENT", "Provide --coin <SYMBOL> alongside --order-id (HIP-3: pass full prefixed name e.g. xyz:CL)."));
+                return Ok(());
+            }
+        };
+        // HIP-3: parse dex prefix; coin keeps full prefixed form for builder DEX
+        let (dex_opt, _) = parse_coin(raw_coin);
+        let coin = if dex_opt.is_some() {
+            let (d, b) = parse_coin(raw_coin);
+            format!("{}:{}", d.unwrap(), b.to_uppercase())
+        } else {
+            normalize_coin(raw_coin)
+        };
+        let registry = fetch_perp_dexs(info).await.unwrap_or_default();
+        let (asset_idx, _sz_dec) = match get_asset_meta_for_coin(info, &coin, &registry).await {
+            Ok(v) => v,
+            Err(e) => {
+                println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry. If using a builder DEX coin (e.g. xyz:CL), run `hyperliquid-plugin dex-list`."));
+                return Ok(());
+            }
+        };
         let action = build_cancel_action(asset_idx, oid);
 
         println!(
@@ -71,8 +96,20 @@ pub async fn run(args: CancelArgs) -> anyhow::Result<()> {
             return Ok(());
         }
 
-        let signed = onchainos_hl_sign(&action, nonce, &wallet, ARBITRUM_CHAIN_ID, true, false)?;
-        let result = submit_exchange_request(exchange, signed).await?;
+        let signed = match onchainos_hl_sign(&action, nonce, &wallet, ARBITRUM_CHAIN_ID, true, false) {
+            Ok(v) => v,
+            Err(e) => {
+                println!("{}", super::error_response(&format!("{:#}", e), "SIGNING_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+                return Ok(());
+            }
+        };
+        let result = match submit_exchange_request(exchange, signed).await {
+            Ok(v) => v,
+            Err(e) => {
+                println!("{}", super::error_response(&format!("{:#}", e), "TX_SUBMIT_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+                return Ok(());
+            }
+        };
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
@@ -86,8 +123,29 @@ pub async fn run(args: CancelArgs) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    // Case 2: batch by coin or --all — fetch open orders first
-    let open_orders = get_open_orders(info, &wallet).await?;
+    // Case 2: batch by coin or --all — fetch open orders first.
+    // HIP-3: --coin can carry dex prefix (e.g. "xyz:CL") which routes the open-orders
+    // query to the right builder DEX; otherwise default DEX. Without --coin, the batch
+    // cancels all default-DEX orders only (per-DEX cancel-all not supported in v0.4.0).
+    let (cancel_dex_opt, normalized_filter) = match args.coin.as_deref() {
+        Some(c) => {
+            let (dex, base) = parse_coin(c);
+            let filt = if dex.is_some() {
+                format!("{}:{}", dex.as_ref().unwrap(), base.to_uppercase())
+            } else {
+                normalize_coin(&base)
+            };
+            (dex, Some(filt))
+        }
+        None => (None, None),
+    };
+    let open_orders = match get_open_orders_for_dex(info, &wallet, cancel_dex_opt.as_deref()).await {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry."));
+            return Ok(());
+        }
+    };
     let empty_vec = vec![];
     let all_orders = open_orders.as_array().unwrap_or(&empty_vec);
 
@@ -99,14 +157,16 @@ pub async fn run(args: CancelArgs) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    // Filter by coin if provided
-    let coin_filter = args.coin.as_deref().map(normalize_coin);
+    // Filter by coin if provided (already normalized, includes dex prefix when present)
+    let coin_filter = normalized_filter;
 
     let to_cancel: Vec<_> = all_orders
         .iter()
         .filter(|o| {
             if let Some(ref f) = coin_filter {
-                o["coin"].as_str().map(|c| c.to_uppercase()) == Some(f.clone())
+                // case-insensitive compare on both sides (HIP-3 dex prefix is lowercase
+                // while filter may have been built from user's mixed-case input)
+                o["coin"].as_str().map(|c| c.eq_ignore_ascii_case(f)).unwrap_or(false)
             } else {
                 true // --all
             }
@@ -127,10 +187,20 @@ pub async fn run(args: CancelArgs) -> anyhow::Result<()> {
     }
 
     // Build asset index map from meta (one call instead of N)
-    let meta = get_meta(info).await?;
-    let universe = meta["universe"]
-        .as_array()
-        .ok_or_else(|| anyhow::anyhow!("meta.universe missing"))?;
+    let meta = match get_meta(info).await {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry."));
+            return Ok(());
+        }
+    };
+    let universe = match meta["universe"].as_array() {
+        Some(v) => v,
+        None => {
+            println!("{}", super::error_response("meta.universe missing", "API_ERROR", "Check your connection and retry."));
+            return Ok(());
+        }
+    };
 
     let get_asset_idx = |coin_name: &str| -> Option<usize> {
         let upper = coin_name.to_uppercase();
@@ -153,8 +223,13 @@ pub async fn run(args: CancelArgs) -> anyhow::Result<()> {
         let limit_px = o["limitPx"].as_str().unwrap_or("?");
         let sz = o["sz"].as_str().unwrap_or("?");
 
-        let asset_idx = get_asset_idx(coin_name)
-            .ok_or_else(|| anyhow::anyhow!("Coin '{}' not found in universe", coin_name))?;
+        let asset_idx = match get_asset_idx(coin_name) {
+            Some(i) => i,
+            None => {
+                println!("{}", super::error_response(&format!("Coin '{}' not found in universe", coin_name), "INVALID_ARGUMENT", "Check the coin symbol and retry."));
+                return Ok(());
+            }
+        };
 
         batch.push((asset_idx, oid));
         preview_list.push(serde_json::json!({
@@ -195,8 +270,20 @@ pub async fn run(args: CancelArgs) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let signed = onchainos_hl_sign(&action, nonce, &wallet, ARBITRUM_CHAIN_ID, true, false)?;
-    let result = submit_exchange_request(exchange, signed).await?;
+    let signed = match onchainos_hl_sign(&action, nonce, &wallet, ARBITRUM_CHAIN_ID, true, false) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "SIGNING_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+            return Ok(());
+        }
+    };
+    let result = match submit_exchange_request(exchange, signed).await {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "TX_SUBMIT_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+            return Ok(());
+        }
+    };
 
     println!(
         "{}",

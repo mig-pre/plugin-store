@@ -23,7 +23,13 @@ pub struct RegisterArgs {
 }
 
 pub async fn run(args: RegisterArgs) -> anyhow::Result<()> {
-    let wallet = resolve_wallet(CHAIN_ID)?;
+    let wallet = match resolve_wallet(CHAIN_ID) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "WALLET_NOT_FOUND", "Run onchainos wallet addresses to verify login."));
+            return Ok(());
+        }
+    };
 
     if args.dry_run {
         println!(
@@ -47,11 +53,17 @@ pub async fn run(args: RegisterArgs) -> anyhow::Result<()> {
     let dummy_action = build_market_order_action(asset_idx, true, "0", false, "0");
 
     // Sign through onchainos (real signing required to get HL to reveal signer)
-    let signed = onchainos_hl_sign(&dummy_action, nonce, &wallet, ARBITRUM_CHAIN_ID, true, false)
-        .map_err(|e| anyhow::anyhow!(
-            "onchainos signing failed: {}. Ensure onchainos is installed and a wallet is configured.",
-            e
-        ))?;
+    let signed = match onchainos_hl_sign(&dummy_action, nonce, &wallet, ARBITRUM_CHAIN_ID, true, false) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(
+                &format!("onchainos signing failed: {}. Ensure onchainos is installed and a wallet is configured.", e),
+                "SIGNING_FAILED",
+                "Retry the command. If the issue persists, check onchainos status."
+            ));
+            return Ok(());
+        }
+    };
 
     // Submit to HL — expect an error response containing the recovered signer address
     let response = submit_exchange_request(exchange_url(), signed).await;
@@ -70,10 +82,12 @@ pub async fn run(args: RegisterArgs) -> anyhow::Result<()> {
             if response.as_ref().map(|v| v["status"].as_str() == Some("ok")).unwrap_or(false) {
                 wallet.clone()
             } else {
-                anyhow::bail!(
-                    "Could not detect signing address from HL response: {:?}",
-                    response
-                );
+                println!("{}", super::error_response(
+                    &format!("Could not detect signing address from HL response: {:?}", response),
+                    "API_ERROR",
+                    "Check your connection and retry."
+                ));
+                return Ok(());
             }
         }
     };

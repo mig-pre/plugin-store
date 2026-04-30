@@ -76,7 +76,8 @@ fn build_batched_deposit_calldata(
 
 pub async fn run(args: DepositArgs) -> anyhow::Result<()> {
     if args.amount <= 0.0 {
-        anyhow::bail!("Amount must be greater than 0");
+        println!("{}", super::error_response("Amount must be greater than 0", "INVALID_ARGUMENT", "Provide a positive USDC amount with --amount."));
+        return Ok(());
     }
     if args.amount < 5.0 {
         eprintln!("WARNING: Minimum recommended deposit is $5 USDC. Amounts below $5 may not arrive.");
@@ -86,10 +87,22 @@ pub async fn run(args: DepositArgs) -> anyhow::Result<()> {
     let usdc_units = (args.amount * 1_000_000.0).round() as u64;
     let usdc_u128 = usdc_units as u128;
 
-    let wallet = resolve_wallet(ARBITRUM_CHAIN_ID)?;
+    let wallet = match resolve_wallet(ARBITRUM_CHAIN_ID) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "WALLET_NOT_FOUND", "Run onchainos wallet addresses to verify login."));
+            return Ok(());
+        }
+    };
 
     // Permit deadline: now + 1 hour
-    let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+    let now = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(d) => d.as_secs(),
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry."));
+            return Ok(());
+        }
+    };
     let deadline = now + 3600;
 
     if args.dry_run {
@@ -109,18 +122,31 @@ pub async fn run(args: DepositArgs) -> anyhow::Result<()> {
     }
 
     // Check USDC balance on Arbitrum
-    let balance = erc20_balance(USDC_ARBITRUM, &wallet, ARBITRUM_RPC).await?;
+    let balance = match erc20_balance(USDC_ARBITRUM, &wallet, ARBITRUM_RPC).await {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry."));
+            return Ok(());
+        }
+    };
     let balance_usd = balance as f64 / 1_000_000.0;
     if balance < usdc_u128 {
-        anyhow::bail!(
-            "Insufficient USDC on Arbitrum: have {:.6} USDC, need {:.6} USDC",
-            balance_usd,
-            args.amount
-        );
+        println!("{}", super::error_response(
+            &format!("Insufficient USDC on Arbitrum: have {:.6} USDC, need {:.6} USDC", balance_usd, args.amount),
+            "INSUFFICIENT_BALANCE",
+            "Add USDC to your Arbitrum wallet before depositing."
+        ));
+        return Ok(());
     }
 
     // Get USDC permit nonce
-    let permit_nonce = usdc_permit_nonce(USDC_ARBITRUM, &wallet, ARBITRUM_RPC).await?;
+    let permit_nonce = match usdc_permit_nonce(USDC_ARBITRUM, &wallet, ARBITRUM_RPC).await {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry."));
+            return Ok(());
+        }
+    };
 
     if !args.confirm {
         println!("{}", serde_json::json!({
@@ -174,29 +200,52 @@ pub async fn run(args: DepositArgs) -> anyhow::Result<()> {
 
     // Step 2: Sign the permit via onchainos
     eprintln!("Signing USDC permit for {} USDC...", args.amount);
-    let sig_hex = onchainos_sign_eip712(&permit_typed_data, &wallet)?;
+    let sig_hex = match onchainos_sign_eip712(&permit_typed_data, &wallet) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "SIGNING_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+            return Ok(());
+        }
+    };
 
     // Parse r, s, v from the 65-byte hex signature
     let sig_hex = sig_hex.trim_start_matches("0x");
     if sig_hex.len() != 130 {
-        anyhow::bail!("Expected 130-char hex signature, got {}", sig_hex.len());
+        println!("{}", super::error_response(
+            &format!("Expected 130-char hex signature, got {}", sig_hex.len()),
+            "SIGNING_FAILED",
+            "Retry the command. If the issue persists, check onchainos status."
+        ));
+        return Ok(());
     }
     let r = &sig_hex[0..64];
     let s = &sig_hex[64..128];
-    let v = u8::from_str_radix(&sig_hex[128..130], 16)?;
+    let v = match u8::from_str_radix(&sig_hex[128..130], 16) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("Failed to parse signature v byte: {:#}", e), "SIGNING_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+            return Ok(());
+        }
+    };
 
     // Step 3: Build batchedDepositWithPermit calldata
     let calldata = build_batched_deposit_calldata(&wallet, usdc_units, deadline, r, s, v);
 
     // Step 4: Submit the transaction
     eprintln!("Depositing {:.6} USDC to Hyperliquid via Arbitrum bridge...", args.amount);
-    let deposit_result = wallet_contract_call(
+    let deposit_result = match wallet_contract_call(
         ARBITRUM_CHAIN_ID,
         HL_BRIDGE_ARBITRUM,
         &calldata,
         None,
         false,
-    )?;
+    ) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "TX_SUBMIT_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+            return Ok(());
+        }
+    };
 
     let deposit_tx_hash = deposit_result["data"]["txHash"]
         .as_str()

@@ -32,21 +32,38 @@ pub async fn run(args: TransferArgs) -> anyhow::Result<()> {
     let exchange = exchange_url();
 
     if args.amount <= 0.0 {
-        anyhow::bail!("--amount must be positive (got {})", args.amount);
+        println!("{}", super::error_response(
+            &format!("--amount must be positive (got {})", args.amount),
+            "INVALID_ARGUMENT",
+            "Provide a positive USDC amount with --amount."
+        ));
+        return Ok(());
     }
 
     let to_perp = args.direction == "spot-to-perp";
     let nonce = now_ms();
 
-    let (default_wallet, sign_chain_id) = resolve_wallet_with_chain(CHAIN_ID)?;
+    let (default_wallet, sign_chain_id) = match resolve_wallet_with_chain(CHAIN_ID) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "WALLET_NOT_FOUND", "Run onchainos wallet addresses to verify login."));
+            return Ok(());
+        }
+    };
     let wallet = args.account.clone().unwrap_or(default_wallet);
 
     let (from_label, to_label) = if to_perp { ("spot", "perp") } else { ("perp", "spot") };
 
-    let (perp_state, spot_state) = tokio::try_join!(
+    let (perp_state, spot_state) = match tokio::try_join!(
         get_clearinghouse_state(info, &wallet),
         get_spot_clearinghouse_state(info, &wallet),
-    )?;
+    ) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry."));
+            return Ok(());
+        }
+    };
 
     let perp_withdrawable: f64 = perp_state["withdrawable"]
         .as_str().and_then(|s| s.parse().ok()).unwrap_or(0.0);
@@ -60,16 +77,20 @@ pub async fn run(args: TransferArgs) -> anyhow::Result<()> {
         .unwrap_or(0.0);
 
     if !to_perp && args.amount > perp_withdrawable {
-        anyhow::bail!(
-            "Insufficient perp balance: requested {:.6} USDC, withdrawable {:.6} USDC",
-            args.amount, perp_withdrawable
-        );
+        println!("{}", super::error_response(
+            &format!("Insufficient perp balance: requested {:.6} USDC, withdrawable {:.6} USDC", args.amount, perp_withdrawable),
+            "INSUFFICIENT_BALANCE",
+            "Ensure you have enough USDC in your perp account before transferring."
+        ));
+        return Ok(());
     }
     if to_perp && args.amount > spot_usdc {
-        anyhow::bail!(
-            "Insufficient spot USDC balance: requested {:.6} USDC, available {:.6} USDC",
-            args.amount, spot_usdc
-        );
+        println!("{}", super::error_response(
+            &format!("Insufficient spot USDC balance: requested {:.6} USDC, available {:.6} USDC", args.amount, spot_usdc),
+            "INSUFFICIENT_BALANCE",
+            "Ensure you have enough USDC in your spot account before transferring."
+        ));
+        return Ok(());
     }
 
     let action = build_spot_transfer_action(args.amount, to_perp, nonce);
@@ -93,13 +114,30 @@ pub async fn run(args: TransferArgs) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let signed = onchainos_hl_sign_usd_class_transfer(
+    let signed = match onchainos_hl_sign_usd_class_transfer(
         &action, nonce, &wallet, sign_chain_id, true, false
-    )?;
-    let result = submit_exchange_request(exchange, signed).await?;
+    ) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "SIGNING_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+            return Ok(());
+        }
+    };
+    let result = match submit_exchange_request(exchange, signed).await {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "TX_SUBMIT_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+            return Ok(());
+        }
+    };
 
     if result["status"].as_str() == Some("err") {
-        anyhow::bail!("Transfer failed: {}", result["response"].as_str().unwrap_or("unknown error"));
+        println!("{}", super::error_response(
+            &format!("Transfer failed: {}", result["response"].as_str().unwrap_or("unknown error")),
+            "TX_SUBMIT_FAILED",
+            "Retry the command. If the issue persists, check onchainos status."
+        ));
+        return Ok(());
     }
 
     println!("{}", serde_json::json!({

@@ -9,11 +9,16 @@ use clap::{Parser, Subcommand};
 use commands::{
     address::AddressArgs,
     cancel::CancelArgs,
+    cancel_batch::CancelBatchArgs,
     close::CloseArgs,
     deposit::DepositArgs,
+    dex_list::DexListArgs,
+    dex_transfer::DexTransferArgs,
+    markets::MarketsArgs,
     evm_send::EvmSendArgs,
     get_gas::GetGasArgs,
     order::OrderArgs,
+    order_batch::OrderBatchArgs,
     orders::OrdersArgs,
     positions::PositionsArgs,
     prices::PricesArgs,
@@ -55,6 +60,12 @@ enum Commands {
     Tpsl(TpslArgs),
     /// Cancel an open perp order by order ID (requires --confirm)
     Cancel(CancelArgs),
+    /// Place multiple perp orders in a single signed request (requires --confirm)
+    #[command(name = "order-batch")]
+    OrderBatch(OrderBatchArgs),
+    /// Cancel multiple perp orders in a single signed request (requires --confirm)
+    #[command(name = "cancel-batch")]
+    CancelBatch(CancelBatchArgs),
     /// Deposit USDC to Hyperliquid perp account via Arbitrum bridge (minimum $5)
     Deposit(DepositArgs),
     /// Detect your onchainos signing address on Hyperliquid and show setup instructions
@@ -79,6 +90,14 @@ enum Commands {
     SpotCancel(SpotCancelArgs),
     /// Check wallet assets and get a recommended next step for Hyperliquid
     Quickstart(QuickstartArgs),
+    /// HIP-3: List all perp DEXs (default + builder DEXs like xyz/flx/vntl) with per-DEX user balance + asset count
+    #[command(name = "dex-list")]
+    DexList(DexListArgs),
+    /// HIP-3: Move USDC between perp DEXs (default <-> builder DEX). Required to fund RWA trading on builder DEXs (requires --confirm)
+    #[command(name = "dex-transfer")]
+    DexTransfer(DexTransferArgs),
+    /// List tradeable markets across Hyperliquid (--type crypto|tradfi|hip3|spot, --dex, --coin, filters)
+    Markets(MarketsArgs),
 }
 
 #[tokio::main]
@@ -92,6 +111,8 @@ async fn main() -> anyhow::Result<()> {
         Commands::Close(args) => commands::close::run(args).await,
         Commands::Tpsl(args) => commands::tpsl::run(args).await,
         Commands::Cancel(args) => commands::cancel::run(args).await,
+        Commands::OrderBatch(args) => commands::order_batch::run(args).await,
+        Commands::CancelBatch(args) => commands::cancel_batch::run(args).await,
         Commands::Deposit(args) => commands::deposit::run(args).await,
         Commands::Register(args) => commands::register::run(args).await,
         Commands::Address(args) => commands::address::run(args).await,
@@ -104,5 +125,8 @@ async fn main() -> anyhow::Result<()> {
         Commands::SpotOrder(args) => commands::spot_order::run(args).await,
         Commands::SpotCancel(args) => commands::spot_cancel::run(args).await,
         Commands::Quickstart(args) => commands::quickstart::run(args).await,
+        Commands::DexList(args) => commands::dex_list::run(args).await,
+        Commands::DexTransfer(args) => commands::dex_transfer::run(args).await,
+        Commands::Markets(args) => commands::markets::run(args).await,
     }
 }

@@ -1,12 +1,16 @@
 use clap::Args;
-use crate::api::{get_asset_meta, get_all_mids, get_clearinghouse_state, get_spot_clearinghouse_state};
+use crate::api::{
+    fetch_perp_dexs, get_all_mids, get_all_mids_for_dex, get_asset_meta_with_flags,
+    get_clearinghouse_state, get_clearinghouse_state_for_dex, get_spot_clearinghouse_state,
+    parse_coin,
+};
 use crate::config::{info_url, exchange_url, normalize_coin, now_ms, CHAIN_ID, ARBITRUM_CHAIN_ID, USDC_ARBITRUM};
-use crate::onchainos::{onchainos_hl_sign, resolve_wallet};
+use crate::onchainos::{onchainos_hl_sign, report_plugin_info, resolve_wallet};
 use crate::rpc::{ARBITRUM_RPC, erc20_balance};
 use crate::signing::{
     build_bracketed_order_action, build_limit_order_action, build_market_order_action,
     build_update_leverage_action,
-    format_px, round_px, market_slippage_px, submit_exchange_request,
+    format_px, round_px, submit_exchange_request,
 };
 
 #[derive(Args)]
@@ -56,9 +60,23 @@ pub struct OrderArgs {
     #[arg(long)]
     pub dry_run: bool,
 
+    /// Slippage tolerance for market orders, in percent (default 5.0 = 5%)
+    /// The worst-fill price is mid × (1 ± slippage/100)
+    #[arg(long, default_value = "5.0")]
+    pub slippage: f64,
+
+    /// Worst-fill slippage when a TP/SL bracket trigger fires, in percent (default 10.0 = 10%).
+    /// Only applies when --sl-px or --tp-px is set
+    #[arg(long, default_value = "10.0")]
+    pub trigger_slippage: f64,
+
     /// Confirm and submit the order (without this flag, prints a preview)
     #[arg(long)]
     pub confirm: bool,
+
+    /// Strategy ID for attribution — reported to OKX backend alongside the order
+    #[arg(long)]
+    pub strategy_id: Option<String>,
 }
 
 /// Format a size value to exactly `decimals` decimal places, trimming trailing zeros.
@@ -74,38 +92,96 @@ fn fmt_size(sz: f64, decimals: u32) -> String {
 pub async fn run(args: OrderArgs) -> anyhow::Result<()> {
     let info = info_url();
     let exchange = exchange_url();
-    let coin = normalize_coin(&args.coin);
+    // HIP-3: detect dex prefix from coin name (e.g. "xyz:CL" -> dex="xyz", base="CL").
+    // Coin lookup downstream happens via get_asset_meta_for_coin which understands prefixes.
+    // For position match (post-order), the coin field on a HIP-3 position is the FULL prefixed
+    // name (e.g. "xyz:CL"), so we keep the raw user input for matching.
+    let (dex_opt, _base) = parse_coin(&args.coin);
+    let coin = if dex_opt.is_some() {
+        // Builder dex coins are case-sensitive on the dex prefix; normalize only the symbol.
+        let (d, b) = parse_coin(&args.coin);
+        format!("{}:{}", d.unwrap(), b.to_uppercase())
+    } else {
+        normalize_coin(&args.coin)
+    };
     let is_buy = args.side.to_lowercase() == "buy";
     let nonce = now_ms();
 
     // Validate size is a number
-    let size_f: f64 = args
-        .size
-        .parse()
-        .map_err(|_| anyhow::anyhow!("Invalid size '{}' — must be a number (e.g. 0.01)", args.size))?;
+    let size_f: f64 = match args.size.parse() {
+        Ok(v) => v,
+        Err(_) => {
+            println!("{}", super::error_response(
+                &format!("Invalid size '{}' — must be a number (e.g. 0.01)", args.size),
+                "INVALID_ARGUMENT",
+                "Provide a numeric size value, e.g. --size 0.01"
+            ));
+            return Ok(());
+        }
+    };
 
     // Validate leverage range (Hyperliquid accepts 1–100)
     if let Some(lev) = args.leverage {
         if !(1..=100).contains(&lev) {
-            anyhow::bail!("--leverage must be between 1 and 100 (got {})", lev);
+            println!("{}", super::error_response(
+                &format!("--leverage must be between 1 and 100 (got {})", lev),
+                "INVALID_ARGUMENT",
+                "Provide a leverage value between 1 and 100, e.g. --leverage 10"
+            ));
+            return Ok(());
         }
     }
 
     // TP/SL bracket validation
     if let Some(sl) = args.sl_px {
         if is_buy && args.tp_px.map_or(false, |tp| tp <= sl) {
-            anyhow::bail!("Take-profit must be above stop-loss for a long position");
+            println!("{}", super::error_response(
+                "Take-profit must be above stop-loss for a long position",
+                "INVALID_ARGUMENT",
+                "For a long: SL below entry, TP above entry."
+            ));
+            return Ok(());
         }
         if !is_buy && args.tp_px.map_or(false, |tp| tp >= sl) {
-            anyhow::bail!("Take-profit must be below stop-loss for a short position");
+            println!("{}", super::error_response(
+                "Take-profit must be below stop-loss for a short position",
+                "INVALID_ARGUMENT",
+                "For a short: SL above entry, TP below entry."
+            ));
+            return Ok(());
         }
     }
 
-    // ─── Fetch meta + prices concurrently ────────────────────────────────────
-    let ((asset_idx, sz_decimals), mids) = tokio::try_join!(
-        get_asset_meta(info, &coin),
-        get_all_mids(info)
-    )?;
+    // ─── Fetch dex registry + meta + prices concurrently ─────────────────────
+    let (registry_res, mids_res) = tokio::join!(
+        fetch_perp_dexs(info),
+        get_all_mids_for_dex(info, dex_opt.as_deref()),
+    );
+    let registry = registry_res.unwrap_or_default();
+    let (asset_idx, sz_decimals, only_isolated) = match get_asset_meta_with_flags(info, &coin, &registry).await {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry. If using a builder DEX coin (e.g. xyz:CL), run `hyperliquid-plugin dex-list` to verify the DEX exists."));
+            return Ok(());
+        }
+    };
+
+    // HIP-3: Some RWA / equity markets (xyz:CL / xyz:HOOD / xyz:INTC / xyz:PLTR / xyz:COIN /
+    // etc.) have `onlyIsolated: true` — HL rejects cross-margin orders on these with
+    // "Cross margin is not allowed for this asset". Auto-promote to --isolated when this
+    // flag is set, so the user doesn't need to memorize per-coin margin restrictions.
+    let auto_isolated = only_isolated && !args.isolated;
+    if auto_isolated {
+        eprintln!("[order] {} requires isolated margin (onlyIsolated=true) — auto-enabling --isolated.", coin);
+    }
+    let use_isolated = args.isolated || only_isolated;
+    let mids = match mids_res {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry."));
+            return Ok(());
+        }
+    };
 
     let current_price = mids
         .get(&coin)
@@ -135,7 +211,8 @@ pub async fn run(args: OrderArgs) -> anyhow::Result<()> {
     let notional = size_rounded * mid_f;
 
     // Slippage-protected price for market orders
-    let slippage_px_str = market_slippage_px(mid_f, is_buy, sz_decimals);
+    let slippage_multiplier = if is_buy { 1.0 + args.slippage / 100.0 } else { 1.0 - args.slippage / 100.0 };
+    let slippage_px_str = round_px(mid_f * slippage_multiplier, sz_decimals);
 
     // ─── SL/TP prices rounded to correct precision ────────────────────────────
     let sl_px_str = args.sl_px.map(|px| round_px(px, sz_decimals));
@@ -154,8 +231,12 @@ pub async fn run(args: OrderArgs) -> anyhow::Result<()> {
 
     let balances_opt: Option<Balances> = if let Some(ref w) = wallet_opt {
         let aw_clone = arb_wallet_opt.clone();
+        // HIP-3: when ordering on a builder DEX, perp margin must come from THAT dex's
+        // clearinghouse — funds are NOT shared with the default DEX. If user has a
+        // builder DEX coin (xyz:CL), query xyz's clearinghouse for the perp balance.
+        let dex_clone = dex_opt.clone();
         let (perp_res, spot_res, arb_raw) = tokio::join!(
-            get_clearinghouse_state(info, w),
+            get_clearinghouse_state_for_dex(info, w, dex_clone.as_deref()),
             get_spot_clearinghouse_state(info, w),
             async move {
                 match aw_clone.as_deref() {
@@ -255,13 +336,17 @@ pub async fn run(args: OrderArgs) -> anyhow::Result<()> {
                 "t": { "limit": { "tif": "Ioc" } }
             }),
             "limit" => {
-                let price_str = args
-                    .price
-                    .as_deref()
-                    .ok_or_else(|| anyhow::anyhow!("--price is required for limit orders"))?;
-                let _: f64 = price_str
-                    .parse()
-                    .map_err(|_| anyhow::anyhow!("Invalid price '{}'", price_str))?;
+                let price_str = match args.price.as_deref() {
+                    Some(p) => p,
+                    None => {
+                        println!("{}", super::error_response("--price is required for limit orders", "INVALID_ARGUMENT", "Provide a limit price, e.g. --price 100000"));
+                        return Ok(());
+                    }
+                };
+                if price_str.parse::<f64>().is_err() {
+                    println!("{}", super::error_response(&format!("Invalid price '{}'", price_str), "INVALID_ARGUMENT", "Provide a numeric price value."));
+                    return Ok(());
+                }
                 serde_json::json!({
                     "a": asset_idx,
                     "b": is_buy,
@@ -271,7 +356,10 @@ pub async fn run(args: OrderArgs) -> anyhow::Result<()> {
                     "t": { "limit": { "tif": "Gtc" } }
                 })
             }
-            _ => anyhow::bail!("Unknown order type '{}'", args.r#type),
+            _ => {
+                println!("{}", super::error_response(&format!("Unknown order type '{}'", args.r#type), "INVALID_ARGUMENT", "Use --type market or --type limit."));
+                return Ok(());
+            }
         };
 
         build_bracketed_order_action(
@@ -282,26 +370,36 @@ pub async fn run(args: OrderArgs) -> anyhow::Result<()> {
             sl_px_str.as_deref(),
             tp_px_str.as_deref(),
             sz_decimals,
+            args.trigger_slippage,
         )
     } else {
         match args.r#type.as_str() {
             "market" => build_market_order_action(asset_idx, is_buy, &size_str, args.reduce_only, &slippage_px_str),
             "limit" => {
-                let price_str = args
-                    .price
-                    .as_deref()
-                    .ok_or_else(|| anyhow::anyhow!("--price is required for limit orders"))?;
-                let _: f64 = price_str
-                    .parse()
-                    .map_err(|_| anyhow::anyhow!("Invalid price '{}'", price_str))?;
+                let price_str = match args.price.as_deref() {
+                    Some(p) => p,
+                    None => {
+                        println!("{}", super::error_response("--price is required for limit orders", "INVALID_ARGUMENT", "Provide a limit price, e.g. --price 100000"));
+                        return Ok(());
+                    }
+                };
+                if price_str.parse::<f64>().is_err() {
+                    println!("{}", super::error_response(&format!("Invalid price '{}'", price_str), "INVALID_ARGUMENT", "Provide a numeric price value."));
+                    return Ok(());
+                }
                 build_limit_order_action(asset_idx, is_buy, price_str, &size_str, args.reduce_only, "Gtc")
             }
-            _ => anyhow::bail!("Unknown order type '{}'", args.r#type),
+            _ => {
+                println!("{}", super::error_response(&format!("Unknown order type '{}'", args.r#type), "INVALID_ARGUMENT", "Use --type market or --type limit."));
+                return Ok(());
+            }
         }
     };
 
     let leverage_preview = args.leverage.map(|l| {
-        format!("{}x {}", l, if args.isolated { "isolated" } else { "cross" })
+        format!("{}x {}{}", l,
+            if use_isolated { "isolated" } else { "cross" },
+            if auto_isolated { " (auto, onlyIsolated)" } else { "" })
     });
 
     // ─── Preview ─────────────────────────────────────────────────────────────
@@ -314,6 +412,8 @@ pub async fn run(args: OrderArgs) -> anyhow::Result<()> {
         "type": args.r#type,
         "price": args.price,
         "leverage": leverage_preview,
+        "slippagePct": args.slippage,
+        "worstFillPrice": if args.r#type == "market" { Some(slippage_px_str.clone()) } else { None },
         "stopLoss": sl_px_str,
         "takeProfit": tp_px_str,
         "reduceOnly": args.reduce_only,
@@ -346,22 +446,41 @@ pub async fn run(args: OrderArgs) -> anyhow::Result<()> {
     }
 
     // ─── Submit ───────────────────────────────────────────────────────────────
-    let wallet = wallet_opt
-        .ok_or_else(|| anyhow::anyhow!("Cannot resolve wallet. Log in via onchainos."))?;
+    let wallet = match wallet_opt {
+        Some(w) => w,
+        None => {
+            println!("{}", super::error_response("Cannot resolve wallet. Log in via onchainos.", "WALLET_NOT_FOUND", "Run onchainos wallet addresses to verify login."));
+            return Ok(());
+        }
+    };
 
     // Set leverage before placing the order if --leverage was provided
     if let Some(lev) = args.leverage {
-        let is_cross = !args.isolated;
+        // HIP-3: respect onlyIsolated auto-promotion (xyz:CL / xyz:HOOD / etc.)
+        let is_cross = !use_isolated;
         let lev_action = build_update_leverage_action(asset_idx, is_cross, lev);
         let lev_nonce = now_ms();
-        let lev_signed = onchainos_hl_sign(&lev_action, lev_nonce, &wallet, ARBITRUM_CHAIN_ID, true, false)?;
-        let lev_result = submit_exchange_request(exchange, lev_signed).await
-            .map_err(|e| anyhow::anyhow!("Leverage update failed: {}", e))?;
+        let lev_signed = match onchainos_hl_sign(&lev_action, lev_nonce, &wallet, ARBITRUM_CHAIN_ID, true, false) {
+            Ok(v) => v,
+            Err(e) => {
+                println!("{}", super::error_response(&format!("Leverage update signing failed: {:#}", e), "SIGNING_FAILED", "Retry the command."));
+                return Ok(());
+            }
+        };
+        let lev_result = match submit_exchange_request(exchange, lev_signed).await {
+            Ok(v) => v,
+            Err(e) => {
+                println!("{}", super::error_response(&format!("Leverage update failed: {:#}", e), "TX_SUBMIT_FAILED", "Retry the command."));
+                return Ok(());
+            }
+        };
         if lev_result["status"].as_str() == Some("err") {
-            anyhow::bail!(
-                "Leverage update rejected by Hyperliquid: {}",
-                lev_result["response"].as_str().unwrap_or("unknown error")
-            );
+            println!("{}", super::error_response(
+                &format!("Leverage update rejected: {}", lev_result["response"].as_str().unwrap_or("unknown error")),
+                "TX_SUBMIT_FAILED",
+                "Check your leverage settings and retry."
+            ));
+            return Ok(());
         }
         eprintln!(
             "Leverage set to {}x ({}) for {}",
@@ -369,8 +488,59 @@ pub async fn run(args: OrderArgs) -> anyhow::Result<()> {
         );
     }
 
-    let signed = onchainos_hl_sign(&action, nonce, &wallet, ARBITRUM_CHAIN_ID, true, false)?;
-    let result = submit_exchange_request(exchange, signed).await?;
+    let signed = match onchainos_hl_sign(&action, nonce, &wallet, ARBITRUM_CHAIN_ID, true, false) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "SIGNING_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+            return Ok(());
+        }
+    };
+    let result = match submit_exchange_request(exchange, signed).await {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "TX_SUBMIT_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+            return Ok(());
+        }
+    };
+
+    // Extract fill data for programmatic consumers (e.g. liquidation scripts)
+    let statuses = result["response"]["data"]["statuses"]
+        .as_array()
+        .and_then(|a| a.first())
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+    let avg_px = statuses["filled"]["avgPx"].as_str().map(|s| s.to_string());
+    let oid = statuses["filled"]["oid"]
+        .as_u64()
+        .or_else(|| statuses["resting"]["oid"].as_u64());
+
+    if let (Some(sid), Some(oid_val)) = (
+        args.strategy_id.as_deref().filter(|s| !s.is_empty()),
+        oid,
+    ) {
+        let ts_now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let report_payload = serde_json::json!({
+            "wallet": wallet,
+            "proxyAddress": "",
+            "order_id": oid_val.to_string(),
+            "tx_hashes": [],
+            "market_id": coin,
+            "asset_id": "",
+            "side": if is_buy { "BUY" } else { "SELL" },
+            "amount": size_str,
+            "symbol": "USDC",
+            "price": avg_px.clone().unwrap_or_else(|| args.price.clone().unwrap_or_default()),
+            "timestamp": ts_now,
+            "strategy_id": sid,
+            "plugin_name": "hyperliquid-plugin",
+        });
+        if let Err(e) = report_plugin_info(&report_payload) {
+            eprintln!("[hyperliquid] Warning: report-plugin-info failed: {}", e);
+        }
+    }
 
     println!(
         "{}",
@@ -383,6 +553,11 @@ pub async fn run(args: OrderArgs) -> anyhow::Result<()> {
             "type": args.r#type,
             "stopLoss": sl_px_str,
             "takeProfit": tp_px_str,
+            "data": {
+                "avg_px": avg_px,
+                "fill_px": avg_px,
+                "oid": oid,
+            },
             "result": result
         }))?
     );
