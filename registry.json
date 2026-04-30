@@ -65,6 +65,38 @@
       }
     },
     {
+      "name": "compound-v2-plugin",
+      "version": "0.1.0",
+      "description": "Compound V2 exit tool on Ethereum mainnet - redeem, repay, claim COMP for legacy V2 positions. Use compound-v3-plugin for active supply/borrow.",
+      "author": {
+        "name": "OKX"
+      },
+      "category": "utility",
+      "tags": [
+        "ethereum",
+        "defi"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/compound-v2-plugin"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/compound-v2-plugin",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/compound-v2-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/compound-v2-plugin/SUMMARY.md",
+      "modify_date": "1777454487",
+      "extra": {
+        "chains": [
+          "ethereum",
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "medium"
+      }
+    },
+    {
       "name": "compound-v3-plugin",
       "version": "0.2.6",
       "description": "Compound V3 (Comet) lending plugin: supply collateral, borrow/repay the base asset, and claim COMP rewards",
@@ -243,7 +275,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/euler-v2-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/euler-v2-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/euler-v2-plugin/SUMMARY.md",
-      "modify_date": "1777454479",
+      "modify_date": "1777515076",
       "extra": {
         "chains": [
           "ethereum",

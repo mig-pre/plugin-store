@@ -25,6 +25,15 @@
       }
     },
     {
+      "name": "compound-v2-plugin",
+      "description": "Compound V2 exit tool on Ethereum mainnet - redeem, repay, claim COMP for legacy V2 positions. Use compound-v3-plugin for active supply/borrow.",
+      "source": "./skills/compound-v2-plugin",
+      "category": "utility",
+      "author": {
+        "name": "OKX"
+      }
+    },
+    {
       "name": "compound-v3-plugin",
       "description": "Compound V3 (Comet) lending plugin: supply collateral, borrow/repay the base asset, and claim COMP rewards",
       "source": "./skills/compound-v3-plugin",
