@@ -154,8 +154,57 @@ parts.append(version_check_block)
 print(f"  Injecting: version check ({name} v{version})")
 
 if needs_onchainos and not has_onchainos_install:
-    parts.append(f"### Install onchainos CLI + Skills (auto-injected)\n\n```bash\n# 1. Install onchainos CLI\nonchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/okx/onchainos-skills/main/install.sh | sh\n\n# 2. Install onchainos skills (enables AI agent to use onchainos commands)\nnpx skills add okx/onchainos-skills --yes --global\n\n# 3. Install plugin-store skills (enables plugin discovery and management)\nnpx skills add {PUBLISH_REPO} --skill plugin-store --yes --global\n```\n")
-    print("  Injecting: onchainos CLI + skills + plugin-store skill")
+    onchainos_block = f"""### Install onchainos CLI + Skills (auto-injected)
+
+```bash
+# 1. Install onchainos CLI — pin to latest release tag, verify SHA256
+#    of the installer before executing (no curl|sh from main).
+if ! command -v onchainos >/dev/null 2>&1; then
+  set -e
+  LATEST_TAG=$(curl -sSL --max-time 5 \\
+    "https://api.github.com/repos/okx/onchainos-skills/releases/latest" \\
+    | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p' | head -1)
+  if [ -z "$LATEST_TAG" ]; then
+    echo "ERROR: failed to resolve latest onchainos release tag (network or rate limit)." >&2
+    echo "       Manual install: https://github.com/okx/onchainos-skills" >&2
+    exit 1
+  fi
+
+  ONCHAINOS_TMP=$(mktemp -d)
+  curl -sSL --max-time 30 \\
+    "https://raw.githubusercontent.com/okx/onchainos-skills/${{LATEST_TAG}}/install.sh" \\
+    -o "$ONCHAINOS_TMP/install.sh"
+  curl -sSL --max-time 30 \\
+    "https://github.com/okx/onchainos-skills/releases/download/${{LATEST_TAG}}/installer-checksums.txt" \\
+    -o "$ONCHAINOS_TMP/installer-checksums.txt"
+
+  EXPECTED=$(awk '$2 ~ /install\\.sh$/ {{print $1; exit}}' "$ONCHAINOS_TMP/installer-checksums.txt")
+  if command -v sha256sum >/dev/null 2>&1; then
+    ACTUAL=$(sha256sum "$ONCHAINOS_TMP/install.sh" | awk '{{print $1}}')
+  else
+    ACTUAL=$(shasum -a 256 "$ONCHAINOS_TMP/install.sh" | awk '{{print $1}}')
+  fi
+  if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
+    echo "ERROR: onchainos installer SHA256 mismatch — refusing to execute." >&2
+    echo "       expected=$EXPECTED  actual=$ACTUAL  tag=$LATEST_TAG" >&2
+    rm -rf "$ONCHAINOS_TMP"
+    exit 1
+  fi
+
+  sh "$ONCHAINOS_TMP/install.sh"
+  rm -rf "$ONCHAINOS_TMP"
+  set +e
+fi
+
+# 2. Install onchainos skills (enables AI agent to use onchainos commands)
+npx skills add okx/onchainos-skills --yes --global
+
+# 3. Install plugin-store skills (enables plugin discovery and management)
+npx skills add {PUBLISH_REPO} --skill plugin-store --yes --global
+```
+"""
+    parts.append(onchainos_block)
+    print("  Injecting: onchainos CLI + skills + plugin-store skill (SHA256-verified)")
 
 if needs_binary and not has_binary_install:
     block = f"""### Install {bin_name} binary + launcher (auto-injected)
@@ -192,8 +241,32 @@ case "${{OS}}_${{ARCH}}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/{PUBLISH_REPO}/releases/download/plugins/{name}@{version}/{bin_name}-${{TARGET}}${{EXT}}" -o ~/.local/bin/.{bin_name}-core${{EXT}}
+
+# Download binary + checksums to a sandbox, verify SHA256 before installing.
+BIN_TMP=$(mktemp -d)
+RELEASE_BASE="https://github.com/{PUBLISH_REPO}/releases/download/plugins/{name}@{version}"
+curl -fsSL "${{RELEASE_BASE}}/{bin_name}-${{TARGET}}${{EXT}}" -o "$BIN_TMP/{bin_name}${{EXT}}" || {{
+  echo "ERROR: failed to download {bin_name}-${{TARGET}}${{EXT}}" >&2
+  rm -rf "$BIN_TMP"; exit 1; }}
+curl -fsSL "${{RELEASE_BASE}}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {{
+  echo "ERROR: failed to download checksums.txt for {name}@{version}" >&2
+  rm -rf "$BIN_TMP"; exit 1; }}
+
+EXPECTED=$(awk -v b="{bin_name}-${{TARGET}}${{EXT}}" '$2 == b {{print $1; exit}}' "$BIN_TMP/checksums.txt")
+if command -v sha256sum >/dev/null 2>&1; then
+  ACTUAL=$(sha256sum "$BIN_TMP/{bin_name}${{EXT}}" | awk '{{print $1}}')
+else
+  ACTUAL=$(shasum -a 256 "$BIN_TMP/{bin_name}${{EXT}}" | awk '{{print $1}}')
+fi
+if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
+  echo "ERROR: {bin_name} SHA256 mismatch — refusing to install." >&2
+  echo "       expected=$EXPECTED  actual=$ACTUAL  target=${{TARGET}}" >&2
+  rm -rf "$BIN_TMP"; exit 1
+fi
+
+mv "$BIN_TMP/{bin_name}${{EXT}}" ~/.local/bin/.{bin_name}-core${{EXT}}
 chmod +x ~/.local/bin/.{bin_name}-core${{EXT}}
+rm -rf "$BIN_TMP"
 
 # Symlink CLI name to universal launcher
 ln -sf "$LAUNCHER" ~/.local/bin/{bin_name}
