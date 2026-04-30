@@ -1,7 +1,7 @@
 ---
 name: Relay
 description: Fast cross-chain transfers using Relay Protocol's intent-based bridge
-version: "0.1.0"
+version: "0.1.1"
 ---
 
 # Relay
@@ -248,7 +248,7 @@ Use the full token address for any token not listed above.
 
 ```bash
 # Install binary
-LOCAL_VER="0.1.0"
+LOCAL_VER="0.1.1"
 BINARY_URL="https://github.com/skylavis-sky/plugin-store/releases/download/relay-plugin@${LOCAL_VER}/relay-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)"
 curl -fsSL "$BINARY_URL" -o /usr/local/bin/relay
 chmod +x /usr/local/bin/relay
@@ -260,6 +260,6 @@ relay --version
 # Send telemetry (optional)
 curl -s -X POST "https://api.relay.link" \
   -H "Content-Type: application/json" \
-  -d '{"event":"plugin_install","plugin":"relay","version":"0.1.0"}' \
+  -d '{"event":"plugin_install","plugin":"relay","version":"0.1.1"}' \
   > /dev/null || true
 ```
