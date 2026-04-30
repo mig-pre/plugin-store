@@ -1,7 +1,7 @@
 ---
 name: Fluid
 description: Supply collateral and borrow on Fluid Protocol's smart lending vaults on Ethereum and Arbitrum
-version: "0.1.2"
+version: "0.1.3"
 ---
 
 # Fluid
@@ -93,6 +93,18 @@ Expected output: `"ok": true`, `"tx_hash": "0x..."`. The `nft_id` in the output 
 
 ### Step 6 — Borrow
 
+Before borrowing, preview the command to see the current `borrow_rate` (sourced live from the vault):
+
+```bash
+# Preview — shows borrow_rate before any on-chain action:
+fluid borrow \
+  --vault 0xeabbfca72f8a8bf14c4ac59e69ecb2eb69f0811c \
+  --nft-id <YOUR_NFT_ID> \
+  --amount 50
+```
+
+Once you've seen the rate and confirmed the amount, add `--confirm`:
+
 ```bash
 fluid borrow \
   --vault 0xeabbfca72f8a8bf14c4ac59e69ecb2eb69f0811c \
@@ -141,7 +153,7 @@ fluid vaults [--chain <ID>] [--all] [--limit <N>]
 | `--all` | off | Show all vault types (default: T1 only) |
 | `--limit` | `30` | Maximum vaults to display |
 
-**Example output:**
+**Example output (T1 only, default):**
 ```json
 {
   "chain": 1,
@@ -160,6 +172,25 @@ fluid vaults [--chain <ID>] [--all] [--limit <N>]
   ]
 }
 ```
+
+**Example output (`--all`, truncated):**
+
+When `--all` is set and the result is truncated by `--limit`, the response includes a `type_breakdown` (count per vault type across all matching vaults) and a `note` with the pagination hint:
+
+```json
+{
+  "chain": 1,
+  "chain_name": "Ethereum",
+  "filter": "all",
+  "showing": 30,
+  "total_vaults": 164,
+  "type_breakdown": { "T1": 62, "T2": 58, "T3": 44 },
+  "note": "Showing 30 of 164 vaults. Use --limit 164 to see all.",
+  "vaults": [ "..." ]
+}
+```
+
+`type_breakdown` is also present (without `note`) when `--all` is set and all vaults fit within `--limit`.
 
 ---
 
@@ -288,6 +319,46 @@ No approval needed — collateral is returned directly to your wallet.
 
 ---
 
+### `close` — Close a position atomically
+
+Repays all outstanding debt and withdraws all collateral in a **single `operate()` call**. Use this when `repay` fails because the position is below the vault's minimum floor (Fluid error `0x60121cca` or `0xdee51a8a`).
+
+```bash
+fluid close --nft-id <id> [--chain <ID>] [--confirm]
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--nft-id` | yes | NFT position ID to close |
+| `--chain` | no | Chain ID (default: 1) |
+| `--wallet` | no | Signer address (default: active wallet) |
+| `--dry-run` | no | Simulate (stub hashes, no broadcast) |
+| `--confirm` | no | Required to broadcast |
+
+**How it works**: Fetches the current `col_raw` and `debt_raw` from the PositionsResolver, then calls `operate(nftId, -col_raw, -debt_raw, wallet)`. Both sides are set simultaneously, so the vault never sees an intermediate below-floor state.
+
+**Approval flow**: For ERC-20 debt tokens, an `approve(vault, debt_amount)` tx fires first. For native ETH debt, no approval needed.
+
+**Example output:**
+```json
+{
+  "ok": true,
+  "action": "close",
+  "vault": "0xeabb...",
+  "nft_id": 12345,
+  "col_symbol": "ETH",
+  "col_withdrawn": "0.0001",
+  "debt_symbol": "USDC",
+  "debt_repaid": "0.15",
+  "approve_tx_hash": "0x...",
+  "tx_hash": "0x...",
+  "wallet": "0xabc...",
+  "chain": 42161
+}
+```
+
+---
+
 ## Supported Chains
 
 | Chain | ID | Vaults |
@@ -315,7 +386,7 @@ npx skills add okx/plugin-store --skill fluid-plugin --yes
 
 # Verify
 fluid --version
-# Expected: fluid 0.1.2
+# Expected: fluid 0.1.3
 ```
 
 ### Telemetry
@@ -324,5 +395,5 @@ fluid --version
 # Version check
 curl -s -X POST "https://api.okx.com/plugin-store/v1/telemetry" \
   -H "Content-Type: application/json" \
-  -d '{"plugin":"fluid-plugin","version":"0.1.2","event":"install"}'
+  -d '{"plugin":"fluid-plugin","version":"0.1.3","event":"install"}'
 ```

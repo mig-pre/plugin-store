@@ -95,11 +95,15 @@ pub async fn run(args: RepayArgs) -> anyhow::Result<()> {
     // (Fluid error 0x60121cca) and other reverts without wasting gas on approvals.
     eprintln!("[fluid] Simulating repay via eth_call...");
     if let Err(sim_err) = eth_call_simulate(args.chain, &args.vault, &op_data, &wallet).await {
+        // 0xdee51a8a = residual debt below minimum floor (partial repay leaves too little)
+        // 0x60121cca = vault minimum check failed (position below floor regardless of amount)
+        // In both cases the position may need to be closed atomically.
         anyhow::bail!(
             "Repay simulation failed (the vault would revert on-chain): {}\n\
-             The position may be below the protocol minimum floor. \
-             Try repaying the full debt amount, or use the Fluid app to close the position.",
-            sim_err
+             The position may be below the vault minimum floor. \
+             Use `fluid close --chain {} --nft-id {}` to repay debt and withdraw \
+             collateral atomically in a single transaction.",
+            sim_err, args.chain, args.nft_id
         );
     }
 

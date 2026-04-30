@@ -109,7 +109,7 @@ pub async fn run(args: PositionsArgs) -> anyhow::Result<()> {
 
 /// Call getPositionsForNftIds([ids]) on the positions resolver.
 /// Returns Vec<[nft_id, owner, supply, debt]> (4 u128 values per position).
-async fn fetch_positions(chain_id: u64, nft_ids: &[u64]) -> anyhow::Result<Vec<[u128; 4]>> {
+pub async fn fetch_positions(chain_id: u64, nft_ids: &[u64]) -> anyhow::Result<Vec<[u128; 4]>> {
     let sel = selector("getPositionsForNftIds(uint256[])");
     let payload = encode_uint256_array(nft_ids);
     let data = calldata_raw(sel, &payload);

@@ -110,6 +110,7 @@ pub async fn run(args: BorrowArgs) -> anyhow::Result<()> {
         "nft_id": args.nft_id,
         "debt_symbol": debt_sym,
         "amount": args.amount,
+        "borrow_rate": format!("{:.2}%", borrow_rate_pct),
         "tx_hash": tx_hash,
         "wallet": wallet,
         "chain": args.chain,

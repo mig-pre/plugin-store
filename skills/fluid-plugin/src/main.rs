@@ -12,7 +12,7 @@ mod commands;
 #[derive(Parser)]
 #[command(
     name = "fluid",
-    version = "0.1.2",
+    version = "0.1.3",
     about = "Fluid Protocol — lend, borrow, and manage positions on Ethereum and Arbitrum"
 )]
 struct Cli {
@@ -34,6 +34,8 @@ enum Commands {
     Repay(commands::repay::RepayArgs),
     /// Withdraw collateral from an existing position
     Withdraw(commands::withdraw::WithdrawArgs),
+    /// Close a position atomically: repay all debt and withdraw all collateral in one tx
+    Close(commands::close::CloseArgs),
 }
 
 #[tokio::main]
@@ -46,6 +48,7 @@ async fn main() {
         Commands::Borrow(args)    => commands::borrow::run(args).await,
         Commands::Repay(args)     => commands::repay::run(args).await,
         Commands::Withdraw(args)  => commands::withdraw::run(args).await,
+        Commands::Close(args)     => commands::close::run(args).await,
     };
     if let Err(e) = result {
         eprintln!("[fluid] Error: {}", e);
