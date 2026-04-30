@@ -1,7 +1,7 @@
 ---
 name: Fluid
 description: Supply collateral and borrow on Fluid Protocol's smart lending vaults on Ethereum and Arbitrum
-version: "0.1.3"
+version: "0.1.0"
 ---
 
 # Fluid
@@ -386,7 +386,7 @@ npx skills add okx/plugin-store --skill fluid-plugin --yes
 
 # Verify
 fluid --version
-# Expected: fluid 0.1.3
+# Expected: fluid 0.1.0
 ```
 
 ### Telemetry
@@ -395,5 +395,5 @@ fluid --version
 # Version check
 curl -s -X POST "https://api.okx.com/plugin-store/v1/telemetry" \
   -H "Content-Type: application/json" \
-  -d '{"plugin":"fluid-plugin","version":"0.1.3","event":"install"}'
+  -d '{"plugin":"fluid-plugin","version":"0.1.0","event":"install"}'
 ```
