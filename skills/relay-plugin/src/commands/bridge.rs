@@ -189,7 +189,7 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
         "steps":       steps_summary,
         "request_id":  request_id,
     });
-    if let Some(warn) = balance_warning {
+    if let Some(ref warn) = balance_warning {
         preview["balance_warning"] = serde_json::json!(warn);
     }
 
@@ -198,6 +198,15 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
         eprintln!("\nAdd --confirm to broadcast this bridge transaction.");
         eprintln!("Track status with: relay status --request-id {}", request_id);
         return Ok(());
+    }
+
+    // Block --confirm execution if the balance check detected insufficient funds.
+    // A failed RPC (balance == 0) skips the check, so this never false-positives
+    // on an unreachable node.
+    if args.confirm {
+        if let Some(ref warn) = balance_warning {
+            anyhow::bail!("{} Refusing to broadcast.", warn);
+        }
     }
 
     // Execute each step in order
