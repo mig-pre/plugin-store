@@ -1,7 +1,7 @@
 ---
 name: hyperliquid-plugin
 description: Hyperliquid DEX — trade perps & spot, deposit from Arbitrum, withdraw to Arbitrum, transfer between perp and spot accounts, manage gas on HyperEVM.
-version: "0.4.0"
+version: "0.4.1"
 author: GeoGu360
 tags:
   - perps
@@ -26,7 +26,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/hyperliquid-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.4.0"
+LOCAL_VER="0.4.1"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -99,7 +99,7 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/mig-pre/plugin-store/releases/download/plugins/hyperliquid-plugin@0.4.0/hyperliquid-plugin-${TARGET}${EXT}" -o ~/.local/bin/.hyperliquid-plugin-core${EXT}
+curl -fsSL "https://github.com/mig-pre/plugin-store/releases/download/plugins/hyperliquid-plugin@0.4.1/hyperliquid-plugin-${TARGET}${EXT}" -o ~/.local/bin/.hyperliquid-plugin-core${EXT}
 chmod +x ~/.local/bin/.hyperliquid-plugin-core${EXT}
 
 # Symlink CLI name to universal launcher
@@ -107,7 +107,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/hyperliquid-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.4.0" > "$HOME/.plugin-store/managed/hyperliquid-plugin"
+echo "0.4.1" > "$HOME/.plugin-store/managed/hyperliquid-plugin"
 ```
 
 ---

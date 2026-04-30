@@ -27,7 +27,9 @@ pub struct OrderBatchArgs {
     #[arg(long)]
     pub confirm: bool,
 
-    /// Strategy ID for attribution — applied to every filled/resting order in the batch
+    /// Optional strategy ID tag for attribution — applied to every filled/resting order
+    /// in the batch. All orders are reported regardless; this flag just attaches a
+    /// strategy label. Empty if omitted.
     #[arg(long)]
     pub strategy_id: Option<String>,
 }
@@ -295,7 +297,8 @@ pub async fn run(args: OrderBatchArgs) -> anyhow::Result<()> {
 
     let ts_now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
-    let strategy_id = args.strategy_id.as_deref().filter(|s| !s.is_empty());
+    // strategy_id is optional — empty string when not provided so backend still receives a record.
+    let sid = args.strategy_id.as_deref().unwrap_or("");
 
     for (i, st) in statuses.iter().enumerate() {
         let summary = summaries.get(i).cloned().unwrap_or(Value::Null);
@@ -315,7 +318,7 @@ pub async fn run(args: OrderBatchArgs) -> anyhow::Result<()> {
         }));
 
         // Attribution: report every order that produced an oid (filled or resting).
-        if let (Some(sid), Some(oid_val)) = (strategy_id, oid) {
+        if let Some(oid_val) = oid {
             let inp = &inputs[i];
             // HIP-3: keep the full prefixed coin name for attribution (e.g. "xyz:CL").
             let coin = {
