@@ -192,7 +192,7 @@
     },
     {
       "name": "hyperliquid-plugin",
-      "version": "0.3.9",
+      "version": "0.4.1",
       "description": "Hyperliquid on-chain perpetuals DEX — check positions, get market prices, place and cancel perpetual orders on Hyperliquid L1 (chain_id 999).",
       "author": {
         "name": "GeoGu360"
@@ -214,7 +214,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/hyperliquid-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid-plugin/SUMMARY.md",
-      "modify_date": "1777030999",
+      "modify_date": "1777559415",
       "extra": {
         "chains": [
           "solana",
@@ -644,7 +644,7 @@
     },
     {
       "name": "polymarket-plugin",
-      "version": "0.4.10",
+      "version": "0.5.2",
       "description": "Trade prediction markets on Polymarket — buy and sell YES/NO outcome tokens on Polygon",
       "author": {
         "name": "skylavis-sky"
@@ -666,7 +666,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/polymarket-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/polymarket-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/polymarket-plugin/SUMMARY.md",
-      "modify_date": "1777030999",
+      "modify_date": "1777559415",
       "extra": {
         "chains": [
           "ethereum",
