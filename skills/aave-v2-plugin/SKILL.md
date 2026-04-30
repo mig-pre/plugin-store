@@ -19,53 +19,74 @@ tags:
 
 ## Pre-flight Dependencies (auto-injected by Plugin Store CI)
 
-> Run once per session before first use.
+> Run once per session before first use. These checks ensure required tools are installed.
 
 ### Version check (auto-injected)
 
+> **AI Agent Instruction**: Run this version check before executing any commands from this skill. If an update is applied, re-read this SKILL.md before proceeding — the instructions may have changed.
+
 ```bash
+# Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/aave-v2-plugin"
 CACHE_MAX=3600
 LOCAL_VER="0.1.0"
 DO_CHECK=true
+
 if [ -f "$UPDATE_CACHE" ]; then
   CACHE_MOD=$(stat -f %m "$UPDATE_CACHE" 2>/dev/null || stat -c %Y "$UPDATE_CACHE" 2>/dev/null || echo 0)
   NOW=$(date +%s)
   AGE=$(( NOW - CACHE_MOD ))
   [ "$AGE" -lt "$CACHE_MAX" ] && DO_CHECK=false
 fi
+
 if [ "$DO_CHECK" = true ]; then
-  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/mig-pre/plugin-store/test/skills/aave-v2-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
+  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/mig-pre/plugin-store/main/skills/aave-v2-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
   if [ -n "$REMOTE_VER" ]; then
     mkdir -p "$HOME/.plugin-store/update-cache"
     echo "$REMOTE_VER" > "$UPDATE_CACHE"
   fi
 fi
+
 REMOTE_VER=$(cat "$UPDATE_CACHE" 2>/dev/null || echo "$LOCAL_VER")
 if [ "$REMOTE_VER" != "$LOCAL_VER" ]; then
   echo "Update available: aave-v2-plugin v$LOCAL_VER -> v$REMOTE_VER. Updating..."
   npx skills add mig-pre/plugin-store --skill aave-v2-plugin --yes --global 2>/dev/null || true
+  echo "Updated aave-v2-plugin to v$REMOTE_VER. Please re-read this SKILL.md."
 fi
 ```
 
 ### Install onchainos CLI + Skills (auto-injected)
 
 ```bash
+# 1. Install onchainos CLI
 onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/okx/onchainos-skills/main/install.sh | sh
+
+# 2. Install onchainos skills (enables AI agent to use onchainos commands)
 npx skills add okx/onchainos-skills --yes --global
-npx skills add okx/plugin-store --skill plugin-store --yes --global
+
+# 3. Install plugin-store skills (enables plugin discovery and management)
+npx skills add mig-pre/plugin-store --skill plugin-store --yes --global
 ```
 
 ### Install aave-v2-plugin binary + launcher (auto-injected)
 
 ```bash
+# Install shared infrastructure (launcher + update checker, only once)
 LAUNCHER="$HOME/.plugin-store/launcher.sh"
+CHECKER="$HOME/.plugin-store/update-checker.py"
 if [ ! -f "$LAUNCHER" ]; then
   mkdir -p "$HOME/.plugin-store"
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/test/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
   chmod +x "$LAUNCHER"
 fi
+if [ ! -f "$CHECKER" ]; then
+  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
+fi
+
+# Clean up old installation
 rm -f "$HOME/.local/bin/aave-v2-plugin" "$HOME/.local/bin/.aave-v2-plugin-core" 2>/dev/null
+
+# Download binary
 OS=$(uname -s | tr A-Z a-z)
 ARCH=$(uname -m)
 EXT=""
@@ -73,13 +94,21 @@ case "${OS}_${ARCH}" in
   darwin_arm64)  TARGET="aarch64-apple-darwin" ;;
   darwin_x86_64) TARGET="x86_64-apple-darwin" ;;
   linux_x86_64)  TARGET="x86_64-unknown-linux-musl" ;;
+  linux_i686)    TARGET="i686-unknown-linux-musl" ;;
   linux_aarch64) TARGET="aarch64-unknown-linux-musl" ;;
-  mingw*_x86_64) TARGET="x86_64-pc-windows-msvc"; EXT=".exe" ;;
+  linux_armv7l)  TARGET="armv7-unknown-linux-musleabihf" ;;
+  mingw*_x86_64|msys*_x86_64|cygwin*_x86_64)   TARGET="x86_64-pc-windows-msvc"; EXT=".exe" ;;
+  mingw*_i686|msys*_i686|cygwin*_i686)           TARGET="i686-pc-windows-msvc"; EXT=".exe" ;;
+  mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
 curl -fsSL "https://github.com/mig-pre/plugin-store/releases/download/plugins/aave-v2-plugin@0.1.0/aave-v2-plugin-${TARGET}${EXT}" -o ~/.local/bin/.aave-v2-plugin-core${EXT}
 chmod +x ~/.local/bin/.aave-v2-plugin-core${EXT}
+
+# Symlink CLI name to universal launcher
 ln -sf "$LAUNCHER" ~/.local/bin/aave-v2-plugin
+
+# Register version
 mkdir -p "$HOME/.plugin-store/managed"
 echo "0.1.0" > "$HOME/.plugin-store/managed/aave-v2-plugin"
 ```
