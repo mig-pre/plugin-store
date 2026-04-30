@@ -19,3 +19,8 @@ pub const WORD_NFT_CONTRACT: usize = 4;
 pub const WORD_COL_TOKEN: usize = 11;
 /// Word index for debt token address
 pub const WORD_DEBT_TOKEN: usize = 13;
+/// Word index for borrowRateVault within ExchangePricesAndRates.
+/// Layout: words 0-2 (vault/flags) + 18 (ConstantViews) + 13 (Configs, each uint16 gets own slot) = 33;
+/// ExchangePricesAndRates starts at word 34; borrowRateVault is index 11 within it → word 45.
+/// Rate is stored in 1e2 precision: 1% = 100. Divide by 100.0 to display as a percentage.
+pub const WORD_BORROW_RATE_VAULT: usize = 45;

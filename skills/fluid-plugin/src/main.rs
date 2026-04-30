@@ -12,7 +12,7 @@ mod commands;
 #[derive(Parser)]
 #[command(
     name = "fluid",
-    version = "0.1.1",
+    version = "0.1.2",
     about = "Fluid Protocol — lend, borrow, and manage positions on Ethereum and Arbitrum"
 )]
 struct Cli {

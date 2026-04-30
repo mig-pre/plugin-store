@@ -70,6 +70,7 @@ pub async fn run(args: PositionsArgs) -> anyhow::Result<()> {
             is_smart_col: false, is_smart_debt: false,
             col_token: "0x0000000000000000000000000000000000000000".to_string(),
             debt_token: "0x0000000000000000000000000000000000000000".to_string(),
+            borrow_rate_vault: 0,
         });
 
         let col_tok = tokens.get(&vault_info.col_token);

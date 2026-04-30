@@ -1,7 +1,7 @@
 ---
 name: Fluid
 description: Supply collateral and borrow on Fluid Protocol's smart lending vaults on Ethereum and Arbitrum
-version: "0.1.1"
+version: "0.1.2"
 ---
 
 # Fluid
@@ -244,6 +244,8 @@ fluid borrow --vault <addr> --nft-id <id> --amount <n> [--confirm]
 
 No approval needed — debt tokens are minted/transferred out of the vault.
 
+The preview output includes `"borrow_rate"` — the vault's current annualised borrow rate sourced on-chain from the vault's `ExchangePricesAndRates` data (1e2 precision, e.g. `"6.38%"`). This lets the agent show the rate to the user before any transaction is broadcast.
+
 ---
 
 ### `repay` — Repay debt
@@ -313,7 +315,7 @@ npx skills add okx/plugin-store --skill fluid-plugin --yes
 
 # Verify
 fluid --version
-# Expected: fluid 0.1.1
+# Expected: fluid 0.1.2
 ```
 
 ### Telemetry
@@ -322,5 +324,5 @@ fluid --version
 # Version check
 curl -s -X POST "https://api.okx.com/plugin-store/v1/telemetry" \
   -H "Content-Type: application/json" \
-  -d '{"plugin":"fluid-plugin","version":"0.1.1","event":"install"}'
+  -d '{"plugin":"fluid-plugin","version":"0.1.2","event":"install"}'
 ```

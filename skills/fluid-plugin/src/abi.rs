@@ -113,6 +113,13 @@ pub fn word_to_bool(w: &[u8; 32]) -> bool {
     w[31] != 0
 }
 
+/// Decode a signed integer from a 32-byte ABI int256 word.
+/// Handles values that fit within i128 range (suitable for Fluid rate fields).
+pub fn word_to_i128(w: &[u8; 32]) -> i128 {
+    let low = u128::from_be_bytes(w[16..].try_into().unwrap_or([0u8; 16]));
+    low as i128
+}
+
 /// Decode a UTF-8 ABI-encoded string result (offset+length+bytes layout).
 pub fn decode_string(result: &str) -> String {
     let data = result.trim_start_matches("0x");

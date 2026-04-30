@@ -1,6 +1,6 @@
 schema_version: 1
 name: fluid-plugin
-version: "0.1.1"
+version: "0.1.2"
 description: "Supply and borrow on Fluid Protocol's smart collateral lending vaults on Ethereum and Arbitrum"
 author:
   name: skylavis-sky

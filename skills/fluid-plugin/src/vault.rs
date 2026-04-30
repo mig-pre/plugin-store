@@ -1,4 +1,4 @@
-use crate::abi::{selector, calldata, calldata_raw, encode_address_array, encode_address, word, word_to_address, word_to_bool};
+use crate::abi::{selector, calldata, calldata_raw, encode_address_array, encode_address, word, word_to_address, word_to_bool, word_to_i128};
 use crate::chain::{eth_call, eth_get_logs, eth_get_transaction};
 use crate::contracts::*;
 
@@ -9,6 +9,8 @@ pub struct VaultInfo {
     pub is_smart_debt: bool,
     pub col_token: String,
     pub debt_token: String,
+    /// Vault borrow rate in basis-point-like units: 1% = 100. Divide by 100.0 to display as %.
+    pub borrow_rate_vault: i64,
 }
 
 /// Fetch all vault addresses from the resolver.
@@ -73,6 +75,9 @@ pub async fn vault_infos_batch(chain_id: u64, addresses: &[String]) -> anyhow::R
         let is_smart_debt = get(WORD_IS_SMART_DEBT).map(|w| word_to_bool(&w)).unwrap_or(false);
         let col_token = get(WORD_COL_TOKEN).map(|w| word_to_address(&w)).unwrap_or_default();
         let debt_token = get(WORD_DEBT_TOKEN).map(|w| word_to_address(&w)).unwrap_or_default();
+        let borrow_rate_vault = get(WORD_BORROW_RATE_VAULT)
+            .map(|w| word_to_i128(&w) as i64)
+            .unwrap_or(0);
 
         infos.push(VaultInfo {
             address: addresses[i].clone(),
@@ -80,6 +85,7 @@ pub async fn vault_infos_batch(chain_id: u64, addresses: &[String]) -> anyhow::R
             is_smart_debt,
             col_token,
             debt_token,
+            borrow_rate_vault,
         });
     }
     Ok(infos)
@@ -102,6 +108,9 @@ pub async fn vault_info_single(chain_id: u64, vault: &str) -> anyhow::Result<Vau
         is_smart_debt: get(WORD_IS_SMART_DEBT).map(|w| word_to_bool(&w)).unwrap_or(false),
         col_token: get(WORD_COL_TOKEN).map(|w| word_to_address(&w)).unwrap_or_default(),
         debt_token: get(WORD_DEBT_TOKEN).map(|w| word_to_address(&w)).unwrap_or_default(),
+        borrow_rate_vault: get(WORD_BORROW_RATE_VAULT)
+            .map(|w| word_to_i128(&w) as i64)
+            .unwrap_or(0),
     })
 }
 

@@ -63,6 +63,7 @@ pub async fn run(args: BorrowArgs) -> anyhow::Result<()> {
         encode_address(&wallet),
     ]);
 
+    let borrow_rate_pct = vault_info.borrow_rate_vault as f64 / 100.0;
     let preview = serde_json::json!({
         "preview": true,
         "action": "borrow",
@@ -72,6 +73,7 @@ pub async fn run(args: BorrowArgs) -> anyhow::Result<()> {
         "debt_symbol": debt_sym,
         "amount": args.amount,
         "amount_raw": debt_raw.to_string(),
+        "borrow_rate": format!("{:.2}%", borrow_rate_pct),
         "wallet": wallet,
         "chain": args.chain,
         "confirm_hint": "Add --confirm to broadcast"
