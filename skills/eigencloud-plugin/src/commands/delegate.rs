@@ -38,22 +38,25 @@ pub async fn run(args: DelegateArgs) -> anyhow::Result<()> {
         resolve_wallet(CHAIN_ID).unwrap_or_else(|_| "0x0000000000000000000000000000000000000000".to_string())
     };
 
-    // N1/N2: Check current delegation status before preview or execution.
-    let current_operator = {
-        let delegated_sel = selector("delegatedTo(address)");
-        let check_data = calldata(delegated_sel, &[encode_address(&wallet)]);
-        eth_call(DELEGATION_MANAGER, &check_data).await
-            .ok()
-            .and_then(|r| decode_word(&r, 0))
-            .map(|w| decode_address(&w))
-            .unwrap_or_else(|| "0x0000000000000000000000000000000000000000".to_string())
-    };
-    let is_already_delegated = current_operator != "0x0000000000000000000000000000000000000000";
-    if is_already_delegated {
-        anyhow::bail!(
-            "Already delegated to operator {}. Run `eigencloud undelegate --confirm` first, then wait 7 days before re-delegating.",
-            current_operator
-        );
+    // Check current delegation status before preview or execution.
+    // Skip for --dry-run: calldata inspection should work regardless of on-chain state.
+    if !args.dry_run {
+        let current_operator = {
+            let delegated_sel = selector("delegatedTo(address)");
+            let check_data = calldata(delegated_sel, &[encode_address(&wallet)]);
+            eth_call(DELEGATION_MANAGER, &check_data).await
+                .ok()
+                .and_then(|r| decode_word(&r, 0))
+                .map(|w| decode_address(&w))
+                .unwrap_or_else(|| "0x0000000000000000000000000000000000000000".to_string())
+        };
+        let is_already_delegated = current_operator != "0x0000000000000000000000000000000000000000";
+        if is_already_delegated {
+            anyhow::bail!(
+                "Already delegated to operator {}. Run `eigencloud undelegate --confirm` first, then wait 7 days before re-delegating.",
+                current_operator
+            );
+        }
     }
 
     // Build delegateTo calldata.

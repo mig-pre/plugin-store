@@ -1,6 +1,6 @@
 {
   "name": "eigencloud-plugin",
-  "version": "0.1.1",
+  "version": "0.1.0",
   "description": "Restake LSTs on EigenLayer to earn AVS operator yield — stake, delegate, and manage your restaking positions",
   "author": "skylavis-sky",
   "category": "defi-protocol",

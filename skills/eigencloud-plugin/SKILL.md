@@ -1,7 +1,7 @@
 ---
 name: EigenCloud
 description: Restake LSTs on EigenLayer to earn AVS operator yield — stake, delegate, and manage your restaking positions
-version: "0.1.1"
+version: "0.1.0"
 ---
 
 # EigenCloud
@@ -199,6 +199,22 @@ eigencloud stake --token stETH --amount 0.01 --dry-run
 | Execute | `eigencloud stake --token X --amount Y --confirm` | Sends approve + depositIntoStrategy |
 | Dry-run | `eigencloud stake --token X --amount Y --dry-run` | Builds calldata only |
 
+**Preview output (no `--confirm`):**
+
+```json
+{
+  "preview": true,
+  "action": "stake",
+  "token": "stETH",
+  "amount": "0.01",
+  "token_contract": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+  "strategy": "0x93c4b944d05dfe6df7645a86cd2206016c51564d",
+  "strategy_manager": "0x858646372CC42E1A627fcE94aa7A7033e7CF075A",
+  "wallet": "0x...",
+  "steps": ["approve", "depositIntoStrategy"]
+}
+```
+
 **Output (confirmed):**
 
 ```json
@@ -208,7 +224,7 @@ eigencloud stake --token stETH --amount 0.01 --dry-run
   "token": "stETH",
   "amount": "0.01",
   "wallet": "0x...",
-  "strategy": "0x93c4b944D1e2B80D4A8d6A1af43cC64cFB2E4A04",
+  "strategy": "0x93c4b944d05dfe6df7645a86cd2206016c51564d",
   "txs": [
     {"step": "approve",             "tx_hash": "0x..."},
     {"step": "depositIntoStrategy", "tx_hash": "0x..."}
@@ -304,7 +320,7 @@ eigencloud undelegate --dry-run
 | `cbETH` | Coinbase Wrapped Staked ETH | 18 |
 | `mETH` | Mantle Staked ETH | 18 |
 | `swETH` | Swell ETH | 18 |
-| `wBETH` | Wrapped Binance Beacon ETH | 18 |
+| `wBETH` | Wrapped Beacon ETH (Binance) | 18 |
 | `sfrxETH` | Staked Frax ETH | 18 |
 | `osETH` | StakeWise Staked ETH | 18 |
 | `ETHx` | Stader ETHx | 18 |
@@ -328,5 +344,5 @@ Run `eigencloud strategies` for full addresses.
 
 ```bash
 npx skills add okx/plugin-store --skill eigencloud-plugin
-eigencloud --version   # Expected: 0.1.1
+eigencloud --version   # Expected: 0.1.0
 ```

@@ -1,6 +1,6 @@
 schema_version: 1
 name: eigencloud-plugin
-version: "0.1.1"
+version: "0.1.0"
 description: "Restake LSTs on EigenLayer to earn AVS operator yield — stake, delegate, and manage your restaking positions"
 author:
   name: skylavis-sky
@@ -23,5 +23,4 @@ build:
   binary_name: eigencloud
 
 api_calls:
-  - "https://api.eigenlayer.xyz"
-  - "https://eth.llamarpc.com"
+  - "https://ethereum.publicnode.com"
