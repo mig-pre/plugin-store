@@ -54,8 +54,44 @@ fi
 ### Install onchainos CLI + Skills (auto-injected)
 
 ```bash
-# 1. Install onchainos CLI
-onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/okx/onchainos-skills/main/install.sh | sh
+# 1. Install onchainos CLI — pin to latest release tag, verify SHA256
+#    of the installer before executing (no curl|sh from main).
+if ! command -v onchainos >/dev/null 2>&1; then
+  set -e
+  LATEST_TAG=$(curl -sSL --max-time 5 \
+    "https://api.github.com/repos/okx/onchainos-skills/releases/latest" \
+    | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+  if [ -z "$LATEST_TAG" ]; then
+    echo "ERROR: failed to resolve latest onchainos release tag (network or rate limit)." >&2
+    echo "       Manual install: https://github.com/okx/onchainos-skills" >&2
+    exit 1
+  fi
+
+  ONCHAINOS_TMP=$(mktemp -d)
+  curl -sSL --max-time 30 \
+    "https://raw.githubusercontent.com/okx/onchainos-skills/${LATEST_TAG}/install.sh" \
+    -o "$ONCHAINOS_TMP/install.sh"
+  curl -sSL --max-time 30 \
+    "https://github.com/okx/onchainos-skills/releases/download/${LATEST_TAG}/installer-checksums.txt" \
+    -o "$ONCHAINOS_TMP/installer-checksums.txt"
+
+  EXPECTED=$(awk '$2 ~ /install\.sh$/ {print $1; exit}' "$ONCHAINOS_TMP/installer-checksums.txt")
+  if command -v sha256sum >/dev/null 2>&1; then
+    ACTUAL=$(sha256sum "$ONCHAINOS_TMP/install.sh" | awk '{print $1}')
+  else
+    ACTUAL=$(shasum -a 256 "$ONCHAINOS_TMP/install.sh" | awk '{print $1}')
+  fi
+  if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
+    echo "ERROR: onchainos installer SHA256 mismatch — refusing to execute." >&2
+    echo "       expected=$EXPECTED  actual=$ACTUAL  tag=$LATEST_TAG" >&2
+    rm -rf "$ONCHAINOS_TMP"
+    exit 1
+  fi
+
+  sh "$ONCHAINOS_TMP/install.sh"
+  rm -rf "$ONCHAINOS_TMP"
+  set +e
+fi
 
 # 2. Install onchainos skills (enables AI agent to use onchainos commands)
 npx skills add okx/onchainos-skills --yes --global

@@ -77,8 +77,32 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/mig-pre/plugin-store/releases/download/plugins/go-sol-price@1.0.0/go-sol-price-${TARGET}${EXT}" -o ~/.local/bin/.go-sol-price-core${EXT}
+
+# Download binary + checksums to a sandbox, verify SHA256 before installing.
+BIN_TMP=$(mktemp -d)
+RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/go-sol-price@1.0.0"
+curl -fsSL "${RELEASE_BASE}/go-sol-price-${TARGET}${EXT}" -o "$BIN_TMP/go-sol-price${EXT}" || {
+  echo "ERROR: failed to download go-sol-price-${TARGET}${EXT}" >&2
+  rm -rf "$BIN_TMP"; exit 1; }
+curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
+  echo "ERROR: failed to download checksums.txt for go-sol-price@1.0.0" >&2
+  rm -rf "$BIN_TMP"; exit 1; }
+
+EXPECTED=$(awk -v b="go-sol-price-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
+if command -v sha256sum >/dev/null 2>&1; then
+  ACTUAL=$(sha256sum "$BIN_TMP/go-sol-price${EXT}" | awk '{print $1}')
+else
+  ACTUAL=$(shasum -a 256 "$BIN_TMP/go-sol-price${EXT}" | awk '{print $1}')
+fi
+if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
+  echo "ERROR: go-sol-price SHA256 mismatch — refusing to install." >&2
+  echo "       expected=$EXPECTED  actual=$ACTUAL  target=${TARGET}" >&2
+  rm -rf "$BIN_TMP"; exit 1
+fi
+
+mv "$BIN_TMP/go-sol-price${EXT}" ~/.local/bin/.go-sol-price-core${EXT}
 chmod +x ~/.local/bin/.go-sol-price-core${EXT}
+rm -rf "$BIN_TMP"
 
 # Symlink CLI name to universal launcher
 ln -sf "$LAUNCHER" ~/.local/bin/go-sol-price
