@@ -110,7 +110,6 @@ mkdir -p "$HOME/.plugin-store/managed"
 echo "0.4.0" > "$HOME/.plugin-store/managed/hyperliquid-plugin"
 ```
 
-
 ---
 
 

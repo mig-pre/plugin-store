@@ -24,7 +24,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/aave-v2-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aave-v2-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aave-v2-plugin/SUMMARY.md",
-      "modify_date": "1777447762",
+      "modify_date": "1777515281",
       "extra": {
         "chains": [
           "ethereum",
@@ -407,7 +407,7 @@
     },
     {
       "name": "hyperliquid-plugin",
-      "version": "0.3.6",
+      "version": "0.4.0",
       "description": "Hyperliquid on-chain perpetuals DEX — check positions, get market prices, place and cancel perpetual orders on Hyperliquid L1 (chain_id 999).",
       "author": {
         "name": "GeoGu360"
@@ -429,11 +429,12 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/hyperliquid-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid-plugin/SUMMARY.md",
-      "modify_date": "1777461286",
+      "modify_date": "1777529591",
       "extra": {
         "chains": [
           "solana",
-          "ethereum"
+          "ethereum",
+          "base"
         ],
         "protocols": [],
         "risk_level": "high"
