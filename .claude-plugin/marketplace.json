@@ -70,6 +70,15 @@
       }
     },
     {
+      "name": "euler-v2",
+      "description": "Supply, borrow and earn yield on Euler v2 - a modular lending protocol with isolated-risk vaults (EVK = Euler Vault Kit). Trigger phrases: supply to euler, deposit to euler vault, borrow from euler, repay euler loan, euler health factor, my euler positions, euler vault apy, claim euler rewards, euler markets, evk vaults.",
+      "source": "./skills/euler-v2-plugin",
+      "category": "utility",
+      "author": {
+        "name": "GeoGu360"
+      }
+    },
+    {
       "name": "fourmeme",
       "description": "Trade Four.meme bonding-curve memecoins on BNB Chain - buy and sell pre-graduate tokens, get live quotes, view holdings. Trigger phrases: buy four meme token, sell four meme, four.meme price, fourmeme quote, fourmeme positions, my fourmeme holdings, list four meme tokens, trending four.meme.",
       "source": "./skills/fourmeme-plugin",

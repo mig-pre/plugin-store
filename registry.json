@@ -221,6 +221,39 @@
       }
     },
     {
+      "name": "euler-v2",
+      "version": "0.1.0",
+      "description": "Supply, borrow and earn yield on Euler v2 - a modular lending protocol with isolated-risk vaults (EVK = Euler Vault Kit). Trigger phrases: supply to euler, deposit to euler vault, borrow from euler, repay euler loan, euler health factor, my euler positions, euler vault apy, claim euler rewards, euler markets, evk vaults.",
+      "author": {
+        "name": "GeoGu360"
+      },
+      "category": "utility",
+      "tags": [
+        "ethereum",
+        "trading",
+        "defi"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/euler-v2-plugin"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/euler-v2-plugin",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/euler-v2-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/euler-v2-plugin/SUMMARY.md",
+      "modify_date": "1777454479",
+      "extra": {
+        "chains": [
+          "ethereum",
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "high"
+      }
+    },
+    {
       "name": "fourmeme",
       "version": "0.1.0",
       "description": "Trade Four.meme bonding-curve memecoins on BNB Chain - buy and sell pre-graduate tokens, get live quotes, view holdings. Trigger phrases: buy four meme token, sell four meme, four.meme price, fourmeme quote, fourmeme positions, my fourmeme holdings, list four meme tokens, trending four.meme.",
@@ -244,7 +277,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/fourmeme-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/fourmeme-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/fourmeme-plugin/SUMMARY.md",
-      "modify_date": "1777454407",
+      "modify_date": "1777470818",
       "extra": {
         "chains": [
           "ethereum",
