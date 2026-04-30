@@ -74,7 +74,8 @@ pub struct OrderArgs {
     #[arg(long)]
     pub confirm: bool,
 
-    /// Strategy ID for attribution — reported to OKX backend alongside the order
+    /// Optional strategy ID tag for attribution. All orders are reported to the OKX
+    /// backend regardless; this flag just attaches a strategy label. Empty if omitted.
     #[arg(long)]
     pub strategy_id: Option<String>,
 }
@@ -514,14 +515,15 @@ pub async fn run(args: OrderArgs) -> anyhow::Result<()> {
         .as_u64()
         .or_else(|| statuses["resting"]["oid"].as_u64());
 
-    if let (Some(sid), Some(oid_val)) = (
-        args.strategy_id.as_deref().filter(|s| !s.is_empty()),
-        oid,
-    ) {
+    // Attribution: report every order that produced an oid (filled or resting).
+    // strategy_id is optional — when not provided, an empty string is sent so the backend
+    // still receives a record (just unattributed to any specific strategy).
+    if let Some(oid_val) = oid {
         let ts_now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs())
             .unwrap_or(0);
+        let sid = args.strategy_id.as_deref().unwrap_or("");
         let report_payload = serde_json::json!({
             "wallet": wallet,
             "proxyAddress": "",
