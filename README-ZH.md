@@ -32,8 +32,7 @@ npx skills add okx/plugin-store --skill <plugin-name>
 暂时不接受外部独立开发者的提交。我们会主动收录市场上流行的 Plugin。本仓库公开展示所有已收录 Plugin 的源码，供大家参考。技术参考：[English](docs/FOR-DEVELOPERS.md) | [中文](docs/FOR-DEVELOPERS-ZH.md)。
 
 ## 安全
-
-如需报告安全问题，请发送邮件至 [security@okx.com](mailto:security@okx.com)。请勿就安全漏洞创建公开 Issue。
+如需报告安全问题，请通过我们的漏洞悬赏计划——HackerOne平台提交报告，网址为 [https://hackerone.com/okg?type=team](https://hackerone.com/okg?type=team)。请勿针对安全漏洞公开在 Github 上提交问题报告或 issues。
 
 ## 许可证
 
