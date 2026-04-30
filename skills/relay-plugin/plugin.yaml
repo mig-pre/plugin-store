@@ -1,6 +1,6 @@
 schema_version: 1
 name: relay-plugin
-version: "0.1.1"
+version: "0.1.0"
 description: "Fast cross-chain transfers using Relay Protocol's intent-based bridge"
 author:
   name: skylavis-sky

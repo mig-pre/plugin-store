@@ -1,7 +1,7 @@
 ---
 name: Relay
 description: Fast cross-chain transfers using Relay Protocol's intent-based bridge
-version: "0.1.1"
+version: "0.1.0"
 ---
 
 # Relay
@@ -19,27 +19,41 @@ Bridge quotes and calldata are fetched from the official Relay API (`api.relay.l
 
 ## Proactive Onboarding
 
-When a user signals they are **new or just installed** this plugin — e.g. "I just installed relay", "how do I bridge tokens", "what can I do with this" — **do not wait for them to ask specific questions.** Proactively walk them through the Quickstart in order, one step at a time, waiting for confirmation before proceeding:
+When a user signals they are **new or just installed** this plugin — e.g. "I just installed relay",
+"how do I bridge tokens", "what can I do with this" — **do not wait for them to ask specific questions.**
+Proactively walk them through the Quickstart in order, one step at a time, waiting for confirmation
+before proceeding:
 
-1. **Check wallet** — run `onchainos wallet addresses --chain 1`. If no address, direct them to connect via `onchainos wallet login`. Do not proceed to write operations until a wallet is confirmed.
-2. **Check balance** — run `onchainos wallet balance --chain <source-chain>`. Ensure sufficient funds for the transfer plus gas.
-3. **Browse chains** — run `relay chains` to show what chains are supported.
-4. **Get a quote** — run `relay quote` to show expected output and fees before any on-chain action.
-5. **Preview the bridge** — run `relay bridge` without `--confirm` to review the full transaction.
-6. **Execute** — once they confirm, re-run with `--confirm`.
+1. **Check wallet** — run `onchainos wallet addresses`. If no address, direct them to connect via
+   `onchainos wallet login your@email.com`. Do not proceed to write operations until a wallet is confirmed.
+2. **Check balance** — run `onchainos wallet balance --chain <source-chain>`. Ensure the balance covers
+   the bridge amount plus gas. Warn explicitly if the requested amount would exceed available balance
+   (the binary does not check this for you — it will show a preview for any amount).
+3. **Browse supported chains** — run `relay chains` to show all 74 chains. Use `relay chains --filter <name>`
+   to search. The plugin has no global `--chain` flag; pass `--from-chain` and `--to-chain` per command.
+4. **Get a quote** — run `relay quote --from-chain <id> --to-chain <id> --token <symbol> --amount <n>`
+   to see fees and expected output before any on-chain action.
+5. **Preview the bridge** — run `relay bridge --from-chain <id> --to-chain <id> --token <symbol> --amount <n>`
+   (without `--confirm`). The output will show `"preview": true` and the resolved wallet address.
+   Verify the recipient and amount are correct.
+6. **Execute** — once the user confirms, re-run with `--confirm` appended.
+7. **Track** — use `relay status --request-id <id>` with the request_id from the bridge output.
+   ETH transfers typically resolve in ~1 second; ERC-20 (USDC/USDT/DAI) take ~2 seconds.
 
 Do not dump all steps at once. Guide conversationally — confirm each step before moving on.
 
 ## Quickstart
 
-New to Relay? Follow these steps to bridge tokens cross-chain.
+New to Relay? Follow these steps to go from zero to your first cross-chain bridge.
 
 ### Step 1 — Connect your wallet
 
 ```bash
 onchainos wallet login your@email.com
-onchainos wallet addresses --chain 1
+onchainos wallet addresses
 ```
+
+You need an EVM wallet connected to onchainos. The plugin automatically uses your active onchainos wallet as both sender and recipient.
 
 ### Step 2 — Check your balance
 
@@ -47,7 +61,9 @@ onchainos wallet addresses --chain 1
 onchainos wallet balance --chain 1
 ```
 
-You need ETH for the bridge amount plus gas fees on the source chain.
+You need ETH for the bridge amount plus source-chain gas. The binary does **not** validate your balance before
+showing a preview — it will show a valid-looking preview even if you don't have enough funds. Always verify
+the balance yourself before adding `--confirm`.
 
 ### Step 3 — Browse supported chains
 
@@ -56,35 +72,49 @@ relay chains
 relay chains --filter arbitrum
 ```
 
-### Step 4 — Get a quote (read-only, free)
+Returns chain IDs, names, native tokens, and explorer URLs for all 74 supported chains. Use the `chain_id`
+values with `--from-chain` and `--to-chain`. Note: `relay` has no global `--chain` flag — each subcommand
+takes `--from-chain` / `--to-chain` directly.
+
+### Step 4 — Get a quote (read-only, no cost)
 
 ```bash
-relay quote --from-chain 1 --to-chain 42161 --token ETH --amount 0.01
+relay quote --from-chain 1 --to-chain 42161 --token ETH --amount 0.001
 ```
 
-Output includes `amount_out`, `fee_usd`, and `steps` (ETH = 1 step, ERC-20 = 2 steps: approve + deposit).
+Output includes `amount_out`, `amount_out_usd`, `fee_usd`, `estimated_time_secs`, and `steps`.
+ETH bridges require 1 step (`deposit`). ERC-20 tokens (USDC, USDT, DAI) require 2 steps (`approve`, `deposit`).
+You can also bridge to a different token: add `--to-token USDC` to receive USDC on the destination chain.
 
 ### Step 5 — Preview the bridge (no tx sent)
 
 ```bash
-relay bridge --from-chain 1 --to-chain 42161 --token ETH --amount 0.01
+relay bridge --from-chain 1 --to-chain 42161 --token ETH --amount 0.001
 ```
 
-Output includes `"preview": true` and `request_id` — no on-chain action until `--confirm` is added.
+Output shows `"preview": true`, resolved `wallet`, `recipient`, human-readable `amount_in`/`amount_out`,
+and a hint message with the exact `relay status` command to use after execution.
+No on-chain action until `--confirm` is added.
 
 ### Step 6 — Execute the bridge
 
 ```bash
-relay bridge --from-chain 1 --to-chain 42161 --token ETH --amount 0.01 --confirm
+relay bridge --from-chain 1 --to-chain 42161 --token ETH --amount 0.001 --confirm
 ```
 
-Expected output: `"ok": true`, `"txs": [{"step": "deposit", "tx_hash": "0x..."}]`.
+Expected output: `"ok": true`, `"txs": [{"step": "deposit", "tx_hash": "0x..."}]`, and a `track` field
+with the ready-to-run status command. ETH typically arrives on the destination chain within 1–2 seconds.
+
+For ERC-20 tokens, an approval tx fires first, then the deposit. Both tx hashes appear in `txs`.
 
 ### Step 7 — Track transfer status
 
 ```bash
 relay status --request-id <request_id_from_bridge_output>
 ```
+
+Status values: `unknown` (not yet indexed — wait a few seconds), `pending` (in-flight), `success` (delivered),
+`failed`. On success, `dest_tx` contains the destination-chain tx hash.
 
 ---
 
@@ -218,7 +248,7 @@ Use the full token address for any token not listed above.
 
 ```bash
 # Install binary
-LOCAL_VER="0.1.1"
+LOCAL_VER="0.1.0"
 BINARY_URL="https://github.com/skylavis-sky/plugin-store/releases/download/relay-plugin@${LOCAL_VER}/relay-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)"
 curl -fsSL "$BINARY_URL" -o /usr/local/bin/relay
 chmod +x /usr/local/bin/relay
@@ -230,6 +260,6 @@ relay --version
 # Send telemetry (optional)
 curl -s -X POST "https://api.relay.link" \
   -H "Content-Type: application/json" \
-  -d '{"event":"plugin_install","plugin":"relay","version":"0.1.1"}' \
+  -d '{"event":"plugin_install","plugin":"relay","version":"0.1.0"}' \
   > /dev/null || true
 ```

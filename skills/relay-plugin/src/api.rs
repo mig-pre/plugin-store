@@ -197,6 +197,48 @@ pub fn resolve_token(symbol_or_addr: &str, chain_id: u64) -> String {
     }
 }
 
+/// Return a public RPC URL for a given chain ID.
+fn rpc_url_for_chain(chain_id: u64) -> &'static str {
+    match chain_id {
+        1     => "https://eth.llamarpc.com",
+        42161 => "https://arb1.arbitrum.io/rpc",
+        8453  => "https://mainnet.base.org",
+        10    => "https://mainnet.optimism.io",
+        137   => "https://polygon-rpc.com",
+        _     => "https://eth.llamarpc.com",
+    }
+}
+
+/// Return a block-explorer tx URL for a given chain ID and tx hash.
+pub fn explorer_tx_url(chain_id: u64, tx_hash: &str) -> String {
+    let base = match chain_id {
+        1     => "https://etherscan.io/tx/",
+        42161 => "https://arbiscan.io/tx/",
+        8453  => "https://basescan.org/tx/",
+        10    => "https://optimistic.etherscan.io/tx/",
+        137   => "https://polygonscan.com/tx/",
+        _     => "https://etherscan.io/tx/",
+    };
+    format!("{}{}", base, tx_hash)
+}
+
+/// Fetch native ETH balance for an address on a chain (returns raw wei as u128).
+/// Returns 0 on any error so a failed balance fetch doesn't block the bridge preview.
+pub async fn get_eth_balance(chain_id: u64, address: &str) -> u128 {
+    let rpc = rpc_url_for_chain(chain_id);
+    let client = reqwest::Client::new();
+    let body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "eth_getBalance",
+        "params": [address, "latest"],
+        "id": 1
+    });
+    let Ok(resp) = client.post(rpc).json(&body).send().await else { return 0; };
+    let Ok(val) = resp.json::<serde_json::Value>().await else { return 0; };
+    let hex = val["result"].as_str().unwrap_or("0x0");
+    u128::from_str_radix(hex.trim_start_matches("0x"), 16).unwrap_or(0)
+}
+
 pub fn token_symbol(addr: &str, _chain_id: u64) -> &'static str {
     match addr.to_lowercase().as_str() {
         "0x0000000000000000000000000000000000000000" => "ETH",

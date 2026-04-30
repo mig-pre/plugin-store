@@ -1,6 +1,6 @@
 use clap::Args;
 use tokio::time::{sleep, Duration};
-use crate::api::{get_quote, resolve_token, token_symbol, QuoteRequest, NATIVE_ETH};
+use crate::api::{get_quote, get_eth_balance, explorer_tx_url, resolve_token, token_symbol, QuoteRequest, NATIVE_ETH};
 use crate::onchainos::{extract_tx_hash, resolve_wallet, wallet_contract_call};
 
 #[derive(Args)]
@@ -118,7 +118,15 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
         destination_currency: dest_token.clone(),
         amount: amount_raw.to_string(),
         trade_type: "EXACT_INPUT".to_string(),
-    }).await?;
+    }).await.map_err(|e| {
+        let msg = e.to_string();
+        // API returns 500 for unrecognised chain IDs — surface a helpful hint
+        if msg.contains("500") || msg.contains("validating") {
+            anyhow::anyhow!("{}\nTip: run `relay chains` to see all supported chain IDs.", e)
+        } else {
+            e
+        }
+    })?;
 
     let request_id = quote.steps.first()
         .and_then(|s| s.request_id.as_deref())
@@ -145,7 +153,26 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
         .and_then(|v| v.as_str())
         .unwrap_or("unknown");
 
-    let preview = serde_json::json!({
+    // Balance warning — fetch on-chain balance and warn if amount exceeds it.
+    // Only for native ETH (ERC-20 balance check would require a separate call per token).
+    // A failed RPC returns 0 so this never blocks the preview.
+    let balance_warning: Option<String> = if origin_token == NATIVE_ETH {
+        let balance = get_eth_balance(args.from_chain, &wallet).await;
+        if balance > 0 && amount_raw > balance {
+            let bal_eth = format_value(balance, 18);
+            Some(format!(
+                "Requested {} ETH exceeds wallet balance of {} ETH. \
+                 The transaction will revert on-chain.",
+                args.amount, bal_eth
+            ))
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let mut preview = serde_json::json!({
         "preview":     true,
         "action":      "bridge",
         "token_in":    sym_in,
@@ -162,6 +189,9 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
         "steps":       steps_summary,
         "request_id":  request_id,
     });
+    if let Some(warn) = balance_warning {
+        preview["balance_warning"] = serde_json::json!(warn);
+    }
 
     if !args.confirm && !args.dry_run {
         println!("{}", serde_json::to_string_pretty(&preview)?);
@@ -197,11 +227,20 @@ pub async fn run(args: BridgeArgs) -> anyhow::Result<()> {
             let tx_hash = extract_tx_hash(&result);
             eprintln!("[relay] {} tx: {}", step_id, tx_hash);
 
-            tx_hashes.push(serde_json::json!({
+            let explorer = if !args.dry_run && !tx_hash.starts_with("0x000000000000") {
+                explorer_tx_url(step_chain, &tx_hash)
+            } else {
+                String::new()
+            };
+            let mut tx_entry = serde_json::json!({
                 "step":    step_id,
                 "tx_hash": tx_hash,
                 "chain":   step_chain,
-            }));
+            });
+            if !explorer.is_empty() {
+                tx_entry["explorer"] = serde_json::json!(explorer);
+            }
+            tx_hashes.push(tx_entry);
 
             // Wait between steps so approval confirms before deposit
             if step_id == "approve" && !args.dry_run {

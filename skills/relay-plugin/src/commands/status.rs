@@ -30,9 +30,10 @@ pub async fn run(args: StatusArgs) -> anyhow::Result<()> {
 
     println!("{}", serde_json::to_string_pretty(&out)?);
 
+    // "unknown" means not yet indexed — this is a normal transient state,
+    // not an error. Print a hint on stderr but exit 0 so callers can pipe the JSON.
     if status.status == "unknown" {
-        eprintln!("Request ID not found or not yet indexed by Relay. Check the ID and try again in a few seconds.");
-        std::process::exit(1);
+        eprintln!("[relay] Request not yet indexed. Wait a few seconds and try again.");
     }
     Ok(())
 }
