@@ -1,7 +1,8 @@
 use clap::Args;
-use crate::abi::{selector, calldata, encode_uint256, encode_int256, encode_address, parse_amount};
+use crate::abi::{selector, calldata, encode_uint256, encode_int256, encode_address, parse_amount, validate_address};
 use crate::chain::{CHAIN_ETH, chain_name};
 use crate::contracts::NATIVE_ETH;
+use crate::nft::{balance_of, token_of_owner_by_index};
 use crate::onchainos::{resolve_wallet, wallet_contract_call, extract_tx_hash};
 use crate::token::token_infos;
 use crate::vault::vault_info_single;
@@ -32,12 +33,21 @@ pub struct SupplyArgs {
 }
 
 pub async fn run(args: SupplyArgs) -> anyhow::Result<()> {
+    validate_address(&args.vault, "--vault")?;
+
     let wallet = match &args.wallet {
         Some(w) => w.clone(),
         None => resolve_wallet(args.chain)?,
     };
 
     let vault_info = vault_info_single(args.chain, &args.vault).await?;
+    if vault_info.col_token == "0x0000000000000000000000000000000000000000" {
+        anyhow::bail!(
+            "Vault {} could not be resolved on chain {}. \
+             Use `fluid vaults` to browse valid vault addresses.",
+            args.vault, args.chain
+        );
+    }
     let token_addrs = vec![vault_info.col_token.clone()];
     let tokens = token_infos(args.chain, &token_addrs).await;
 
@@ -113,11 +123,23 @@ pub async fn run(args: SupplyArgs) -> anyhow::Result<()> {
     )?;
     let tx_hash = extract_tx_hash(&resp);
 
+    // For new positions (nft_id == 0), retrieve the minted NFT ID so the user
+    // knows what to pass to borrow/repay/withdraw.
+    let minted_nft_id = if args.nft_id == 0 && !args.dry_run {
+        match balance_of(args.chain, &wallet).await {
+            Ok(bal) if bal > 0 => token_of_owner_by_index(args.chain, &wallet, bal - 1).await.ok(),
+            _ => None,
+        }
+    } else {
+        None
+    };
+    let reported_nft_id = minted_nft_id.unwrap_or(args.nft_id);
+
     let out = serde_json::json!({
         "ok": true,
         "action": "supply",
         "vault": args.vault,
-        "nft_id": args.nft_id,
+        "nft_id": reported_nft_id,
         "col_symbol": col_sym,
         "amount": args.amount,
         "approve_tx_hash": approve_hash,

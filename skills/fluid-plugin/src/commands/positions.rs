@@ -50,7 +50,7 @@ pub async fn run(args: PositionsArgs) -> anyhow::Result<()> {
     let mut token_addrs: Vec<String> = Vec::new();
 
     for nft_id in &nft_ids {
-        let vault_addr = vault_for_nft(args.chain, *nft_id).await?;
+        let vault_addr = vault_for_nft(args.chain, *nft_id, &wallet).await?;
         if !vault_cache.contains_key(&vault_addr) {
             let info = vault_info_single(args.chain, &vault_addr).await?;
             for a in [&info.col_token, &info.debt_token] {
@@ -64,7 +64,7 @@ pub async fn run(args: PositionsArgs) -> anyhow::Result<()> {
 
     let mut result = Vec::new();
     for (i, nft_id) in nft_ids.iter().enumerate() {
-        let vault_addr = vault_for_nft(args.chain, *nft_id).await?;
+        let vault_addr = vault_for_nft(args.chain, *nft_id, &wallet).await?;
         let vault_info = vault_cache.get(&vault_addr).cloned().unwrap_or_else(|| crate::vault::VaultInfo {
             address: vault_addr.clone(),
             is_smart_col: false, is_smart_debt: false,

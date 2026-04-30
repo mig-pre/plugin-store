@@ -1,6 +1,6 @@
 use clap::Args;
-use crate::abi::{selector, calldata, encode_uint256, encode_int256, encode_address, parse_amount};
-use crate::chain::{CHAIN_ETH, chain_name};
+use crate::abi::{selector, calldata, encode_uint256, encode_int256, encode_address, parse_amount, validate_address};
+use crate::chain::{CHAIN_ETH, chain_name, eth_call_simulate};
 use crate::contracts::NATIVE_ETH;
 use crate::onchainos::{resolve_wallet, wallet_contract_call, extract_tx_hash};
 use crate::token::token_infos;
@@ -32,6 +32,8 @@ pub struct RepayArgs {
 }
 
 pub async fn run(args: RepayArgs) -> anyhow::Result<()> {
+    validate_address(&args.vault, "--vault")?;
+
     let wallet = match &args.wallet {
         Some(w) => w.clone(),
         None => resolve_wallet(args.chain)?,
@@ -87,6 +89,18 @@ pub async fn run(args: RepayArgs) -> anyhow::Result<()> {
     if !args.confirm && !args.dry_run {
         println!("{}", serde_json::to_string_pretty(&preview)?);
         return Ok(());
+    }
+
+    // Simulate operate() BEFORE sending any approval — catches stuck positions
+    // (Fluid error 0x60121cca) and other reverts without wasting gas on approvals.
+    eprintln!("[fluid] Simulating repay via eth_call...");
+    if let Err(sim_err) = eth_call_simulate(args.chain, &args.vault, &op_data, &wallet).await {
+        anyhow::bail!(
+            "Repay simulation failed (the vault would revert on-chain): {}\n\
+             The position may be below the protocol minimum floor. \
+             Try repaying the full debt amount, or use the Fluid app to close the position.",
+            sim_err
+        );
     }
 
     let mut approve_hash: Option<String> = None;

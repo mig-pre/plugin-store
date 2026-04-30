@@ -64,7 +64,21 @@ pub async fn run(args: VaultsArgs) -> anyhow::Result<()> {
         })
     }).collect();
 
-    let out = serde_json::json!({
+    // Count by type across ALL matching vaults (not just the displayed slice)
+    let all_filtered: Vec<_> = all_infos.iter().filter(|v| {
+        if args.all { true } else { !v.is_smart_col && !v.is_smart_debt }
+    }).collect();
+    let total_filtered = all_filtered.len();
+
+    let type_breakdown: std::collections::BTreeMap<String, usize> = {
+        let mut m = std::collections::BTreeMap::new();
+        for v in &all_filtered {
+            *m.entry(vault_type(v).to_string()).or_insert(0) += 1;
+        }
+        m
+    };
+
+    let mut out = serde_json::json!({
         "chain":        args.chain,
         "chain_name":   chain_name(args.chain),
         "showing":      vault_list.len(),
@@ -72,6 +86,18 @@ pub async fn run(args: VaultsArgs) -> anyhow::Result<()> {
         "filter":       if args.all { "all" } else { "T1 only" },
         "vaults":       vault_list,
     });
+
+    // When --all is set, add a type breakdown so users know to use --limit N to see all types
+    if args.all && vault_list.len() < total_filtered {
+        out["type_breakdown"] = serde_json::json!(type_breakdown);
+        out["note"] = serde_json::json!(format!(
+            "Showing {} of {} vaults. Use --limit {} to see all.",
+            vault_list.len(), total_filtered, total_filtered
+        ));
+    } else if args.all {
+        out["type_breakdown"] = serde_json::json!(type_breakdown);
+    }
+
     println!("{}", serde_json::to_string_pretty(&out)?);
     Ok(())
 }

@@ -1,6 +1,6 @@
 use clap::Args;
-use crate::abi::{selector, calldata, encode_uint256, encode_int256, encode_address, parse_amount};
-use crate::chain::{CHAIN_ETH, chain_name};
+use crate::abi::{selector, calldata, encode_uint256, encode_int256, encode_address, parse_amount, validate_address};
+use crate::chain::{CHAIN_ETH, chain_name, eth_call_simulate};
 use crate::onchainos::{resolve_wallet, wallet_contract_call, extract_tx_hash};
 use crate::token::token_infos;
 use crate::vault::vault_info_single;
@@ -31,6 +31,8 @@ pub struct BorrowArgs {
 }
 
 pub async fn run(args: BorrowArgs) -> anyhow::Result<()> {
+    validate_address(&args.vault, "--vault")?;
+
     let wallet = match &args.wallet {
         Some(w) => w.clone(),
         None => resolve_wallet(args.chain)?,
@@ -78,6 +80,19 @@ pub async fn run(args: BorrowArgs) -> anyhow::Result<()> {
     if !args.confirm && !args.dry_run {
         println!("{}", serde_json::to_string_pretty(&preview)?);
         return Ok(());
+    }
+
+    // Simulate operate() before broadcasting — catches minimum-position violations
+    // (Fluid error 0x60121cca) before any on-chain action, saving gas.
+    eprintln!("[fluid] Simulating borrow via eth_call...");
+    if let Err(sim_err) = eth_call_simulate(args.chain, &args.vault, &op_data, &wallet).await {
+        anyhow::bail!(
+            "Borrow simulation failed (the vault would revert on-chain): {}\n\
+             This usually means the borrow amount is below the vault minimum, \
+             or your position lacks sufficient collateral. \
+             Check `fluid positions` for your current collateral balance.",
+            sim_err
+        );
     }
 
     // Borrow: no approval needed — debt token comes out of the vault to the wallet

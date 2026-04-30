@@ -1,5 +1,5 @@
 use crate::abi::{selector, calldata, calldata_raw, encode_address_array, encode_address, word, word_to_address, word_to_bool};
-use crate::chain::eth_call;
+use crate::chain::{eth_call, eth_get_logs, eth_get_transaction};
 use crate::contracts::*;
 
 #[derive(Debug, Clone)]
@@ -115,8 +115,8 @@ pub fn vault_type(info: &VaultInfo) -> &'static str {
     }
 }
 
-/// Get the vault address for a given NFT ID.
-pub async fn vault_for_nft(chain_id: u64, nft_id: u64) -> anyhow::Result<String> {
+/// Get the vault address for a given NFT ID via VaultResolver (works on ETH, fails on ARB).
+async fn vault_for_nft_resolver(chain_id: u64, nft_id: u64) -> anyhow::Result<String> {
     let sel = selector("getVaultAddressFromNftId(uint256)");
     let data = calldata(sel, &[{
         let mut w = [0u8; 32];
@@ -125,5 +125,53 @@ pub async fn vault_for_nft(chain_id: u64, nft_id: u64) -> anyhow::Result<String>
     }]);
     let result = eth_call(chain_id, VAULT_RESOLVER, &data).await?;
     let w = word(&result, 0).ok_or_else(|| anyhow::anyhow!("No result for vault_for_nft"))?;
-    Ok(word_to_address(&w))
+    let addr = word_to_address(&w);
+    if addr == "0x0000000000000000000000000000000000000000" {
+        anyhow::bail!("VaultResolver returned zero address for NFT #{}", nft_id);
+    }
+    Ok(addr)
+}
+
+/// Get the vault address for a given NFT by finding the mint transaction.
+/// When a user calls operate(0, ...) on a vault, the vault mints the NFT.
+/// The transaction's `to` field is the vault address.
+async fn vault_for_nft_from_mint_tx(chain_id: u64, nft_id: u64, owner: &str) -> anyhow::Result<String> {
+    // ERC-721 Transfer(address indexed from, address indexed to, uint256 indexed tokenId)
+    // topic0 = keccak256("Transfer(address,address,uint256)")
+    let transfer_topic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+    // topic1 = from = 0x0 (mint)
+    let from_topic = "0x0000000000000000000000000000000000000000000000000000000000000000";
+    // topic2 = to = owner (padded)
+    let owner_hex = owner.trim_start_matches("0x");
+    let to_topic = format!("0x{:0>64}", owner_hex.to_lowercase());
+    // topic3 = tokenId = nft_id (padded)
+    let token_topic = format!("0x{:064x}", nft_id);
+
+    let logs = eth_get_logs(
+        chain_id,
+        NFT_CONTRACT,
+        &[Some(transfer_topic), Some(from_topic), Some(to_topic.as_str()), Some(token_topic.as_str())],
+    ).await?;
+
+    if logs.is_empty() {
+        anyhow::bail!(
+            "No mint event found for NFT #{} on chain {}. \
+             The position may belong to a different owner or chain.",
+            nft_id, chain_id
+        );
+    }
+
+    let tx_hash = &logs[0].transaction_hash;
+    let tx = eth_get_transaction(chain_id, tx_hash).await?;
+    tx.to.ok_or_else(|| anyhow::anyhow!("Mint tx {} has no `to` field", tx_hash))
+}
+
+/// Get the vault address for a given NFT ID.
+/// Tries the VaultResolver first (fast, works on ETH). Falls back to mint-tx lookup (works on ARB).
+pub async fn vault_for_nft(chain_id: u64, nft_id: u64, owner: &str) -> anyhow::Result<String> {
+    match vault_for_nft_resolver(chain_id, nft_id).await {
+        Ok(addr) => return Ok(addr),
+        Err(_) => {}
+    }
+    vault_for_nft_from_mint_tx(chain_id, nft_id, owner).await
 }

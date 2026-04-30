@@ -1,5 +1,5 @@
 use clap::Args;
-use crate::abi::{selector, calldata, encode_uint256, encode_int256, encode_address, parse_amount};
+use crate::abi::{selector, calldata, encode_uint256, encode_int256, encode_address, parse_amount, validate_address};
 use crate::chain::{CHAIN_ETH, chain_name};
 use crate::onchainos::{resolve_wallet, wallet_contract_call, extract_tx_hash};
 use crate::token::token_infos;
@@ -31,6 +31,8 @@ pub struct WithdrawArgs {
 }
 
 pub async fn run(args: WithdrawArgs) -> anyhow::Result<()> {
+    validate_address(&args.vault, "--vault")?;
+
     let wallet = match &args.wallet {
         Some(w) => w.clone(),
         None => resolve_wallet(args.chain)?,

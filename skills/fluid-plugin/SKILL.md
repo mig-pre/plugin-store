@@ -1,7 +1,7 @@
 ---
 name: Fluid
 description: Supply collateral and borrow on Fluid Protocol's smart lending vaults on Ethereum and Arbitrum
-version: "0.1.0"
+version: "0.1.1"
 ---
 
 # Fluid
@@ -239,6 +239,7 @@ fluid borrow --vault <addr> --nft-id <id> --amount <n> [--confirm]
 | `--amount` | yes | Borrow amount (human-readable) |
 | `--chain` | no | Chain ID (default: 1) |
 | `--wallet` | no | Signer address (default: active wallet) |
+| `--dry-run` | no | Simulate (stub hashes, no broadcast) |
 | `--confirm` | no | Required to broadcast |
 
 No approval needed — debt tokens are minted/transferred out of the vault.
@@ -258,6 +259,7 @@ fluid repay --vault <addr> --nft-id <id> --amount <n> [--confirm]
 | `--amount` | yes | Repay amount (human-readable) |
 | `--chain` | no | Chain ID (default: 1) |
 | `--wallet` | no | Signer address (default: active wallet) |
+| `--dry-run` | no | Simulate (stub hashes, no broadcast) |
 | `--confirm` | no | Required to broadcast |
 
 **Approval flow**: For ERC-20 debt tokens, an `approve(vault, amount)` tx fires first. For native ETH debt, no approval needed.
@@ -277,6 +279,7 @@ fluid withdraw --vault <addr> --nft-id <id> --amount <n> [--confirm]
 | `--amount` | yes | Withdraw amount (human-readable) |
 | `--chain` | no | Chain ID (default: 1) |
 | `--wallet` | no | Signer address (default: active wallet) |
+| `--dry-run` | no | Simulate (stub hashes, no broadcast) |
 | `--confirm` | no | Required to broadcast |
 
 No approval needed — collateral is returned directly to your wallet.
@@ -310,7 +313,7 @@ npx skills add okx/plugin-store --skill fluid-plugin --yes
 
 # Verify
 fluid --version
-# Expected: fluid 0.1.0
+# Expected: fluid 0.1.1
 ```
 
 ### Telemetry
@@ -319,5 +322,5 @@ fluid --version
 # Version check
 curl -s -X POST "https://api.okx.com/plugin-store/v1/telemetry" \
   -H "Content-Type: application/json" \
-  -d '{"plugin":"fluid-plugin","version":"0.1.0","event":"install"}'
+  -d '{"plugin":"fluid-plugin","version":"0.1.1","event":"install"}'
 ```

@@ -177,3 +177,20 @@ pub fn parse_amount(s: &str, decimals: u8) -> anyhow::Result<u128> {
     let scale = 10u128.pow(decimals as u32);
     Ok(whole * scale + frac)
 }
+
+/// Validate that a string is a well-formed 20-byte Ethereum address (0x + 40 hex chars).
+pub fn validate_address(addr: &str, field: &str) -> anyhow::Result<()> {
+    let stripped = addr.strip_prefix("0x").or_else(|| addr.strip_prefix("0X"))
+        .ok_or_else(|| anyhow::anyhow!("{} '{}' must start with 0x", field, addr))?;
+    if stripped.len() != 40 {
+        anyhow::bail!(
+            "{} '{}' is not a valid Ethereum address (expected 0x + 40 hex chars, got {} chars after 0x).\n\
+             Use `fluid vaults` to browse valid vault addresses.",
+            field, addr, stripped.len()
+        );
+    }
+    if !stripped.chars().all(|c| c.is_ascii_hexdigit()) {
+        anyhow::bail!("{} '{}' contains non-hex characters", field, addr);
+    }
+    Ok(())
+}
