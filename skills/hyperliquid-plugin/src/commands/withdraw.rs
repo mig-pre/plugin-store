@@ -29,38 +29,62 @@ const WITHDRAWAL_FEE_USDC: f64 = 1.0;
 
 pub async fn run(args: WithdrawArgs) -> anyhow::Result<()> {
     if args.amount <= 0.0 {
-        anyhow::bail!("--amount must be positive (got {})", args.amount);
+        println!("{}", super::error_response(
+            &format!("--amount must be positive (got {})", args.amount),
+            "INVALID_ARGUMENT",
+            "Provide a positive USDC amount with --amount."
+        ));
+        return Ok(());
     }
     if args.amount < 2.0 {
-        anyhow::bail!(
-            "Minimum withdrawal is $2 USDC (got ${}).",
-            args.amount
-        );
+        println!("{}", super::error_response(
+            &format!("Minimum withdrawal is $2 USDC (got ${}).", args.amount),
+            "INVALID_ARGUMENT",
+            "Provide an amount of at least $2 USDC."
+        ));
+        return Ok(());
     }
 
     let info = info_url();
     let exchange = exchange_url();
     let nonce = now_ms();
 
-    let (wallet, sign_chain_id) = resolve_wallet_with_chain(ARBITRUM_CHAIN_ID)?;
+    let (wallet, sign_chain_id) = match resolve_wallet_with_chain(ARBITRUM_CHAIN_ID) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "WALLET_NOT_FOUND", "Run onchainos wallet addresses to verify login."));
+            return Ok(());
+        }
+    };
     let destination = args.destination.clone().unwrap_or_else(|| wallet.clone());
 
     // Format amount as string with up to 8 decimal places, trimming trailing zeros
     let amount_str = format!("{}", args.amount);
 
     // Fetch withdrawable balance
-    let state = get_clearinghouse_state(info, &wallet).await?;
+    let state = match get_clearinghouse_state(info, &wallet).await {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry."));
+            return Ok(());
+        }
+    };
     let withdrawable: f64 = state["withdrawable"]
         .as_str().and_then(|s| s.parse().ok()).unwrap_or(0.0);
 
     // Check balance covers amount + $1 fee
     let total_deducted = args.amount + WITHDRAWAL_FEE_USDC;
     if total_deducted > withdrawable {
-        anyhow::bail!(
-            "Insufficient balance: withdrawal ${:.2} + $1.00 fee = ${:.2} required, \
-             but only ${:.2} USDC available.",
-            args.amount, total_deducted, withdrawable
-        );
+        println!("{}", super::error_response(
+            &format!(
+                "Insufficient balance: withdrawal ${:.2} + $1.00 fee = ${:.2} required, \
+                 but only ${:.2} USDC available.",
+                args.amount, total_deducted, withdrawable
+            ),
+            "INSUFFICIENT_BALANCE",
+            "Ensure your Hyperliquid perp balance covers the withdrawal amount plus the $1 fee."
+        ));
+        return Ok(());
     }
 
     if args.dry_run || !args.confirm {
@@ -84,11 +108,28 @@ pub async fn run(args: WithdrawArgs) -> anyhow::Result<()> {
         "Withdrawing {} USDC to {} (+ $1.00 fee deducted from balance)...",
         args.amount, destination
     );
-    let signed = onchainos_hl_sign_withdraw(&destination, &amount_str, nonce, &wallet, sign_chain_id)?;
-    let result = submit_exchange_request(exchange, signed).await?;
+    let signed = match onchainos_hl_sign_withdraw(&destination, &amount_str, nonce, &wallet, sign_chain_id) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "SIGNING_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+            return Ok(());
+        }
+    };
+    let result = match submit_exchange_request(exchange, signed).await {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "TX_SUBMIT_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+            return Ok(());
+        }
+    };
 
     if result["status"].as_str() == Some("err") {
-        anyhow::bail!("Withdraw failed: {}", result["response"].as_str().unwrap_or("unknown error"));
+        println!("{}", super::error_response(
+            &format!("Withdraw failed: {}", result["response"].as_str().unwrap_or("unknown error")),
+            "TX_SUBMIT_FAILED",
+            "Retry the command. If the issue persists, check onchainos status."
+        ));
+        return Ok(());
     }
 
     println!("{}", serde_json::json!({

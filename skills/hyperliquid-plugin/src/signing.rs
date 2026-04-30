@@ -24,11 +24,12 @@ pub fn round_px(px: f64, sz_decimals: u32) -> String {
     if px == 0.0 {
         return "0".to_string();
     }
-    if sz_decimals == 0 {
-        return format!("{}", px.round() as i64);
-    }
+    // Match Python SDK: f"{px:.{sz_decimals}g}" uses at minimum 1 significant figure.
+    // Without this, coins with sz_decimals=0 and price < 0.5 (e.g. BIO at $0.032)
+    // produce price="0" via px.round() → HL rejects with "Order has invalid price."
+    let sig_figs = sz_decimals.max(1);
     let mag = px.abs().log10().floor() as i32;
-    let decimal_places = (sz_decimals as i32) - mag - 1;
+    let decimal_places = (sig_figs as i32) - mag - 1;
     let rounded = if decimal_places <= 0 {
         let factor = 10_f64.powi(-decimal_places);
         (px / factor).round() * factor
@@ -48,26 +49,13 @@ pub fn round_px(px: f64, sz_decimals: u32) -> String {
     }
 }
 
-/// Compute slippage-protected price for a market order.
-/// is_buy=true → price * 1.05 (pay up to 5% above mid)
-/// is_buy=false → price * 0.95 (accept down to 5% below mid)
-/// Rounds to sz_decimals significant figures to match HL's validation.
-pub fn market_slippage_px(mid_px: f64, is_buy: bool, sz_decimals: u32) -> String {
-    let px = if is_buy { mid_px * 1.05 } else { mid_px * 0.95 };
-    round_px(px, sz_decimals)
-}
-
 /// Slippage-protected limit price for market trigger orders.
 /// When a trigger fires as "market", HL still needs a worst-acceptable-price.
-/// Convention: 10% slippage tolerance (same as HL web UI default).
+/// slippage_pct: tolerance in percent (e.g. 10.0 = 10%, matching HL web UI default).
 /// Uses round_px so the limit price obeys the same tick-size rules as the trigger price.
-fn trigger_limit_px(trigger_px: f64, is_buy: bool, sz_decimals: u32) -> String {
-    let px = if is_buy {
-        trigger_px * 1.1
-    } else {
-        trigger_px * 0.9
-    };
-    round_px(px, sz_decimals)
+fn trigger_limit_px(trigger_px: f64, is_buy: bool, sz_decimals: u32, slippage_pct: f64) -> String {
+    let multiplier = if is_buy { 1.0 + slippage_pct / 100.0 } else { 1.0 - slippage_pct / 100.0 };
+    round_px(trigger_px * multiplier, sz_decimals)
 }
 
 // ─── Entry orders ────────────────────────────────────────────────────────────
@@ -128,6 +116,20 @@ pub fn build_limit_order_action(
     })
 }
 
+/// Build an `order` action carrying multiple order elements in a single signed request.
+///
+/// Each element of `orders` is a pre-built order JSON object produced by one of the
+/// per-order builders above (or an inline `json!` following the same schema).
+/// One EIP-712 signature covers the whole batch; HL returns a `statuses[]` array
+/// with one entry per order, in the same order as input.
+pub fn build_batch_order_action(orders: Vec<Value>) -> Value {
+    json!({
+        "type": "order",
+        "orders": orders,
+        "grouping": "na"
+    })
+}
+
 // ─── Close ───────────────────────────────────────────────────────────────────
 
 /// Market close: reduce-only IOC limit at slippage price in the opposite direction.
@@ -173,6 +175,7 @@ pub fn build_trigger_order_element(
     is_market: bool,
     limit_px_override: Option<&str>,
     sz_decimals: u32,
+    trigger_slippage_pct: f64,
 ) -> Value {
     let is_buy = !position_is_long; // close opposite of entry
 
@@ -180,7 +183,7 @@ pub fn build_trigger_order_element(
         Some(px) => px.to_string(),
         None if is_market => {
             let trigger_px: f64 = trigger_px_str.parse().unwrap_or(0.0);
-            trigger_limit_px(trigger_px, is_buy, sz_decimals)
+            trigger_limit_px(trigger_px, is_buy, sz_decimals, trigger_slippage_pct)
         }
         None => trigger_px_str.to_string(),
     };
@@ -211,17 +214,18 @@ pub fn build_standalone_tpsl_action(
     sl_px: Option<&str>,
     tp_px: Option<&str>,
     sz_decimals: u32,
+    trigger_slippage_pct: f64,
 ) -> Value {
     let mut orders = vec![];
 
     if let Some(px) = sl_px {
         orders.push(build_trigger_order_element(
-            asset, position_is_long, size_str, "sl", px, true, None, sz_decimals,
+            asset, position_is_long, size_str, "sl", px, true, None, sz_decimals, trigger_slippage_pct,
         ));
     }
     if let Some(px) = tp_px {
         orders.push(build_trigger_order_element(
-            asset, position_is_long, size_str, "tp", px, true, None, sz_decimals,
+            asset, position_is_long, size_str, "tp", px, true, None, sz_decimals, trigger_slippage_pct,
         ));
     }
 
@@ -243,18 +247,19 @@ pub fn build_bracketed_order_action(
     sl_px: Option<&str>,
     tp_px: Option<&str>,
     sz_decimals: u32,
+    trigger_slippage_pct: f64,
 ) -> Value {
     let entry_is_long = position_is_long;
     let mut orders = vec![entry_order];
 
     if let Some(px) = sl_px {
         orders.push(build_trigger_order_element(
-            asset, entry_is_long, size_str, "sl", px, true, None, sz_decimals,
+            asset, entry_is_long, size_str, "sl", px, true, None, sz_decimals, trigger_slippage_pct,
         ));
     }
     if let Some(px) = tp_px {
         orders.push(build_trigger_order_element(
-            asset, entry_is_long, size_str, "tp", px, true, None, sz_decimals,
+            asset, entry_is_long, size_str, "tp", px, true, None, sz_decimals, trigger_slippage_pct,
         ));
     }
 

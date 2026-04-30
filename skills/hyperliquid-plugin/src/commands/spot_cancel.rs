@@ -34,17 +34,32 @@ pub async fn run(args: SpotCancelArgs) -> anyhow::Result<()> {
     let exchange = exchange_url();
     let nonce = now_ms();
 
-    let wallet = resolve_wallet(CHAIN_ID)?;
+    let wallet = match resolve_wallet(CHAIN_ID) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "WALLET_NOT_FOUND", "Run onchainos wallet addresses to verify login."));
+            return Ok(());
+        }
+    };
 
     // ── Case 1: single order by ID ────────────────────────────────────────────
     if let Some(oid) = args.order_id {
-        let coin_str = args
-            .coin
-            .as_deref()
-            .ok_or_else(|| anyhow::anyhow!("--coin is required when using --order-id"))?;
+        let coin_str = match args.coin.as_deref() {
+            Some(c) => c,
+            None => {
+                println!("{}", super::error_response("--coin is required when using --order-id", "INVALID_ARGUMENT", "Provide --coin <SYMBOL> alongside --order-id."));
+                return Ok(());
+            }
+        };
         let coin = normalize_coin(coin_str);
 
-        let (asset_idx, market_idx, _) = get_spot_asset_meta(info, &coin).await?;
+        let (asset_idx, market_idx, _) = match get_spot_asset_meta(info, &coin).await {
+            Ok(v) => v,
+            Err(e) => {
+                println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry."));
+                return Ok(());
+            }
+        };
         let action = build_cancel_action(asset_idx, oid);
 
         println!(
@@ -72,8 +87,20 @@ pub async fn run(args: SpotCancelArgs) -> anyhow::Result<()> {
             return Ok(());
         }
 
-        let signed = onchainos_hl_sign(&action, nonce, &wallet, ARBITRUM_CHAIN_ID, true, false)?;
-        let result = submit_exchange_request(exchange, signed).await?;
+        let signed = match onchainos_hl_sign(&action, nonce, &wallet, ARBITRUM_CHAIN_ID, true, false) {
+            Ok(v) => v,
+            Err(e) => {
+                println!("{}", super::error_response(&format!("{:#}", e), "SIGNING_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+                return Ok(());
+            }
+        };
+        let result = match submit_exchange_request(exchange, signed).await {
+            Ok(v) => v,
+            Err(e) => {
+                println!("{}", super::error_response(&format!("{:#}", e), "TX_SUBMIT_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+                return Ok(());
+            }
+        };
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
@@ -93,13 +120,25 @@ pub async fn run(args: SpotCancelArgs) -> anyhow::Result<()> {
 
     let spot_coin_filter: Option<(String, usize, usize)> = if let Some(ref c) = args.coin {
         let coin = normalize_coin(c);
-        let (asset_idx, market_idx, _) = get_spot_asset_meta(info, &coin).await?;
+        let (asset_idx, market_idx, _) = match get_spot_asset_meta(info, &coin).await {
+            Ok(v) => v,
+            Err(e) => {
+                println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry."));
+                return Ok(());
+            }
+        };
         Some((coin, asset_idx, market_idx))
     } else {
         None
     };
 
-    let open_orders = get_open_orders(info, &wallet).await?;
+    let open_orders = match get_open_orders(info, &wallet).await {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry."));
+            return Ok(());
+        }
+    };
     let empty_vec = vec![];
     let all_orders = open_orders.as_array().unwrap_or(&empty_vec);
 
@@ -214,8 +253,20 @@ pub async fn run(args: SpotCancelArgs) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let signed = onchainos_hl_sign(&action, nonce, &wallet, ARBITRUM_CHAIN_ID, true, false)?;
-    let result = submit_exchange_request(exchange, signed).await?;
+    let signed = match onchainos_hl_sign(&action, nonce, &wallet, ARBITRUM_CHAIN_ID, true, false) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "SIGNING_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+            return Ok(());
+        }
+    };
+    let result = match submit_exchange_request(exchange, signed).await {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "TX_SUBMIT_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+            return Ok(());
+        }
+    };
 
     println!(
         "{}",

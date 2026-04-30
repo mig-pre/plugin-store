@@ -102,25 +102,40 @@ fn core_writer_calldata(action_id: u32, abi_params: &[u8]) -> String {
 
 pub async fn run(args: EvmSendArgs) -> anyhow::Result<()> {
     if args.amount <= 0.0 {
-        anyhow::bail!("--amount must be positive");
+        println!("{}", super::error_response("--amount must be positive", "INVALID_ARGUMENT", "Provide a positive USDC amount with --amount."));
+        return Ok(());
     }
 
     let usdc_units = (args.amount * 1_000_000.0).round() as u64;
-    let wallet = resolve_wallet(CHAIN_ID)?;
+    let wallet = match resolve_wallet(CHAIN_ID) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "WALLET_NOT_FOUND", "Run onchainos wallet addresses to verify login."));
+            return Ok(());
+        }
+    };
     let destination = args.to.clone().unwrap_or_else(|| wallet.clone());
 
     // Check HyperCore perp withdrawable balance
-    let state = get_clearinghouse_state(info_url(), &wallet).await?;
+    let state = match get_clearinghouse_state(info_url(), &wallet).await {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry."));
+            return Ok(());
+        }
+    };
     let withdrawable: f64 = state["withdrawable"]
         .as_str()
         .and_then(|s| s.parse().ok())
         .unwrap_or(0.0);
 
     if args.amount > withdrawable {
-        anyhow::bail!(
-            "Insufficient perp balance: requested {:.4} USDC, withdrawable {:.4} USDC",
-            args.amount, withdrawable
-        );
+        println!("{}", super::error_response(
+            &format!("Insufficient perp balance: requested {:.4} USDC, withdrawable {:.4} USDC", args.amount, withdrawable),
+            "INSUFFICIENT_BALANCE",
+            "Ensure you have enough USDC in your perp account before sending to HyperEVM."
+        ));
+        return Ok(());
     }
 
     // ── Build calldata ────────────────────────────────────────────────────
@@ -172,7 +187,13 @@ pub async fn run(args: EvmSendArgs) -> anyhow::Result<()> {
 
     // Step 1: Move perp → spot
     eprintln!("Step 1/2  Transferring {} USDC from perp → spot via CoreWriter...", args.amount);
-    let result1 = wallet_contract_call(CHAIN_ID, CORE_WRITER, &calldata_perp_to_spot, None, false)?;
+    let result1 = match wallet_contract_call(CHAIN_ID, CORE_WRITER, &calldata_perp_to_spot, None, false) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "TX_SUBMIT_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+            return Ok(());
+        }
+    };
 
     // Wait for step 1 to be mined before submitting step 2 (HyperCore needs the tx on-chain)
     eprintln!("  Waiting for HyperCore to process...");
@@ -186,7 +207,13 @@ pub async fn run(args: EvmSendArgs) -> anyhow::Result<()> {
 
     // Step 2: Spot → HyperEVM address
     eprintln!("Step 2/2  Sending {} USDC from spot → HyperEVM {}...", args.amount, &destination[..10]);
-    wallet_contract_call(CHAIN_ID, CORE_WRITER, &calldata_spot_to_evm, None, false)?;
+    match wallet_contract_call(CHAIN_ID, CORE_WRITER, &calldata_spot_to_evm, None, false) {
+        Ok(_) => {}
+        Err(e) => {
+            println!("{}", super::error_response(&format!("{:#}", e), "TX_SUBMIT_FAILED", "Retry the command. If the issue persists, check onchainos status."));
+            return Ok(());
+        }
+    };
 
     println!("{}", serde_json::json!({
         "ok": true,

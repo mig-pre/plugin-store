@@ -1,11 +1,11 @@
 schema_version: 1
 name: hyperliquid-plugin
-version: "0.3.6"
-description: "Trade perpetuals on Hyperliquid — check positions, get prices, place market/limit orders with TP/SL brackets, close positions, deposit USDC"
+version: "0.4.0"
+description: "Trade perpetuals on Hyperliquid - check positions, get prices, place market/limit orders with TP/SL brackets, close positions, deposit USDC"
 author:
   name: GeoGu360
   github: GeoGu360
-category: trading
+category: defi-protocol
 tags:
   - perpetuals
   - trading
