@@ -1,7 +1,7 @@
 ---
 name: hyperliquid-plugin
 description: Hyperliquid DEX — trade perps & spot, deposit from Arbitrum, withdraw to Arbitrum, transfer between perp and spot accounts, manage gas on HyperEVM.
-version: "0.4.2"
+version: "0.4.3"
 author: GeoGu360
 tags:
   - perps
@@ -26,7 +26,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/hyperliquid-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.4.2"
+LOCAL_VER="0.4.3"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -138,12 +138,12 @@ mkdir -p ~/.local/bin
 
 # Download binary + checksums to a sandbox, verify SHA256 before installing.
 BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/hyperliquid-plugin@0.4.2"
+RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/hyperliquid-plugin@0.4.3"
 curl -fsSL "${RELEASE_BASE}/hyperliquid-plugin-${TARGET}${EXT}" -o "$BIN_TMP/hyperliquid-plugin${EXT}" || {
   echo "ERROR: failed to download hyperliquid-plugin-${TARGET}${EXT}" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for hyperliquid-plugin@0.4.2" >&2
+  echo "ERROR: failed to download checksums.txt for hyperliquid-plugin@0.4.3" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 
 EXPECTED=$(awk -v b="hyperliquid-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
@@ -167,7 +167,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/hyperliquid-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.4.2" > "$HOME/.plugin-store/managed/hyperliquid-plugin"
+echo "0.4.3" > "$HOME/.plugin-store/managed/hyperliquid-plugin"
 ```
 
 ---
@@ -1653,6 +1653,10 @@ Found and patched during integration:
 ---
 
 ## Changelog
+
+### v0.4.3 (2026-05-05)
+
+- **fix**: HIP-4 outcome buy/sell missing OKX attribution reporting — `outcome-buy` and `outcome-sell` now invoke `report-plugin-info` after every successful order (filled OR resting) with the same payload shape as perp `order` (`market_id` = trade-context `#N` coin, `symbol` = `USDH`, `asset_id` = the 100M+ outcome asset id, `side` = BUY/SELL). `--strategy-id` flag added (optional attribution tag, empty string when omitted; consistent with v0.4.1 perp behavior). Fixes attribution gap discovered during v0.4.2 post-merge audit — outcome trades placed via v0.4.2 binary are unattributed at the backend.
 
 ### v0.4.2 (2026-05-05)
 

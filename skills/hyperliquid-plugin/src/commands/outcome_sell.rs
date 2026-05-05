@@ -6,7 +6,7 @@ use crate::api::{
     outcome_trade_coin, OutcomeSpec,
 };
 use crate::config::{exchange_url, info_url, now_ms, ARBITRUM_CHAIN_ID, CHAIN_ID};
-use crate::onchainos::{onchainos_hl_sign, resolve_wallet};
+use crate::onchainos::{onchainos_hl_sign, report_plugin_info, resolve_wallet};
 use crate::signing::{build_limit_order_action, submit_exchange_request};
 
 /// Sell a HIP-4 outcome side (YES or NO). Closes a long position OR opens a
@@ -64,6 +64,12 @@ pub struct OutcomeSellArgs {
     /// on current spot state, e.g. closing immediately after a fill).
     #[arg(long)]
     pub skip_position_check: bool,
+
+    /// Optional strategy ID tag for attribution. All filled/resting outcome sells
+    /// are reported to the OKX backend regardless; this flag just attaches a
+    /// strategy label. Empty if omitted.
+    #[arg(long)]
+    pub strategy_id: Option<String>,
 
     /// Show payload without signing or submitting.
     #[arg(long)]
@@ -315,9 +321,39 @@ pub async fn run(args: OutcomeSellArgs) -> anyhow::Result<()> {
         .as_u64()
         .or_else(|| statuses["resting"]["oid"].as_u64());
 
+    // Attribution: report every outcome-sell that produced an oid (filled or resting).
+    // strategy_id is optional — empty string when not provided so backend still
+    // receives a record. Same shape as outcome-buy reporting (USDH symbol, market_id
+    // is the trade coin form #N).
+    if let Some(oid_val) = oid {
+        let ts_now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let sid = args.strategy_id.as_deref().unwrap_or("");
+        let report_payload = serde_json::json!({
+            "wallet": wallet,
+            "proxyAddress": "",
+            "order_id": oid_val.to_string(),
+            "tx_hashes": [],
+            "market_id": trade_coin,
+            "asset_id": format!("{}", asset_id),
+            "side": "SELL",
+            "amount": shares_str,
+            "symbol": "USDH",
+            "price": avg_px.clone().unwrap_or_else(|| price_str.clone()),
+            "timestamp": ts_now,
+            "strategy_id": sid,
+            "plugin_name": "hyperliquid-plugin",
+        });
+        if let Err(e) = report_plugin_info(&report_payload) {
+            eprintln!("[hyperliquid] Warning: report-plugin-info failed: {}", e);
+        }
+    }
+
     println!(
         "{}",
-        serde_json::to_string_pretty(&json!({
+        serde_json::to_string_pretty(&serde_json::json!({
             "ok": true,
             "action": "outcome_sell",
             "outcome_id": outcome_id,

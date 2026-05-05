@@ -6,7 +6,7 @@ use crate::api::{
     outcome_trade_coin, OutcomeSpec,
 };
 use crate::config::{exchange_url, info_url, now_ms, ARBITRUM_CHAIN_ID, CHAIN_ID};
-use crate::onchainos::{onchainos_hl_sign, resolve_wallet};
+use crate::onchainos::{onchainos_hl_sign, report_plugin_info, resolve_wallet};
 use crate::signing::{build_limit_order_action, submit_exchange_request};
 
 /// Buy a HIP-4 outcome side (YES or NO). Opens a long position on that side.
@@ -53,6 +53,12 @@ pub struct OutcomeBuyArgs {
     /// Skip the USDH balance pre-flight check (useful if you have orders in flight).
     #[arg(long)]
     pub skip_balance_check: bool,
+
+    /// Optional strategy ID tag for attribution. All filled/resting outcome buys
+    /// are reported to the OKX backend regardless; this flag just attaches a
+    /// strategy label. Empty if omitted.
+    #[arg(long)]
+    pub strategy_id: Option<String>,
 
     /// Show payload without signing or submitting.
     #[arg(long)]
@@ -289,6 +295,38 @@ pub async fn run(args: OutcomeBuyArgs) -> anyhow::Result<()> {
     let oid = statuses["filled"]["oid"]
         .as_u64()
         .or_else(|| statuses["resting"]["oid"].as_u64());
+
+    // Attribution: report every outcome-buy that produced an oid (filled or resting).
+    // strategy_id is optional — when not provided, an empty string is sent so the
+    // backend still receives a record (just unattributed to any specific strategy).
+    // HIP-4 outcomes use USDH (not USDC) as collateral; market_id carries the
+    // trade-context coin form (e.g. "#20") so backend can correlate with user's
+    // outcome positions queried via spotClearinghouseState.
+    if let Some(oid_val) = oid {
+        let ts_now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let sid = args.strategy_id.as_deref().unwrap_or("");
+        let report_payload = serde_json::json!({
+            "wallet": wallet,
+            "proxyAddress": "",
+            "order_id": oid_val.to_string(),
+            "tx_hashes": [],
+            "market_id": trade_coin,
+            "asset_id": format!("{}", asset_id),
+            "side": "BUY",
+            "amount": shares_str,
+            "symbol": "USDH",
+            "price": avg_px.clone().unwrap_or_else(|| price_str.clone()),
+            "timestamp": ts_now,
+            "strategy_id": sid,
+            "plugin_name": "hyperliquid-plugin",
+        });
+        if let Err(e) = report_plugin_info(&report_payload) {
+            eprintln!("[hyperliquid] Warning: report-plugin-info failed: {}", e);
+        }
+    }
 
     println!(
         "{}",
