@@ -456,6 +456,13 @@ pub async fn run(market_id: &str, dry_run: bool, strategy_id: Option<&str>) -> R
             "CTF.redeemPositions"
         };
 
+        let note = if neg_risk && r.proxy && !r.eoa {
+            "dry-run WARNING: neg_risk redeem from proxy wallet is not yet supported by this plugin. \
+             Use the Polymarket web UI to redeem proxy-held neg_risk positions."
+        } else {
+            "dry-run: will redeem from whichever wallet holds the winning tokens."
+        };
+
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
@@ -475,7 +482,7 @@ pub async fn run(market_id: &str, dry_run: bool, strategy_id: Option<&str>) -> R
                     "deposit_wallet_redeemable": r.deposit_wallet,
                     "action": action,
                     "token_ids": token_ids,
-                    "note": "dry-run: will redeem from whichever wallet holds the winning tokens."
+                    "note": note,
                 }
             }))?
         );
@@ -489,17 +496,22 @@ pub async fn run(market_id: &str, dry_run: bool, strategy_id: Option<&str>) -> R
         }
     }
 
-    // Auto-detect collateral: V2 markets use pUSD, V1 use USDC.e.
-    // Hardcoding pUSD silently no-ops V1 redeems on chain (keccak256 mismatch
-    // → 0 burn, 0 payout, status=0x1, no event).
-    let mut wallets: Vec<&str> = vec![&eoa_addr];
-    if let Some(p) = proxy_addr.as_deref() { wallets.push(p); }
-    if let Some(d) = deposit_wallet_addr.as_deref() { wallets.push(d); }
-    let collateral_addr = match detect_collateral_for_position(&condition_id, &wallets).await {
-        Ok(c) => c,
-        Err(e) => {
-            println!("{}", super::error_response(&e, Some("redeem"), hint_opt));
-            return Ok(());
+    // NegRisk markets route through NegRiskAdapter.redeemPositions — the CTF collateral
+    // parameter is irrelevant and the standard positionId probe would fail anyway because
+    // neg_risk markets use a non-zero parentCollectionId inside the NegRiskAdapter.
+    // For standard binary markets, probe USDC.e vs pUSD to handle the V1/V2 cutover.
+    let collateral_addr = if neg_risk {
+        Contracts::USDC_E
+    } else {
+        let mut wallets: Vec<&str> = vec![&eoa_addr];
+        if let Some(p) = proxy_addr.as_deref() { wallets.push(p); }
+        if let Some(d) = deposit_wallet_addr.as_deref() { wallets.push(d); }
+        match detect_collateral_for_position(&condition_id, &wallets).await {
+            Ok(c) => c,
+            Err(e) => {
+                println!("{}", super::error_response(&e, Some("redeem"), hint_opt));
+                return Ok(());
+            }
         }
     };
     eprintln!(
@@ -553,7 +565,7 @@ pub async fn run_all(dry_run: bool, strategy_id: Option<&str>) -> Result<()> {
 
     let eoa_positions = get_positions(&client, &eoa_addr).await.unwrap_or_default();
     for p in &eoa_positions {
-        if p.redeemable {
+        if p.redeemable && p.current_value.unwrap_or(0.0) > 0.000_001 {
             if let Some(cid) = &p.condition_id {
                 let title = p.title.clone().unwrap_or_default();
                 if !redeemable.iter().any(|(c, _)| c == cid) {
@@ -566,7 +578,7 @@ pub async fn run_all(dry_run: bool, strategy_id: Option<&str>) -> Result<()> {
     if let Some(ref proxy) = proxy_addr {
         let proxy_positions = get_positions(&client, proxy).await.unwrap_or_default();
         for p in &proxy_positions {
-            if p.redeemable {
+            if p.redeemable && p.current_value.unwrap_or(0.0) > 0.000_001 {
                 if let Some(cid) = &p.condition_id {
                     let title = p.title.clone().unwrap_or_default();
                     if !redeemable.iter().any(|(c, _)| c == cid) {
@@ -580,7 +592,7 @@ pub async fn run_all(dry_run: bool, strategy_id: Option<&str>) -> Result<()> {
     if let Some(ref dw) = deposit_wallet_addr {
         let dw_positions = get_positions(&client, dw).await.unwrap_or_default();
         for p in &dw_positions {
-            if p.redeemable {
+            if p.redeemable && p.current_value.unwrap_or(0.0) > 0.000_001 {
                 if let Some(cid) = &p.condition_id {
                     let title = p.title.clone().unwrap_or_default();
                     if !redeemable.iter().any(|(c, _)| c == cid) {
@@ -628,7 +640,7 @@ pub async fn run_all(dry_run: bool, strategy_id: Option<&str>) -> Result<()> {
                 "data": {
                     "dry_run": true,
                     "redeemable_count": n,
-                    "estimated_pol_needed": n as f64 * POL_PER_REDEEM,
+                    "estimated_pol_needed": if deposit_wallet_addr.is_none() { n as f64 * POL_PER_REDEEM } else { 0.0 },
                     "discovered_proxy": discovered_proxy,
                     "positions": items,
                     "note": "dry-run: would redeem each position sequentially, waiting for on-chain confirmation between each."
@@ -638,20 +650,24 @@ pub async fn run_all(dry_run: bool, strategy_id: Option<&str>) -> Result<()> {
         return Ok(());
     }
 
-    // Fail fast if EOA does not have enough POL to cover all redeems.
-    let pol_balance = match check_pol_budget(&eoa_addr, n).await {
-        Ok(b) => b,
-        Err(e) => {
-            println!("{}", super::error_response(&e, Some("redeem"), hint_opt));
-            return Ok(());
-        }
-    };
-    eprintln!(
-        "[polymarket] POL budget OK: {:.4} POL available, ~{:.4} POL needed for {} redeem(s).",
-        pol_balance,
-        n as f64 * POL_PER_REDEEM,
-        n
-    );
+    // Deposit wallet redeems go through the relayer (no EOA gas required).
+    // Only enforce the POL budget when the EOA/proxy path is active.
+    let needs_pol = deposit_wallet_addr.is_none();
+    if needs_pol {
+        let pol_balance = match check_pol_budget(&eoa_addr, n).await {
+            Ok(b) => b,
+            Err(e) => {
+                println!("{}", super::error_response(&e, Some("redeem"), hint_opt));
+                return Ok(());
+            }
+        };
+        eprintln!(
+            "[polymarket] POL budget OK: {:.4} POL available, ~{:.4} POL needed for {} redeem(s).",
+            pol_balance,
+            n as f64 * POL_PER_REDEEM,
+            n
+        );
+    }
 
     let mut results = Vec::new();
     let mut errors = Vec::new();
@@ -669,26 +685,31 @@ pub async fn run_all(dry_run: bool, strategy_id: Option<&str>) -> Result<()> {
             Err(_) => (false, vec![]),
         };
 
-        // Auto-detect collateral (USDC.e for V1, pUSD for V2). Hardcoding pUSD
-        // silently no-ops V1 redeems on chain — see detect_collateral_for_position.
-        let mut wallets: Vec<&str> = vec![&eoa_addr];
-        if let Some(p) = proxy_addr.as_deref() { wallets.push(p); }
-        if let Some(d) = deposit_wallet_addr.as_deref() { wallets.push(d); }
-        let collateral_addr = match detect_collateral_for_position(cid, &wallets).await {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("[polymarket] Collateral detection failed for {}: {:#}", cid, e);
-                let classified: serde_json::Value = serde_json::from_str(
-                    &super::error_response(&e, Some("redeem"), hint_opt),
-                ).unwrap_or_else(|_| serde_json::json!({ "error": e.to_string() }));
-                errors.push(serde_json::json!({
-                    "condition_id": cid,
-                    "title": title,
-                    "error": classified.get("error"),
-                    "error_code": "COLLATERAL_NOT_DETECTED",
-                    "suggestion": classified.get("suggestion"),
-                }));
-                continue;
+        // NegRisk markets route through NegRiskAdapter — collateral detection is irrelevant
+        // and the standard positionId probe would fail anyway (non-zero parentCollectionId).
+        // For standard binary markets, probe USDC.e vs pUSD to handle the V1/V2 cutover.
+        let collateral_addr = if market_neg_risk {
+            Contracts::USDC_E
+        } else {
+            let mut wallets: Vec<&str> = vec![&eoa_addr];
+            if let Some(p) = proxy_addr.as_deref() { wallets.push(p); }
+            if let Some(d) = deposit_wallet_addr.as_deref() { wallets.push(d); }
+            match detect_collateral_for_position(cid, &wallets).await {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("[polymarket] Collateral detection failed for {}: {:#}", cid, e);
+                    let classified: serde_json::Value = serde_json::from_str(
+                        &super::error_response(&e, Some("redeem"), hint_opt),
+                    ).unwrap_or_else(|_| serde_json::json!({ "error": e.to_string() }));
+                    errors.push(serde_json::json!({
+                        "condition_id": cid,
+                        "title": title,
+                        "error": classified.get("error"),
+                        "error_code": "COLLATERAL_NOT_DETECTED",
+                        "suggestion": classified.get("suggestion"),
+                    }));
+                    continue;
+                }
             }
         };
         eprintln!(
