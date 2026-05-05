@@ -22,20 +22,30 @@ async fn run_inner(mode: &str) -> Result<()> {
     let mut creds = crate::auth::ensure_credentials(&client, &signer_addr).await?;
 
     let new_mode = match mode.to_lowercase().as_str() {
-        "proxy" | "poly_proxy" | "polyproxy" => crate::config::TradingMode::PolyProxy,
-        "eoa"                                 => crate::config::TradingMode::Eoa,
+        "proxy" | "poly_proxy" | "polyproxy"         => crate::config::TradingMode::PolyProxy,
+        "eoa"                                         => crate::config::TradingMode::Eoa,
+        "deposit-wallet" | "deposit_wallet" | "dw"   => crate::config::TradingMode::DepositWallet,
         other => bail!(
-            "Unknown mode '{}'. Valid values: eoa, proxy",
+            "Unknown mode '{}'. Valid values: eoa, proxy, deposit-wallet",
             other
         ),
     };
 
-    // Proxy mode requires an existing proxy wallet.
-    if new_mode == crate::config::TradingMode::PolyProxy && creds.proxy_wallet.is_none() {
-        bail!(
-            "Cannot switch to proxy mode: no proxy wallet configured.\n\
-             Run `polymarket setup-proxy` first to deploy a proxy wallet."
-        );
+    // Mode-specific pre-flight: ensure the required wallet exists.
+    match new_mode {
+        crate::config::TradingMode::PolyProxy if creds.proxy_wallet.is_none() => {
+            bail!(
+                "Cannot switch to proxy mode: no proxy wallet configured.\n\
+                 Run `polymarket setup-proxy` first to deploy a proxy wallet."
+            );
+        }
+        crate::config::TradingMode::DepositWallet if creds.deposit_wallet.is_none() => {
+            bail!(
+                "Cannot switch to deposit-wallet mode: no deposit wallet configured.\n\
+                 Run `polymarket setup-deposit-wallet` first to deploy a deposit wallet."
+            );
+        }
+        _ => {}
     }
 
     let old_mode = creds.mode.clone();
@@ -64,6 +74,10 @@ async fn run_inner(mode: &str) -> Result<()> {
         crate::config::TradingMode::Eoa => format!(
             "EOA mode. Maker: {}. POL required for approve transactions.",
             signer_addr
+        ),
+        crate::config::TradingMode::DepositWallet => format!(
+            "DEPOSIT_WALLET mode. Maker: {}. Gasless (relayer-paid). POLY_1271 signatures.",
+            creds.deposit_wallet.as_deref().unwrap_or("(unknown)")
         ),
     };
 

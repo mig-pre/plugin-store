@@ -26,13 +26,11 @@ async fn run_inner(address: Option<&str>) -> Result<()> {
         (a.to_string(), false)
     } else {
         let eoa = get_wallet_address().await?;
-        let creds = crate::config::load_credentials().ok().flatten();
-        let use_proxy = creds.as_ref().and_then(|c| {
-            if c.mode == crate::config::TradingMode::PolyProxy {
-                c.proxy_wallet.clone()
-            } else {
-                None
-            }
+        let creds = crate::config::load_credentials_for(&eoa).ok().flatten();
+        let use_proxy = creds.as_ref().and_then(|c| match c.mode {
+            crate::config::TradingMode::PolyProxy => c.proxy_wallet.clone(),
+            crate::config::TradingMode::DepositWallet => c.deposit_wallet.clone(),
+            _ => None,
         });
         match use_proxy {
             Some(p) => (p, false),
@@ -115,27 +113,35 @@ async fn run_inner(address: Option<&str>) -> Result<()> {
             "positions": output,
         })
     } else {
-        // In POLY_PROXY mode: add a note if there are no positions but proxy has USDC.e
-        // (helps users who placed orders in EOA mode by accident).
-        let creds = crate::config::load_credentials().ok().flatten();
-        let mode_note: Option<&str> = match creds.as_ref().map(|c| &c.mode) {
-            Some(crate::config::TradingMode::PolyProxy) => None,
+        // Add mode metadata and a helpful note where applicable.
+        let eoa_for_mode = get_wallet_address().await.unwrap_or_default();
+        let creds = crate::config::load_credentials_for(&eoa_for_mode).ok().flatten();
+        let (mode_label, mode_note): (&str, Option<String>) = match creds.as_ref().map(|c| &c.mode) {
+            Some(crate::config::TradingMode::PolyProxy) => ("proxy", None),
+            Some(crate::config::TradingMode::DepositWallet) => {
+                let dw = creds.as_ref().and_then(|c| c.deposit_wallet.as_deref()).unwrap_or("unknown");
+                ("deposit_wallet", Some(format!(
+                    "DEPOSIT_WALLET mode: positions are held at the deposit wallet ({dw}). \
+                     Use `polymarket redeem` to collect resolved winnings."
+                )))
+            }
             Some(crate::config::TradingMode::Eoa) if output.is_empty() => {
                 let has_proxy = creds.as_ref().and_then(|c| c.proxy_wallet.as_ref()).is_some();
                 if has_proxy {
-                    Some("Currently in EOA mode. If you placed orders in POLY_PROXY mode, \
-                          switch with `polymarket switch-mode --mode proxy` to see those positions.")
-                } else { None }
+                    ("eoa", Some("Currently in EOA mode. If you placed orders in POLY_PROXY mode, \
+                          switch with `polymarket switch-mode --mode proxy` to see those positions.".to_string()))
+                } else { ("eoa", None) }
             }
-            _ => None,
+            _ => ("eoa", None),
         };
         let mut obj = serde_json::json!({
             "wallet": wallet_addr,
+            "mode": mode_label,
             "position_count": output.len(),
             "positions": output,
         });
         if let Some(note) = mode_note {
-            obj["note"] = serde_json::Value::String(note.to_string());
+            obj["note"] = serde_json::Value::String(note);
         }
         obj
     };
