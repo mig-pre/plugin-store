@@ -137,8 +137,7 @@ enum Commands {
         #[arg(long)]
         token_id: Option<String>,
 
-        /// Optional strategy ID tag for attribution. All orders are reported to the OKX
-        /// backend regardless; this flag just attaches a strategy label. Empty if omitted.
+        /// Strategy ID for attribution — reported to OKX backend alongside the order
         #[arg(long)]
         strategy_id: Option<String>,
     },
@@ -198,8 +197,7 @@ enum Commands {
         #[arg(long)]
         token_id: Option<String>,
 
-        /// Optional strategy ID tag for attribution. All orders are reported to the OKX
-        /// backend regardless; this flag just attaches a strategy label. Empty if omitted.
+        /// Strategy ID for attribution — reported to OKX backend alongside the order
         #[arg(long)]
         strategy_id: Option<String>,
     },
@@ -208,6 +206,16 @@ enum Commands {
     /// One-time POL gas cost; all subsequent trading is relayer-paid.
     SetupProxy {
         /// Preview the action without submitting any transaction
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// Deploy a Polymarket deposit wallet and switch to DEPOSIT_WALLET (POLY_1271) trading mode.
+    /// New user path from v0.6.0: fully gasless, relayer-funded, signature_type=3.
+    /// Existing EOA/proxy users are unaffected — run this only on a fresh install.
+    #[command(name = "setup-deposit-wallet")]
+    SetupDepositWallet {
+        /// Preview the deployment without submitting any transaction
         #[arg(long)]
         dry_run: bool,
     },
@@ -248,10 +256,10 @@ enum Commands {
         dry_run: bool,
     },
 
-    /// Switch the default trading mode between EOA and POLY_PROXY.
+    /// Switch the default trading mode: eoa, proxy, or deposit-wallet.
     SwitchMode {
-        /// Mode to switch to: eoa or proxy
-        #[arg(long, value_parser = ["eoa", "proxy"])]
+        /// Mode to switch to: eoa, proxy, or deposit-wallet
+        #[arg(long, value_parser = ["eoa", "proxy", "deposit-wallet"])]
         mode: String,
     },
 
@@ -269,8 +277,7 @@ enum Commands {
         #[arg(long)]
         dry_run: bool,
 
-        /// Optional strategy ID tag for attribution. All redeems are reported to the OKX
-        /// backend regardless; this flag just attaches a strategy label. Empty if omitted.
+        /// Strategy ID for attribution — reported to OKX backend after successful redeem
         #[arg(long)]
         strategy_id: Option<String>,
     },
@@ -343,12 +350,6 @@ enum Commands {
         /// Preview without requesting a quote
         #[arg(long)]
         dry_run: bool,
-
-        /// Optional strategy ID tag for attribution. All confirmed RFQ orders are reported
-        /// to the OKX backend regardless; this flag just attaches a strategy label.
-        /// Empty if omitted.
-        #[arg(long)]
-        strategy_id: Option<String>,
     },
 
     /// Create a read-only Polymarket API key (CLOB v2). Useful for monitoring
@@ -434,6 +435,9 @@ async fn main() {
         Commands::SetupProxy { dry_run } => {
             commands::setup_proxy::run(dry_run).await
         }
+        Commands::SetupDepositWallet { dry_run } => {
+            commands::setup_deposit_wallet::run(dry_run).await
+        }
         Commands::Deposit { amount, chain, token, list, dry_run } => {
             commands::deposit::run(amount.as_deref(), &chain, &token, list, dry_run).await
         }
@@ -472,8 +476,8 @@ async fn main() {
         Commands::Watch { market_id, interval, limit } => {
             commands::watch::run(&market_id, interval, limit).await
         }
-        Commands::Rfq { market_id, outcome, amount, confirm, dry_run, strategy_id } => {
-            commands::rfq::run(&market_id, &outcome, &amount, confirm, dry_run, strategy_id.as_deref()).await
+        Commands::Rfq { market_id, outcome, amount, confirm, dry_run } => {
+            commands::rfq::run(&market_id, &outcome, &amount, confirm, dry_run).await
         }
         Commands::CreateReadonlyKey => {
             commands::create_readonly_key::run().await

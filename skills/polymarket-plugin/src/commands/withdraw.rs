@@ -22,10 +22,24 @@ async fn run_inner(amount: &str, dry_run: bool) -> Result<()> {
     use crate::config::Contracts;
 
     let eoa = get_wallet_address().await?;
-    let creds = crate::config::load_credentials()
+    let creds = crate::config::load_credentials_for(&eoa)
         .ok()
         .flatten()
         .ok_or_else(|| anyhow::anyhow!("No credentials found. Run `polymarket setup-proxy` first."))?;
+
+    // Deposit wallet mode: no relayer-mediated withdraw command exists.
+    // Users transfer pUSD directly from their deposit wallet to any address
+    // using any standard EVM wallet or the onchainos CLI.
+    if creds.mode == crate::config::TradingMode::DepositWallet {
+        let dw = creds.deposit_wallet.as_deref().unwrap_or("unknown");
+        anyhow::bail!(
+            "DEPOSIT_WALLET mode does not use `withdraw` — your pUSD is held at the deposit \
+             wallet address ({}) and can be transferred directly to your EOA ({}) via any \
+             EVM wallet or: onchainos wallet contract-call --to {} --data <transfer_calldata>",
+            dw, eoa, dw
+        );
+    }
+
     let proxy = creds.proxy_wallet
         .as_ref()
         .ok_or_else(|| anyhow::anyhow!("No proxy wallet configured. Run `polymarket setup-proxy` first."))?

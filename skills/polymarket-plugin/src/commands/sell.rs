@@ -8,9 +8,9 @@ use crate::api::{
 };
 use crate::auth::ensure_credentials;
 use crate::config::OrderVersion;
-use crate::onchainos::{get_wallet_address, is_ctf_approved_for_all};
+use crate::onchainos::{get_wallet_address, get_pusd_balance, is_ctf_approved_for_all};
 use crate::series;
-use crate::signing::{sign_order_v2_via_onchainos, sign_order_via_onchainos, OrderParams,
+use crate::signing::{sign_order_v2_via_onchainos, sign_order_v2_poly1271_via_onchainos, sign_order_via_onchainos, OrderParams,
     OrderParamsV2, BYTES32_ZERO};
 
 use super::buy::{resolve_from_gamma, resolve_market_token};
@@ -224,8 +224,8 @@ async fn run_inner(
     let step = shares_per_step * SHARE_RAW;
 
     let max_maker_raw = (share_amount * 1_000_000.0).floor() as u128;
-    let maker_amount_raw = (max_maker_raw / step) * step;
-    let taker_amount_raw = price_ticks * maker_amount_raw / tick_scale;
+    let mut maker_amount_raw = (max_maker_raw / step) * step;
+    let mut taker_amount_raw = price_ticks * maker_amount_raw / tick_scale;
 
     // Guard: share amount too small to produce a valid order after GCD alignment.
     // This check fires BEFORE any approval tx is submitted.
@@ -301,6 +301,14 @@ async fn run_inner(
             (proxy, 1u8)
         }
         TradingMode::Eoa => (signer_addr.clone(), 0u8),
+        TradingMode::DepositWallet => {
+            let dw = creds.deposit_wallet.as_ref().ok_or_else(|| anyhow::anyhow!(
+                "DEPOSIT_WALLET mode requires a deposit wallet. \
+                 Run `polymarket setup-deposit-wallet` to create one first."
+            ))?.clone();
+            eprintln!("[polymarket] Using DEPOSIT_WALLET mode — maker: {}", dw);
+            (dw, 3u8) // POLY_1271
+        }
     };
 
     // Check CTF token balance (from maker's address).
@@ -437,14 +445,79 @@ async fn run_inner(
     // Sign and submit the order using the correct version's struct and exchange contract.
     let resp = match clob_version {
         OrderVersion::V2 => {
+            // V2 CLOB amount precision constraints for SELL orders:
+            //   maker (shares): max 5 decimal places → divisible by 10 in millionths
+            //   taker (USDC):   max 2 decimal places → divisible by 10,000 in millionths
+            //
+            // IMPORTANT: taker = price_ticks * maker / tick_scale. The CLOB validates that
+            // taker/maker equals a valid tick price. Rounding taker independently breaks the
+            // price ratio — the CLOB rejects with "breaks minimum tick size rule".
+            //
+            // Correct approach: find the combined step for maker such that
+            //   (a) price_ticks * maker / tick_scale is divisible by V2_USDC_STEP (taker 2dp), AND
+            //   (b) maker is divisible by the GCD alignment step (price ratio integrity)
+            //
+            // min_maker_for_usdc = (tick_scale * V2_USDC_STEP) / gcd(price_ticks, tick_scale * V2_USDC_STEP)
+            // combined_step = lcm(step, min_maker_for_usdc)
+            const V2_USDC_STEP: u128 = 10_000;
+
+            fn gcd_v2(a: u128, b: u128) -> u128 { if b == 0 { a } else { gcd_v2(b, a % b) } }
+
+            let combined_step = if tick_scale > 0 && price_ticks > 0 {
+                let g = gcd_v2(price_ticks, tick_scale.saturating_mul(V2_USDC_STEP));
+                let min_maker_for_usdc = tick_scale.saturating_mul(V2_USDC_STEP) / g;
+                let g2 = gcd_v2(step, min_maker_for_usdc);
+                step / g2 * min_maker_for_usdc  // lcm(step, min_maker_for_usdc)
+            } else {
+                step
+            };
+
+            // Re-align from max_maker_raw using combined_step (combined_step ≥ step,
+            // so this can only reduce maker further from the GCD-aligned value).
+            maker_amount_raw = (max_maker_raw / combined_step) * combined_step;
+            taker_amount_raw = price_ticks * maker_amount_raw / tick_scale;
+
+            if maker_amount_raw == 0 || taker_amount_raw == 0 {
+                anyhow::bail!(
+                    "Amount too small for V2 precision: {:.6} shares at price {:.4} \
+                     rounds to 0 after combined GCD + USDC-precision alignment. \
+                     Minimum is ~{:.6} shares. Try a larger amount.",
+                    share_amount, limit_price, combined_step as f64 / 1_000_000.0
+                );
+            }
+
+            let v2_actual_shares = maker_amount_raw as f64 / 1_000_000.0;
+            if v2_actual_shares < actual_shares - 1e-9 {
+                eprintln!(
+                    "[polymarket] V2 CLOB precision further reduced shares from {:.6} to {:.6} \
+                     to ensure USDC payout is a valid 2dp amount.",
+                    actual_shares, v2_actual_shares
+                );
+            }
+
             let timestamp_ms = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_millis() as u64;
+
+            // For POLY_1271 (DepositWallet mode):
+            //   maker = signer = deposit_wallet.
+            //   CLOB maps api_key → deposit_wallet (via sync_balance_allowance_deposit_wallet).
+            //   For sig_type=3: CLOB validates order.signer == deposit_wallet_of(API_KEY).
+            //   deposit_wallet.isValidSignature(hash, ecdsa_sig_by_EOA) performs on-chain verification.
+            // For EOA/PolyProxy: signer = EOA.
+            let order_signer = if effective_mode == TradingMode::DepositWallet {
+                maker_addr.clone() // deposit_wallet = ERC-1271 verifier
+            } else {
+                signer_addr.clone()
+            };
+            let order_creds = creds.clone();
+            let order_auth_addr = signer_addr.clone();
+
             let params = OrderParamsV2 {
                 salt,
                 maker: maker_addr.clone(),
-                signer: signer_addr.clone(),
+                signer: order_signer.clone(),
                 token_id: token_id.clone(),
                 maker_amount: maker_amount_raw as u64,
                 taker_amount: taker_amount_raw as u64,
@@ -454,11 +527,15 @@ async fn run_inner(
                 metadata: BYTES32_ZERO.to_string(),
                 builder: BYTES32_ZERO.to_string(),
             };
-            let signature = sign_order_v2_via_onchainos(&params, neg_risk).await?;
+            let signature = if effective_mode == TradingMode::DepositWallet {
+                sign_order_v2_poly1271_via_onchainos(&params, neg_risk).await?
+            } else {
+                sign_order_v2_via_onchainos(&params, neg_risk).await?
+            };
             let order_body = OrderBodyV2 {
                 salt,
                 maker: maker_addr.clone(),
-                signer: signer_addr.clone(),
+                signer: order_signer.clone(),
                 token_id: token_id.clone(),
                 maker_amount: maker_amount_raw.to_string(),
                 taker_amount: taker_amount_raw.to_string(),
@@ -471,12 +548,12 @@ async fn run_inner(
             };
             let order_req = OrderRequestV2 {
                 order: order_body,
-                owner: creds.api_key.clone(),
+                owner: order_creds.api_key.clone(),
                 order_type: effective_order_type.to_uppercase(),
                 post_only,
                 expiration: if expiration > 0 { expiration.to_string() } else { String::new() },
             };
-            post_order(&client, &signer_addr, &creds, &order_req).await?
+            post_order(&client, &order_auth_addr, &order_creds, &order_req).await?
         }
         OrderVersion::V1 => {
             let params = OrderParams {
@@ -524,6 +601,40 @@ async fn run_inner(
 
     if resp.success != Some(true) {
         let msg = resp.error_msg.as_deref().unwrap_or("unknown error");
+        let msg_lower = msg.to_lowercase();
+
+        // ── Deposit wallet migration (V2 maker allowlist) ─────────────────────
+        if msg_lower.contains("maker address not allowed") || msg_lower.contains("deposit wallet") {
+            let pusd = get_pusd_balance(&maker_addr).await.unwrap_or(0.0);
+            let mode_str = match &effective_mode {
+                TradingMode::Eoa => "eoa",
+                TradingMode::PolyProxy => "proxy",
+                TradingMode::DepositWallet => "deposit_wallet",
+            };
+            let transfer_step = if pusd > 0.0 {
+                format!("3. Transfer {:.2} pUSD from {} to the deposit_wallet address", pusd, maker_addr)
+            } else {
+                "3. Fund the deposit wallet with pUSD (transfer from your source of funds)".to_string()
+            };
+            println!("{}", serde_json::to_string_pretty(&serde_json::json!({
+                "ok": false,
+                "error": "Deposit wallet required — V2 exchange does not accept this maker address.",
+                "migration_required": true,
+                "migration": {
+                    "current_mode": mode_str,
+                    "trading_address": maker_addr,
+                    "pusd_at_trading_address": pusd,
+                    "next_steps": [
+                        "1. Run: polymarket setup-deposit-wallet",
+                        "2. Note the deposit_wallet address in the output",
+                        transfer_step,
+                        "4. Retry your order — plugin will automatically use deposit wallet mode"
+                    ]
+                }
+            })).unwrap_or_default());
+            return Ok(());
+        }
+
         if msg.to_uppercase().contains("INVALID_ORDER_MIN_SIZE") {
             bail!(
                 "Order rejected by CLOB: amount is below this market's minimum order size. \
@@ -532,11 +643,11 @@ async fn run_inner(
         }
         let msg_upper = msg.to_uppercase();
         if msg_upper.contains("NOT AUTHORIZED") || msg_upper.contains("UNAUTHORIZED") {
-            let _ = crate::config::clear_credentials();
+            let _ = crate::config::clear_credentials_for(&signer_addr);
             bail!(
                 "Order rejected: credentials are stale or invalid ({}). \
-                 Cached credentials cleared — run the command again to re-derive.",
-                msg
+                 Cached credentials cleared for {} — run the command again to re-derive.",
+                msg, &signer_addr[..std::cmp::min(10, signer_addr.len())]
             );
         }
         if msg_upper.contains("ORDER_VERSION_MISMATCH") || msg_upper.contains("VERSION_MISMATCH") {
@@ -551,18 +662,15 @@ async fn run_inner(
     }
 
     let shares_filled = maker_amount_raw as f64 / 1_000_000.0;
-    // Attribution: report every sell that produced an order_id.
-    // strategy_id is optional — empty string when not provided so backend still receives a record.
-    if let Some(oid) = resp.order_id.as_deref().filter(|s| !s.is_empty()) {
+    if let Some(sid) = strategy_id.filter(|s| !s.is_empty()) {
         let ts_now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs())
             .unwrap_or(0);
-        let sid = strategy_id.unwrap_or("");
         let report_payload = serde_json::json!({
             "wallet": signer_addr,
             "proxyAddress": creds.proxy_wallet.as_deref().unwrap_or(""),
-            "order_id": oid,
+            "order_id": resp.order_id.clone().unwrap_or_default(),
             "tx_hashes": resp.tx_hashes,
             "market_id": condition_id,
             "asset_id": token_id,

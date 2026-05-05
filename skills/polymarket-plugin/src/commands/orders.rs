@@ -22,15 +22,34 @@ pub async fn run(state: &str, only_v1: bool, limit: Option<usize>) -> Result<()>
 async fn run_inner(state: &str, only_v1: bool, limit: Option<usize>) -> Result<()> {
     let client = Client::new();
     let signer_addr = get_wallet_address().await?;
-    let creds = ensure_credentials(&client, &signer_addr).await?;
+
+    // Load credentials for the current EOA (not any wallet) to get the correct mode.
+    let stored = crate::config::load_credentials_for(&signer_addr).ok().flatten();
+    let (auth_addr, creds) = if let Some(ref c) = stored {
+        if c.mode == crate::config::TradingMode::DepositWallet {
+            if c.deposit_wallet.is_some() {
+                // Orders are placed with L2 auth using the EOA's API key (see buy.rs:order_auth_addr).
+                // The CLOB indexes by the L2 auth address (EOA), so query with EOA creds.
+                // The deposit wallet appears as `maker` in the order body but not the auth key.
+                let eoa_creds = ensure_credentials(&client, &signer_addr).await?;
+                (signer_addr.clone(), eoa_creds)
+            } else {
+                (signer_addr.clone(), ensure_credentials(&client, &signer_addr).await?)
+            }
+        } else {
+            (signer_addr.clone(), ensure_credentials(&client, &signer_addr).await?)
+        }
+    } else {
+        (signer_addr.clone(), ensure_credentials(&client, &signer_addr).await?)
+    };
 
     // For --v1, also query the pre-migration endpoint and deduplicate by order_id.
     // This ensures orders placed on the V1 exchange before the cutover are not missed
     // if Polymarket routes them to a separate backing store during the transition window.
     let orders: Vec<OpenOrder> = if only_v1 {
         let (live, pre_migration) = tokio::join!(
-            get_open_orders(&client, &signer_addr, &creds, state),
-            get_pre_migration_orders(&client, &signer_addr, &creds),
+            get_open_orders(&client, &auth_addr, &creds, state),
+            get_pre_migration_orders(&client, &auth_addr, &creds),
         );
         let mut merged = live.unwrap_or_default();
         let existing_ids: std::collections::HashSet<String> =
@@ -42,7 +61,7 @@ async fn run_inner(state: &str, only_v1: bool, limit: Option<usize>) -> Result<(
         }
         merged
     } else {
-        get_open_orders(&client, &signer_addr, &creds, state).await?
+        get_open_orders(&client, &auth_addr, &creds, state).await?
     };
 
     let filtered: Vec<serde_json::Value> = orders
@@ -72,9 +91,6 @@ async fn run_inner(state: &str, only_v1: bool, limit: Option<usize>) -> Result<(
     let v1_count = orders.iter().filter(|o| o.is_v1()).count();
     let v2_count = orders.iter().filter(|o| !o.is_v1()).count();
 
-    // In POLY_PROXY mode, the CLOB indexes orders by maker (proxy wallet), and the
-    // authenticated /orders endpoint returns orders for the signing address (EOA).
-    // Proxy wallet orders may not appear here — verify via the public order book or web UI.
     use crate::config::TradingMode;
     let poly_proxy_note = match &creds.mode {
         TradingMode::PolyProxy => Some(format!(
@@ -82,6 +98,11 @@ async fn run_inner(state: &str, only_v1: bool, limit: Option<usize>) -> Result<(
              The CLOB /orders endpoint returns orders for the EOA signer — proxy wallet orders \
              may not appear here. Check https://polymarket.com for the full order list.",
             creds.proxy_wallet.as_deref().unwrap_or("unknown")
+        )),
+        TradingMode::DepositWallet => Some(format!(
+            "DEPOSIT_WALLET mode: orders have maker={} (deposit wallet, sig_type=3/POLY_1271) \
+             but are indexed under the EOA signer's CLOB API key.",
+            creds.deposit_wallet.as_deref().unwrap_or("unknown")
         )),
         _ => None,
     };
