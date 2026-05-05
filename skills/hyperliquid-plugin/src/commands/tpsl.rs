@@ -1,7 +1,7 @@
 use clap::Args;
 use crate::api::{
-    fetch_perp_dexs, get_all_mids, get_asset_meta_for_coin, get_clearinghouse_state_for_dex,
-    parse_coin,
+    fetch_perp_dexs, get_all_mids_for_dex, get_asset_meta_for_coin,
+    get_clearinghouse_state_for_dex, parse_coin,
 };
 use crate::config::{info_url, exchange_url, normalize_coin, now_ms, CHAIN_ID, ARBITRUM_CHAIN_ID};
 use crate::onchainos::{onchainos_hl_sign, resolve_wallet};
@@ -141,8 +141,11 @@ pub async fn run(args: TpslArgs) -> anyhow::Result<()> {
     let position_size = szi.abs();
     let position_side = if position_is_long { "long" } else { "short" };
 
-    // Validate TP/SL prices make sense relative to position direction
-    let mids = match get_all_mids(info).await {
+    // Validate TP/SL prices make sense relative to position direction.
+    // Use per-DEX mids — HIP-3 builder DEX coins (xyz:CL etc.) are NOT in default-DEX
+    // get_all_mids; calling without dex would mid_f=0.0 and break the trigger-px slippage
+    // estimate as well as the directional sanity check below.
+    let mids = match get_all_mids_for_dex(info, dex_opt.as_deref()).await {
         Ok(v) => v,
         Err(e) => {
             println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry."));

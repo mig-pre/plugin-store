@@ -33,7 +33,8 @@ use crate::config::info_url;
 ///   hyperliquid-plugin markets --dex flx
 #[derive(Args)]
 pub struct MarketsArgs {
-    /// Semantic shortcut: crypto | tradfi | hip3 | spot. Default: crypto.
+    /// Semantic shortcut: crypto | tradfi | hip3 | spot | outcome. Default: crypto.
+    /// `outcome` (also: hip4) lists HIP-4 binary YES/NO outcome contracts.
     /// Mutually exclusive with --dex.
     #[arg(long)]
     pub r#type: Option<String>,
@@ -80,7 +81,7 @@ pub async fn run(args: MarketsArgs) -> anyhow::Result<()> {
         println!("{}", super::error_response(
             "--type and --dex are mutually exclusive",
             "INVALID_ARGUMENT",
-            "Pick one: --type for semantic preset (crypto/tradfi/hip3/spot), --dex for a specific perp DEX name.",
+            "Pick one: --type for semantic preset (crypto/tradfi/hip3/spot/outcome), --dex for a specific perp DEX name.",
         ));
         return Ok(());
     }
@@ -91,7 +92,7 @@ pub async fn run(args: MarketsArgs) -> anyhow::Result<()> {
         Ok(m) => m,
         Err(e) => {
             println!("{}", super::error_response(&e, "INVALID_TYPE",
-                "Valid --type values: crypto, tradfi, hip3, spot."));
+                "Valid --type values: crypto, tradfi, hip3, spot, outcome."));
             return Ok(());
         }
     };
@@ -108,6 +109,7 @@ pub async fn run(args: MarketsArgs) -> anyhow::Result<()> {
             list_perp_builders(info, &args, dedupe_crypto).await
         }
         Mode::PerpDex(dex_name) => list_perp_single_dex(info, &args, &dex_name).await,
+        Mode::Outcome => list_outcome(info, &args).await,
     }
 }
 
@@ -117,6 +119,7 @@ enum Mode {
     PerpBuilders { dedupe_crypto: bool },
     PerpDex(String),
     Spot,
+    Outcome,
 }
 
 fn resolve_mode(ty: Option<&str>, dex: Option<&str>) -> Result<Mode, String> {
@@ -132,6 +135,7 @@ fn resolve_mode(ty: Option<&str>, dex: Option<&str>) -> Result<Mode, String> {
         "tradfi" => Ok(Mode::PerpBuilders { dedupe_crypto: true }),
         "hip3" | "hip-3" => Ok(Mode::PerpBuilders { dedupe_crypto: false }),
         "spot" => Ok(Mode::Spot),
+        "outcome" | "outcomes" | "hip4" | "hip-4" | "prediction" => Ok(Mode::Outcome),
         other => Err(format!("Unknown --type '{}'", other)),
     }
 }
@@ -546,4 +550,18 @@ fn print_api_err(e: &anyhow::Error) -> anyhow::Result<()> {
         "Hyperliquid info endpoint may be limited; retry shortly.",
     ));
     Ok(())
+}
+
+/// HIP-4: delegate to the dedicated `outcome-list` command. We honor the user's
+/// `--limit` for output cap but ignore other filter flags (--min-vol, --max-leverage,
+/// --only-isolated, --hide-halted, --sort) since outcome markets have a totally
+/// different shape (fully-collateralized binary contracts, no leverage, no liquidation,
+/// USDH-collateralized — none of those filters apply).
+async fn list_outcome(_info: &str, args: &MarketsArgs) -> anyhow::Result<()> {
+    let oa = crate::commands::outcome_list::OutcomeListArgs {
+        recurring_only: false,
+        sort: "id".to_string(),
+        limit: args.limit,
+    };
+    crate::commands::outcome_list::run(oa).await
 }
