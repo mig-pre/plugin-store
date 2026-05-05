@@ -1,7 +1,7 @@
 ---
 name: hyperliquid-plugin
 description: Hyperliquid DEX — trade perps & spot, deposit from Arbitrum, withdraw to Arbitrum, transfer between perp and spot accounts, manage gas on HyperEVM.
-version: "0.4.1"
+version: "0.4.2"
 author: GeoGu360
 tags:
   - perps
@@ -26,7 +26,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/hyperliquid-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.4.1"
+LOCAL_VER="0.4.2"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -138,12 +138,12 @@ mkdir -p ~/.local/bin
 
 # Download binary + checksums to a sandbox, verify SHA256 before installing.
 BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/hyperliquid-plugin@0.4.1"
+RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/hyperliquid-plugin@0.4.2"
 curl -fsSL "${RELEASE_BASE}/hyperliquid-plugin-${TARGET}${EXT}" -o "$BIN_TMP/hyperliquid-plugin${EXT}" || {
   echo "ERROR: failed to download hyperliquid-plugin-${TARGET}${EXT}" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for hyperliquid-plugin@0.4.1" >&2
+  echo "ERROR: failed to download checksums.txt for hyperliquid-plugin@0.4.2" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 
 EXPECTED=$(awk -v b="hyperliquid-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
@@ -167,7 +167,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/hyperliquid-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.4.1" > "$HOME/.plugin-store/managed/hyperliquid-plugin"
+echo "0.4.2" > "$HOME/.plugin-store/managed/hyperliquid-plugin"
 ```
 
 ---
@@ -229,6 +229,11 @@ Use this plugin when the user says (in any language):
 - "list hyperliquid markets" / "what can I trade on Hyperliquid" / 列出可交易市场
 - "top tradfi markets" / "biggest hyperliquid RWAs" / 最大的TradFi市场
 - "find <symbol> on hyperliquid" / "look up xyz:CL / NVDA / SP500" / 查找市场
+- "HIP-4 outcome" / "Hyperliquid prediction market" / "yes/no contract" / "outcome contract" / 预测市场 / 二元期权
+- "buy outcome / yes / no on hyperliquid" / "bet on Hyperliquid" / 在Hyperliquid下注 / 买YES / 买NO
+- "USDH" / "Hyperliquid stablecoin" / "fund USDH" / "swap USDC to USDH" / 兑换USDH
+- "BTC up or down" / "BTC > X" / "Hyperliquid BTC binary" / "outcome BTC" / 比特币涨跌
+- "cross-DEX margin" / "unified margin Hyperliquid" / "abstraction mode" / 跨DEX保证金 / 无缝保证金
 
 ---
 
@@ -1266,6 +1271,27 @@ hyperliquid-plugin dex-transfer --from-dex xyz --to-dex flx --amount 0.5 --confi
 
 `dex-transfer` uses Hyperliquid's `sendAsset` action (HIP-3 native, EIP-712 signed via onchainos). Zero fee, zero dust — verified live 2026-04-30 with $1 round-trip default <-> xyz.
 
+### Why dex-transfer is needed (UI vs API)
+
+A common question: "the HL web UI lets me trade `xyz:CL` without any explicit transfer — why does this plugin require `dex-transfer` first?"
+
+**Answer**: HL builder DEXs are genuinely separate clearinghouses at the API level — this is verifiable directly from the API. Same wallet, two different `accountValue` numbers:
+
+```bash
+# Direct HL API queries on the same wallet:
+POST /info  {"type":"clearinghouseState","user":"0x..."}             -> accountValue=$9.34
+POST /info  {"type":"clearinghouseState","user":"0x...","dex":"xyz"} -> accountValue=$0.36
+```
+
+If margin were truly shared, both queries would return the same number. The `sendAsset` action (which `dex-transfer` implements) exists precisely because USDC has to physically move between clearinghouses — there is no global pool.
+
+**So why does the web UI feel seamless?** Most likely the HL frontend silently invokes `sendAsset` just-in-time when you click "Trade `xyz:CL`" with a default-DEX-only balance — the user signs once but two actions happen under the hood (transfer + order). The API surface still has both steps; the UI just hides the first one.
+
+**Why this plugin makes the transfer explicit**:
+- Agents/CLI workflows benefit from determinism — implicit fund movement violates least-surprise. Users (and Agents) need to control _when_ and _how much_ funds move.
+- Risk isolation is real and useful: if your default-DEX position is approaching liquidation, you do NOT want a click on `xyz:CL` to silently drain margin from default and accelerate the liquidation. Explicit `dex-transfer` makes this risk visible.
+- Auto-transfer is a future v0.5+ feature consideration (`order --auto-fund` could opt into it), not a v0.4 default.
+
 ### Asset ID Math
 
 Default DEX uses asset ids `0..N` (where N is `meta.universe.length`).
@@ -1414,7 +1440,229 @@ All data returned by `hyperliquid positions`, `hyperliquid prices`, and exchange
 
 ---
 
+## HIP-4 Outcome Markets
+
+HIP-4 is Hyperliquid's binary YES/NO outcome contract framework — fully-collateralized prediction markets that live inside the same wallet as your perp / spot / HIP-3 holdings. Launched on mainnet 2026-05-02.
+
+Each outcome resolves to a discrete event: "BTC > $79,980 by 2026-05-05 06:00 UTC", "Will [X] happen by [date]", etc. Holders of the YES leg receive 1 USDH per share if the event resolves YES; NO leg holders get 0 (and vice versa).
+
+### Architectural differences vs perp / HIP-3
+
+| Aspect | Perp / HIP-3 | HIP-4 |
+|--------|------------|-------|
+| Collateral | USDC | **USDH** (HL native stablecoin) |
+| Clearinghouse | Per-DEX | Spot subsystem (no separate clearinghouse) |
+| Leverage | Yes (up to 50x on default) | **None** (fully collateralized) |
+| Liquidation | Yes | **No** (max loss = 1 USDH per share) |
+| New EIP-712 action | Yes (HIP-3 added `sendAsset`) | **None** — reuses standard `order`/`cancel` actions |
+| Settlement | n/a (cash-settled perps) | **Auto** at expiry (oracle-driven, no claim action) |
+| Position storage | `clearinghouseState.assetPositions` | `spotClearinghouseState.balances` (filter `coin` starts with `+`) |
+
+### Two coin-string encodings (gotcha)
+
+HIP-4 uses **two different prefixes** for the same outcome side asset, depending on context:
+
+| Context | Prefix | Example | Used by |
+|---------|--------|---------|---------|
+| Trading (order placement, l2Book, allMids) | `#` | `#20` (Yes), `#21` (No) | `outcome-buy` / `outcome-sell` / `outcome-cancel` / `markets --type outcome` |
+| Position balance | `+` | `+20`, `+21` | `spotClearinghouseState.balances` / `outcome-positions` |
+
+Encoding: `<prefix><10 * outcome_id + side>` where `side` is 0 (YES) or 1 (NO).
+
+**Asset id namespace**: `100_000_000 + 10 * outcome_id + side`. For example outcome 2 YES = asset 100,000,020; outcome 2 NO = asset 100,000,021. This is far above HIP-3 builder DEX range (110,000+) and default DEX range (0-N), so namespaces don't collide.
+
+The plugin's `api.rs::outcome_trade_coin` / `outcome_balance_coin` / `parse_outcome_coin` / `outcome_asset_id` helpers handle this transparently — you should never need to construct `#N` / `+N` / asset_id by hand.
+
+### USDH funding path
+
+USDH is Hyperliquid's native stablecoin (mainnet spot token index 360). To acquire USDH, swap USDC → USDH on the spot pair `@230` (mainnet) or `@1338` (testnet); the plugin's `usdh-fund` command wraps this with safety guards:
+
+```bash
+hyperliquid-plugin usdh-fund --amount 5 --confirm           # Buy $5 USDH at default max-price 1.001
+hyperliquid-plugin usdh-fund --amount 50 --max-price 1.0005 # Tighter peg tolerance
+```
+
+`usdh-fund` first checks the live USDH/USDC best ask; if it exceeds `--max-price` (default 1.001 = 0.1% premium above peg), the command refuses to submit rather than fill at a bad rate. The peg has held tightly (~0.999995 to 1.000) since launch.
+
+USDC must already be in your spot account before running `usdh-fund`. If your USDC is in the perp account, run `transfer --from perp --amount X` first.
+
+### Settlement is automatic
+
+HIP-4 has **no claim or redeem action**. At expiry:
+- The oracle posts the result (interpolated mark price for recurring outcomes; manual resolution for builder-deployed outcomes).
+- YES holders are credited 1 USDH per share if the event resolved YES; NO holders are credited 0 USDH (and vice versa).
+- The position simply disappears from `spotClearinghouseState.balances`, and the corresponding USDH credit appears in your spot USDH balance.
+
+The matching engine classifies every fill on outcome books into one of four cases automatically (the user does not choose):
+
+| Case | Description | Fee |
+|------|-------------|-----|
+| MINT | Both counterparties opening fresh positions on opposite legs (creates USDH-collateralized YES + NO holders) | **0** |
+| NORMAL TRADE | One side closing, the other opening | Taker pays fee |
+| BURN | Both counterparties holding opposite legs flatten against each other (releases collateral) | Both sides (or taker-only) |
+| SETTLEMENT | Oracle-driven at expiry | Settlement fee |
+
+### Recurring outcome description format
+
+Protocol-deployed recurring outcomes encode their parameters in the `description` field:
+
+```
+class:priceBinary|underlying:BTC|expiry:20260505-0600|targetPrice:79980|period:1d
+```
+
+Settlement formula for recurring `priceBinary` outcomes:
+
+```
+markPrice0 + (settlementTime - t0) / (t1 - t0) * (markPrice1 - markPrice0) ≥ targetPrice  →  YES
+otherwise                                                                                  →  NO
+```
+
+The plugin's `OutcomeSpec::parse_recurring()` parses this format and exposes `underlying` / `expiry` / `target_price` / `period` as structured fields. The `outcome-list` command also synthesizes a human-friendly `semantic_id` like `BTC-79980-1d` that you can pass to `outcome-buy --outcome <semantic-id>`.
+
+### Permissionless outcomes (Phase 2)
+
+Beyond protocol-deployed recurring outcomes, HIP-4 will allow builders to deploy outcome markets permissionlessly by staking 1,000,000 HYPE (slashable if rules are violated). As of 2026-05-05 mainnet has only the BTC-priceBinary recurring set. The plugin handles both protocol- and builder-deployed outcomes via the same `outcomeMeta` info type — no special-casing needed.
+
+### `outcome-list` — discover outcomes
+
+```bash
+hyperliquid-plugin outcome-list                              # All outcomes + Yes/No prices + implied probability
+hyperliquid-plugin outcome-list --recurring-only             # Only recurring (filters out categorical questions)
+hyperliquid-plugin outcome-list --sort prob --limit 20       # Sort by implied YES probability descending
+```
+
+Output fields per outcome: `outcome_id`, `name`, `description`, `yes_coin`/`no_coin` (for orders), `yes_price`/`no_price`, `implied_yes_probability_pct`, `recurring` (bool), and (if recurring) `class` / `underlying` / `target_price` / `expiry` / `period` / `semantic_id`.
+
+Equivalent: `markets --type outcome` (also `--type hip4` / `--type prediction`).
+
+### `outcome-buy` — open a YES or NO leg (requires --confirm)
+
+```bash
+# Buy 5 YES shares of recurring outcome 2 at $0.65 (resting limit)
+hyperliquid-plugin outcome-buy --outcome 2 --side yes --shares 5 --price 0.65 --confirm
+
+# Same trade via semantic id
+hyperliquid-plugin outcome-buy --outcome BTC-79980-1d --side yes --shares 5 --price 0.65 --confirm
+
+# Aggressive market-like fill (IOC at 0.999 — fills at best ask if any)
+hyperliquid-plugin outcome-buy --outcome 2 --side yes --shares 5 --price 0.999 --tif Ioc --confirm
+```
+
+**Pre-flight**: queries `spotClearinghouseState` for USDH balance; refuses if `shares × price > USDH balance` and suggests a precise `usdh-fund` amount to remediate.
+
+**Constraints**:
+- `--price` ∈ [0.001, 0.999] (HIP-4 hard range).
+- Max loss per share = `price` USDH (if outcome resolves against you). Max gain per share = `1 - price` USDH.
+
+**Errors**: `OUTCOME_NOT_FOUND` (id/semantic mismatch — error response lists all known outcomes) | `INVALID_ARGUMENT` (price out of range / non-positive shares) | `INSUFFICIENT_USDH` (with computed remediation tip) | `WALLET_NOT_FOUND` | `SIGNING_FAILED` | `TX_SUBMIT_FAILED` | `TX_REJECTED`.
+
+### `outcome-sell` — close a YES/NO leg or open a short (requires --confirm)
+
+```bash
+# Close 5 YES shares at $0.70 (assumes you hold ≥ 5 long YES)
+hyperliquid-plugin outcome-sell --outcome 2 --side yes --shares 5 --price 0.70 --confirm
+
+# Aggressive sell at floor
+hyperliquid-plugin outcome-sell --outcome 2 --side yes --shares 5 --price 0.001 --tif Ioc --confirm
+
+# Open a short YES (= long NO, equivalent exposure) — requires --allow-short
+hyperliquid-plugin outcome-sell --outcome 2 --side yes --shares 5 --price 0.85 --allow-short --confirm
+```
+
+**Pre-flight**: reads current position on the leg; if `shares > current long`, the command **refuses** unless `--allow-short` is passed. This prevents accidental short opens, which while bounded (max loss = `1 - price` per share) are confusing to new users. The error response always points to the simpler alternative: "open a long on the OTHER leg" (e.g. instead of shorting YES, just buy NO at `1 - price`).
+
+### `outcome-cancel` — cancel outcome orders (requires --confirm)
+
+Three modes:
+
+```bash
+# Cancel a specific oid
+hyperliquid-plugin outcome-cancel --outcome 2 --side yes --order-id 123456 --confirm
+
+# Cancel all open orders on the BTC-79980-1d NO leg
+hyperliquid-plugin outcome-cancel --outcome BTC-79980-1d --side no --confirm
+
+# Cancel every outcome order across all legs
+hyperliquid-plugin outcome-cancel --all-outcomes --confirm
+```
+
+When cancelling by leg or all-outcomes, the plugin queries `openOrders`, filters to entries with `coin` starting with `#`, and submits a batch-cancel action. If the filter matches zero orders, returns `cancelled_count: 0` (not an error).
+
+### `outcome-positions` — view outcome holdings
+
+```bash
+hyperliquid-plugin outcome-positions
+hyperliquid-plugin outcome-positions --address 0x...    # Query a different wallet
+hyperliquid-plugin outcome-positions --show-zero        # Include legs with size 0
+```
+
+Reads `spotClearinghouseState`, filters balances starting with `+`, decodes outcome_id/side, joins with `outcomeMeta` for human-readable names, computes mark-to-market value via current `#N` mid in `allMids`, and emits per-position fields:
+- `balance_coin` (`+N`), `trade_coin` (`#N`), `outcome_id`, `side` (0/1), `side_name` (Yes/No)
+- `name`, `description`, `semantic_id`
+- `size` (signed; negative = short on that leg), `hold` (in open orders), `entry_ntl_usdh`, `avg_entry_price`, `current_price`, `current_value_usdh`, `unrealized_pnl_usdh`
+
+Sorted by absolute unrealized PnL descending (biggest movers first).
+
+### `abstraction` — query/set cross-DEX margin abstraction
+
+This is **separate from** HIP-4 — it's a HL feature for HIP-3 builder DEXs that determines whether you must explicitly `dex-transfer` USDC to a builder DEX before trading on it, OR if margin is pooled across DEXs automatically. Documented here because it's commonly misunderstood (the HL web UI uses this to feel "seamless" with HIP-3).
+
+```bash
+# Query current mode
+hyperliquid-plugin abstraction
+# → {"current_mode": "default", ...}
+
+# Enable cross-DEX margin pooling — no more dex-transfer needed
+hyperliquid-plugin abstraction --set unified --confirm
+
+# Hedge-aware version (offsetting positions reduce required margin)
+hyperliquid-plugin abstraction --set portfolio --confirm
+
+# Disable — back to per-DEX clearinghouse isolation
+hyperliquid-plugin abstraction --set disabled --confirm
+```
+
+**Modes**:
+- `disabled` (default): per-DEX clearinghouse isolation, `dex-transfer` required for builder DEXs. Read-side may report this as `"default"`.
+- `unified`: single shared margin pool across all perp DEXs.
+- `portfolio`: shared margin with portfolio netting (hedges reduce margin requirement).
+
+**Risk note**: enabling `unified` or `portfolio` means a liquidation event on a builder DEX position can affect default-DEX positions (and vice versa). The default `disabled` mode is the safest choice for users running multiple uncorrelated strategies across DEXs.
+
+### v0.4.2 HIP-4 Live Verification (2026-05-05 mainnet)
+
+End-to-end USDC → USDH → outcome buy → outcome sell on `0x87fb...1b90`, recurring BTC-79980-1d outcome (outcome_id=2):
+
+| Step | Command | Result |
+|------|---------|--------|
+| 1. Transfer USDC perp → spot | `transfer --amount 1 --direction perp-to-spot --confirm` | `usdClassTransfer` ok |
+| 2. Acquire USDH | `usdh-fund --amount 10 --confirm` | Filled 10 USDH @ avg $1.0001 (oid 411103993540), USDH/USDC peg = 0.999995 |
+| 3. Buy YES leg | `outcome-buy --outcome 2 --side yes --shares 11 --price 0.92 --tif Ioc --confirm` | Filled 11 shares @ avg $0.91706 = $10.0876 USDH (oid 411105620129) |
+| 4. Verify position | `outcome-positions` | `+20 size=11 entry=$0.9172 curr=$0.9186 pnl=+$0.0163` ✓ |
+| 5. Close position | `outcome-sell --outcome 2 --side yes --shares 11 --price 0.001 --tif Ioc --confirm` | Filled 11 shares @ avg $0.91527 = $10.0680 USDH proceeds (oid 411105795937) |
+| 6. Confirm flat | `outcome-positions` | count=0 ✓ |
+
+Total round-trip cost (1 minute hold, ignoring USDH/USDC spread): **$0.0196 USDH** (~0.2% bid/ask spread on 11 shares — comparable to a typical CLOB market-maker spread on Polymarket).
+
+Verified action plumbing: `outcomeMeta` info type, `#N` trading coin format, `+N` balance coin format, asset id 100,000,020, standard `order` action with `tif=Ioc`, automatic mint/burn classification by HL matching engine, `spotClearinghouseState` outcome leg detection. No HIP-4-specific signing schema (reuses standard EIP-712 phantom-agent path).
+
+Found and patched during integration:
+- HL spot orders enforce $10 minimum value, including outcome orders. Pre-flight check uses limit-price-as-worst-case which can be conservative when actual fill is at touch — surfaces as `INSUFFICIENT_USDH` with precise top-up amount.
+- `--side yes/no` (which leg) is independent from buy/sell direction (which command); `outcome-sell --side yes` defaults to refusing if it would open a short, requires `--allow-short` to override.
+
+---
+
 ## Changelog
+
+### v0.4.2 (2026-05-05)
+
+- **feat**: HIP-4 outcome markets — full integration. New commands: `outcome-list` (discovery), `outcome-positions` (holdings), `outcome-buy` / `outcome-sell` / `outcome-cancel` (trade), `usdh-fund` (USDC → USDH spot wrapper), `abstraction` (cross-DEX margin mode query/set). `markets --type outcome` is a discovery shortcut. Asset id namespace 100,000,000+, two coin-string encodings (`#N` for trading, `+N` for balances), standard `order`/`cancel` actions reused (no new EIP-712 schema). Settlement is automatic at expiry. Verified end-to-end on mainnet 2026-05-05 with $10 round trip on outcome 2 (BTC-79980-1d), oid 411105620129 → 411105795937, ~0.2% spread cost.
+- **fix**: `quickstart` next_command bug — 6 places suggested `--side long/short` but `order` accepts only `buy/sell`; users following quickstart guidance hit "invalid value" error. Now `--side buy`. Also adds HIP-4 awareness: surfaces USDH balance + outcome positions, new `has_outcome_position` status when wallet holds outcome legs.
+- **fix**: `close` / `tpsl` / `order-batch` HIP-3 mid lookup — all three previously called `get_all_mids()` (default DEX only); for builder DEX coins (xyz:CL etc.) the mid was 0 → close worst_fill_price=0 → HL rejected. Now use `get_all_mids_for_dex(info, dex_opt)`. `order-batch` builds a per-DEX mids cache to support cross-DEX batches.
+- **fix**: `order --reduce-only` margin gate bypass — required_margin = 0 for reduce-only orders so users near liquidation can close without false "Insufficient perp balance" rejection.
+- **fix**: `hype_balance` (in `get-gas`) — strict error propagation; previously RPC errors / malformed hex silently became 0 HYPE displayed.
+- **fix**: `spot-cancel` — refuses orders with malformed `@N` coin instead of silently defaulting to PURR/USDC.
+- **docs**: HIP-4 chapter explaining architectural differences vs perp/HIP-3 (USDH not USDC, no leverage/liquidation, automatic settlement, two coin-string encodings); HIP-3 chapter adds "UI vs API" subsection clarifying that the HL web UI's "no transfer needed" feel is auto-`sendAsset`, not unified margin (separate from `userSetAbstraction` which is what genuinely pools margin).
 
 ### v0.3.9 (2026-04-23)
 

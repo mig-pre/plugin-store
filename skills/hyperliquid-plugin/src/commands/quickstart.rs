@@ -1,12 +1,13 @@
 use clap::Args;
 use crate::api::{
-    fetch_perp_dexs, get_clearinghouse_state, get_clearinghouse_state_for_dex, BuilderDex,
+    fetch_perp_dexs, get_clearinghouse_state, get_clearinghouse_state_for_dex,
+    get_spot_clearinghouse_state, parse_outcome_coin, BuilderDex,
 };
 use crate::config::{info_url, ARBITRUM_CHAIN_ID, USDC_ARBITRUM};
 use crate::onchainos::resolve_wallet;
 use crate::rpc::{ARBITRUM_RPC, erc20_balance};
 
-const ABOUT: &str = "Hyperliquid is a high-performance on-chain perpetuals DEX - trade BTC, ETH and 100+ assets on the default DEX, plus HIP-3 builder DEXs (xyz/flx/vntl/etc) with stocks, commodities, indices, and other RWAs.";
+const ABOUT: &str = "Hyperliquid is a high-performance on-chain perpetuals DEX - trade BTC/ETH/SOL on the default DEX, RWAs (CL, NVDA, SP500, etc.) on HIP-3 builder DEXs, and binary YES/NO outcomes on HIP-4 prediction markets.";
 
 #[derive(Args)]
 pub struct QuickstartArgs {
@@ -26,15 +27,21 @@ pub async fn run(args: QuickstartArgs) -> anyhow::Result<()> {
 
     let url = info_url();
 
-    // 2. Phase A: parallel-fetch Arbitrum balance + default DEX state + builder DEX registry
-    let (arb_result, hl_default_result, registry_result) = tokio::join!(
+    // 2. Phase A: parallel-fetch Arbitrum balance + default DEX state + builder DEX
+    //    registry + spot clearinghouse (which contains USDH balance and HIP-4 outcome legs).
+    let (arb_result, hl_default_result, registry_result, spot_result) = tokio::join!(
         erc20_balance(USDC_ARBITRUM, &wallet, ARBITRUM_RPC),
         get_clearinghouse_state(url, &wallet),
         fetch_perp_dexs(url),
+        get_spot_clearinghouse_state(url, &wallet),
     );
 
     let arb_usdc_units = arb_result.unwrap_or(0);
     let arb_usdc = arb_usdc_units as f64 / 1_000_000.0;
+
+    // Parse spot state for USDH balance + HIP-4 outcome positions (`+N` coins)
+    let (usdh_balance, outcome_positions_count, outcome_positions_detail) =
+        parse_spot_for_outcomes(spot_result.as_ref().ok());
 
     // Parse default DEX state
     let (hl_account_value, hl_withdrawable, default_positions, default_positions_detail) =
@@ -75,11 +82,13 @@ pub async fn run(args: QuickstartArgs) -> anyhow::Result<()> {
         }));
     }
 
-    // 4. Decide status + next_command (priority: builder_dex_position > active > ready > needs_deposit > low_balance > no_funds)
+    // 4. Decide status + next_command. Priority order:
+    //    has_outcome_position > has_builder_dex_position > active > ready > needs_deposit > low_balance > no_funds
     let (status, suggestion, onboarding_steps, next_command) = build_suggestion(
         &wallet, arb_usdc, hl_account_value,
         &default_positions, builder_total_positions,
         builder_total_value, &richest_builder_dex,
+        outcome_positions_count, usdh_balance,
     );
 
     let mut out = serde_json::json!({
@@ -93,10 +102,13 @@ pub async fn run(args: QuickstartArgs) -> anyhow::Result<()> {
             "hl_default_positions":     default_positions.len(),
             "hl_builder_total_value":   builder_total_value,
             "hl_builder_total_positions": builder_total_positions,
+            "spot_usdh_balance":        usdh_balance,
+            "hip4_outcome_positions":   outcome_positions_count,
         },
-        "default_dex_positions": default_positions_detail,
-        "builder_dexs":          builder_summary,
-        "builder_dex_count":     registry.len(),
+        "default_dex_positions":  default_positions_detail,
+        "builder_dexs":           builder_summary,
+        "builder_dex_count":      registry.len(),
+        "outcome_positions":      outcome_positions_detail,
         "status":       status,
         "suggestion":   suggestion,
         "next_command": next_command,
@@ -108,6 +120,40 @@ pub async fn run(args: QuickstartArgs) -> anyhow::Result<()> {
 
     println!("{}", serde_json::to_string_pretty(&out)?);
     Ok(())
+}
+
+/// Decode HIP-4 outcome state from spotClearinghouseState. Returns
+/// (usdh_balance, outcome_positions_count, outcome_positions_detail).
+/// Outcome positions are spot balances with coin starting with `+`.
+fn parse_spot_for_outcomes(state: Option<&serde_json::Value>)
+    -> (f64, usize, Vec<serde_json::Value>)
+{
+    let s = match state { Some(v) => v, None => return (0.0, 0, vec![]) };
+    let empty = vec![];
+    let balances = s["balances"].as_array().unwrap_or(&empty);
+    let mut usdh = 0.0_f64;
+    let mut detail: Vec<serde_json::Value> = Vec::new();
+    for b in balances {
+        let coin = match b["coin"].as_str() { Some(c) => c, None => continue };
+        let total: f64 = b["total"].as_str().and_then(|x| x.parse().ok()).unwrap_or(0.0);
+        if coin == "USDH" {
+            usdh = total;
+            continue;
+        }
+        if coin.starts_with('+') && total != 0.0 {
+            if let Some((outcome_id, side)) = parse_outcome_coin(coin) {
+                let entry_ntl: f64 = b["entryNtl"].as_str().and_then(|x| x.parse().ok()).unwrap_or(0.0);
+                detail.push(serde_json::json!({
+                    "balance_coin": coin,
+                    "outcome_id":   outcome_id,
+                    "side":         if side == 0 { "yes" } else { "no" },
+                    "size":         total,
+                    "entry_ntl_usdh": entry_ntl,
+                }));
+            }
+        }
+    }
+    (usdh, detail.len(), detail)
 }
 
 /// Decode account_value, withdrawable, position-coins, position-detail from a
@@ -149,8 +195,23 @@ fn build_suggestion(
     builder_total_positions: usize,
     builder_total_value: f64,
     richest_builder: &Option<(String, f64)>,
+    outcome_positions_count: usize,
+    usdh_balance: f64,
 ) -> (&'static str, String, Vec<String>, String) {
-    // Case 0 (NEW HIP-3): user has positions on a builder DEX
+    // Case 0 (HIP-4): user has open outcome positions — review/manage them first
+    if outcome_positions_count > 0 {
+        return (
+            "has_outcome_position",
+            format!(
+                "You have {} open HIP-4 outcome position(s). Settlement is automatic at expiry; sell early if you want to lock in or change exposure.",
+                outcome_positions_count
+            ),
+            vec![],
+            "hyperliquid-plugin outcome-positions".to_string(),
+        );
+    }
+
+    // Case 0a (NEW HIP-3): user has positions on a builder DEX
     if builder_total_positions > 0 {
         let dex = richest_builder.as_ref().map(|(n, _)| n.clone()).unwrap_or_else(|| "xyz".to_string());
         return (
@@ -159,6 +220,25 @@ fn build_suggestion(
                 builder_total_positions),
             vec![],
             format!("hyperliquid-plugin positions --dex {}", dex),
+        );
+    }
+
+    // Case 0b (HIP-4): user has USDH but no outcome positions yet → suggest outcome-list
+    if usdh_balance >= 0.5 && outcome_positions_count == 0 {
+        return (
+            "ready",
+            format!(
+                "You have {:.4} USDH on spot. List HIP-4 outcome markets to deploy it (binary YES/NO contracts on real-world events).",
+                usdh_balance
+            ),
+            vec![
+                "1. List active outcome markets:".to_string(),
+                "   hyperliquid-plugin outcome-list".to_string(),
+                "2. Buy a YES or NO leg (e.g. on the BTC-79980-1d outcome, betting YES that BTC > $79980 in 1d):".to_string(),
+                "   hyperliquid-plugin outcome-buy --outcome BTC-79980-1d --side yes --shares 1 --price 0.65 --confirm".to_string(),
+                "3. Track positions: hyperliquid-plugin outcome-positions".to_string(),
+            ],
+            "hyperliquid-plugin outcome-list".to_string(),
         );
     }
 
@@ -183,7 +263,7 @@ fn build_suggestion(
                 format!("1. Inspect the {} DEX universe (RWAs / commodities / equities):", dex),
                 format!("   hyperliquid-plugin prices --dex {}", dex),
                 format!("2. Preview an order on a builder-DEX coin (e.g. xyz:CL = WTI Crude):"),
-                format!("   hyperliquid-plugin order --coin {}:CL --side long --size 50 --leverage 5", dex),
+                format!("   hyperliquid-plugin order --coin {}:CL --side buy --size 50 --leverage 5", dex),
                 format!("3. Add --confirm to submit the order."),
             ],
             format!("hyperliquid-plugin prices --dex {}", dex),
@@ -201,13 +281,13 @@ fn build_suggestion(
                 "   hyperliquid-plugin dex-list".to_string(),
                 "   hyperliquid-plugin prices --dex xyz       # RWAs (CL/BRENTOIL/NVDA/TSLA/etc)".to_string(),
                 "3. Preview a default-DEX trade (no --confirm = preview only):".to_string(),
-                "   hyperliquid-plugin order --coin BTC --side long --size 10 --leverage 5".to_string(),
+                "   hyperliquid-plugin order --coin BTC --side buy --size 10 --leverage 5".to_string(),
                 "4. Or fund builder DEX first (e.g. xyz) for RWAs:".to_string(),
                 "   hyperliquid-plugin dex-transfer --to-dex xyz --amount 5 --confirm".to_string(),
                 "5. When ready, add --confirm to execute:".to_string(),
-                "   hyperliquid-plugin order --coin BTC --side long --size 10 --leverage 5 --confirm".to_string(),
+                "   hyperliquid-plugin order --coin BTC --side buy --size 10 --leverage 5 --confirm".to_string(),
             ],
-            "hyperliquid-plugin order --coin BTC --side long --size 10 --leverage 5".to_string(),
+            "hyperliquid-plugin order --coin BTC --side buy --size 10 --leverage 5".to_string(),
         );
     }
 
@@ -225,7 +305,7 @@ fn build_suggestion(
                 "   hyperliquid-plugin dex-transfer --to-dex xyz --amount 5 --confirm".to_string(),
                 "3. Run quickstart again to confirm balances on default + builder DEXs.".to_string(),
                 "4. Place a trade:".to_string(),
-                "   hyperliquid-plugin order --coin BTC --side long --size 10 --leverage 5 --confirm".to_string(),
+                "   hyperliquid-plugin order --coin BTC --side buy --size 10 --leverage 5 --confirm".to_string(),
             ],
             format!("hyperliquid-plugin deposit --amount {:.2} --confirm", suggest),
         );
@@ -260,7 +340,7 @@ fn build_suggestion(
             "3. Deposit USDC to Hyperliquid:".to_string(),
             "   hyperliquid-plugin deposit --amount <amount> --confirm".to_string(),
             "4. Place your first trade:".to_string(),
-            "   hyperliquid-plugin order --coin BTC --side long --size 10 --leverage 5 --confirm".to_string(),
+            "   hyperliquid-plugin order --coin BTC --side buy --size 10 --leverage 5 --confirm".to_string(),
         ],
         "hyperliquid-plugin address".to_string(),
     )

@@ -15,6 +15,13 @@ use commands::{
     dex_list::DexListArgs,
     dex_transfer::DexTransferArgs,
     markets::MarketsArgs,
+    outcome_list::OutcomeListArgs,
+    outcome_positions::OutcomePositionsArgs,
+    usdh_fund::UsdhFundArgs,
+    outcome_buy::OutcomeBuyArgs,
+    outcome_sell::OutcomeSellArgs,
+    outcome_cancel::OutcomeCancelArgs,
+    abstraction::AbstractionArgs,
     evm_send::EvmSendArgs,
     get_gas::GetGasArgs,
     order::OrderArgs,
@@ -98,6 +105,26 @@ enum Commands {
     DexTransfer(DexTransferArgs),
     /// List tradeable markets across Hyperliquid (--type crypto|tradfi|hip3|spot, --dex, --coin, filters)
     Markets(MarketsArgs),
+    /// HIP-4: List outcome markets (binary YES/NO contracts, prediction markets, USDH-collateralized)
+    #[command(name = "outcome-list")]
+    OutcomeList(OutcomeListArgs),
+    /// HIP-4: Show open outcome positions (YES/NO holdings) for the wallet
+    #[command(name = "outcome-positions")]
+    OutcomePositions(OutcomePositionsArgs),
+    /// HIP-4: Buy USDH (Hyperliquid native stablecoin) for USDC on the spot market — needed before trading outcomes (requires --confirm)
+    #[command(name = "usdh-fund")]
+    UsdhFund(UsdhFundArgs),
+    /// HIP-4: Buy a YES or NO leg of a binary outcome contract (requires --confirm)
+    #[command(name = "outcome-buy")]
+    OutcomeBuy(OutcomeBuyArgs),
+    /// HIP-4: Sell a YES or NO leg — close long position or open short (requires --confirm)
+    #[command(name = "outcome-sell")]
+    OutcomeSell(OutcomeSellArgs),
+    /// HIP-4: Cancel outcome orders by id, by leg, or all (requires --confirm)
+    #[command(name = "outcome-cancel")]
+    OutcomeCancel(OutcomeCancelArgs),
+    /// Query or set HL's cross-DEX margin abstraction mode (disabled / unified / portfolio). Affects HIP-3 dex-transfer requirement.
+    Abstraction(AbstractionArgs),
 }
 
 #[tokio::main]
@@ -128,5 +155,12 @@ async fn main() -> anyhow::Result<()> {
         Commands::DexList(args) => commands::dex_list::run(args).await,
         Commands::DexTransfer(args) => commands::dex_transfer::run(args).await,
         Commands::Markets(args) => commands::markets::run(args).await,
+        Commands::OutcomeList(args) => commands::outcome_list::run(args).await,
+        Commands::OutcomePositions(args) => commands::outcome_positions::run(args).await,
+        Commands::UsdhFund(args) => commands::usdh_fund::run(args).await,
+        Commands::OutcomeBuy(args) => commands::outcome_buy::run(args).await,
+        Commands::OutcomeSell(args) => commands::outcome_sell::run(args).await,
+        Commands::OutcomeCancel(args) => commands::outcome_cancel::run(args).await,
+        Commands::Abstraction(args) => commands::abstraction::run(args).await,
     }
 }
