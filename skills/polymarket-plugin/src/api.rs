@@ -5,7 +5,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::auth::l2_headers;
+use crate::auth::{l2_headers, builder_l2_headers, BuilderCredentials};
 use crate::config::{Credentials, Urls};
 
 // ─── Custom serde helpers ─────────────────────────────────────────────────────
@@ -1361,4 +1361,285 @@ pub async fn get_5m_market(client: &Client, slug: &str) -> Result<Option<FiveMin
         down_token_id: token_ids.get(1).cloned().unwrap_or_default(),
         accepting_orders: m["acceptingOrders"].as_bool().unwrap_or(false),
     }))
+}
+
+// ─── Deposit Wallet — Builder Auth ───────────────────────────────────────────
+
+/// Derive per-user builder credentials via `POST /auth/builder-api-key` on the CLOB.
+///
+/// The builder API key is distinct from the CLOB API key — it specifically authorises
+/// the Polymarket relayer to deploy and manage deposit wallets on behalf of the EOA.
+/// No Polymarket web app interaction or Builders Program membership is required;
+/// any authenticated CLOB user can derive their builder key from their CLOB credentials.
+pub async fn get_builder_api_key(
+    client: &Client,
+    creds: &Credentials,
+    owner_addr: &str,
+) -> Result<BuilderCredentials> {
+    let path = "/auth/builder-api-key";
+    let headers = l2_headers(
+        owner_addr,
+        &creds.api_key,
+        &creds.secret,
+        &creds.passphrase,
+        "POST",
+        path,
+        "",
+    )?;
+    let url = format!("{}{}", Urls::clob(), path);
+    let mut req = client.post(&url);
+    for (k, v) in &headers {
+        req = req.header(k.as_str(), v.as_str());
+    }
+    let resp: serde_json::Value = req
+        .send()
+        .await
+        .context("POST /auth/builder-api-key failed")?
+        .json()
+        .await
+        .context("parsing /auth/builder-api-key response")?;
+    if let Some(err) = resp.get("error").and_then(|e| e.as_str()) {
+        anyhow::bail!("/auth/builder-api-key error: {}\nResponse: {}", err, resp);
+    }
+    serde_json::from_value(resp.clone())
+        .with_context(|| format!("parsing builder-api-key response: {}", resp))
+}
+
+// ─── Deposit Wallet — Relayer API ────────────────────────────────────────────
+
+/// Response from the relayer /submit endpoint.
+#[derive(Debug, serde::Deserialize)]
+pub struct RelayerSubmitResponse {
+    #[serde(rename = "transactionHash")]
+    pub transaction_hash: Option<String>,
+    #[serde(rename = "transactionID")]
+    pub transaction_id: Option<String>,
+    #[serde(rename = "walletAddress")]
+    pub wallet_address: Option<String>,
+    pub state: Option<String>,
+    pub status: Option<String>,
+    pub error: Option<String>,
+    pub message: Option<String>,
+}
+
+/// Response from GET /nonce for a deposit wallet.
+/// Note: the relayer encodes nonce as a JSON string (e.g. `"0"`), not a number.
+#[derive(Debug, serde::Deserialize)]
+pub struct WalletNonceResponse {
+    #[serde(deserialize_with = "deserialize_string_as_u64")]
+    pub nonce: u64,
+}
+
+fn deserialize_string_as_u64<'de, D>(de: D) -> std::result::Result<u64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::Deserialize;
+    #[derive(serde::Deserialize)]
+    #[serde(untagged)]
+    enum StrOrNum { Str(String), Num(u64) }
+    match StrOrNum::deserialize(de)? {
+        StrOrNum::Str(s) => s.parse::<u64>().map_err(serde::de::Error::custom),
+        StrOrNum::Num(n) => Ok(n),
+    }
+}
+
+/// Result of a WALLET-CREATE relayer call.
+///
+/// The relayer behaves differently depending on whether the wallet already exists:
+/// - Fresh deployment: returns a `transactionHash`; the wallet address is read from
+///   the factory event log after the tx confirms.
+/// - Already deployed: returns `walletAddress` directly with no transaction hash.
+/// - Failed: the relayer submitted a tx that failed (likely factory revert — wallet exists).
+pub enum WalletCreateResult {
+    /// Freshly submitted on-chain — poll this tx hash for confirmation, then
+    /// extract the wallet address from the factory's `WalletCreated` event.
+    Transaction(String),
+    /// Wallet was already deployed for this owner — relayer returned the address directly.
+    AlreadyDeployed(String),
+    /// Relayer returned STATE_FAILED — the on-chain tx likely reverted because the
+    /// wallet already exists in the factory's owner mapping.
+    Failed,
+}
+
+/// Deploy a new deposit wallet via the Polymarket relayer (WALLET-CREATE).
+///
+/// No user ECDSA signature is required — the relayer deploys a deterministic ERC-1967 proxy.
+/// Builder credentials (`POLY_BUILDER_*` headers) authorise the relayer to call the factory's
+/// OnlyOperator `deploy()` function on behalf of the EOA.
+///
+/// Returns a `WalletCreateResult` indicating whether a fresh tx was submitted or the
+/// wallet already existed (in which case the address is returned directly).
+pub async fn relayer_wallet_create(
+    client: &Client,
+    owner_addr: &str,
+    builder: &BuilderCredentials,
+) -> Result<WalletCreateResult> {
+    use crate::config::Contracts;
+    let url = format!("{}/submit", crate::config::Urls::RELAYER);
+    let body_json = serde_json::json!({
+        "type": "WALLET-CREATE",
+        "from": owner_addr,
+        "to":   Contracts::DEPOSIT_WALLET_FACTORY,
+    });
+    let body_str = serde_json::to_string(&body_json)
+        .context("serializing WALLET-CREATE body")?;
+    let headers = builder_l2_headers(
+        &builder.api_key,
+        &builder.secret,
+        &builder.passphrase,
+        "POST",
+        "/submit",
+        &body_str,
+    )?;
+    let mut req = client
+        .post(&url)
+        .header("Content-Type", "application/json")
+        .body(body_str);
+    for (k, v) in &headers {
+        req = req.header(k.as_str(), v.as_str());
+    }
+    let raw_resp = req
+        .send()
+        .await
+        .context("relayer WALLET-CREATE request failed")?
+        .text()
+        .await
+        .context("relayer WALLET-CREATE response read failed")?;
+    let resp: RelayerSubmitResponse = serde_json::from_str(&raw_resp)
+        .with_context(|| format!("parsing relayer WALLET-CREATE response: {}", raw_resp))?;
+
+    // Check for hard errors (check both `error` and `message` fields)
+    let err_msg = resp.error.as_deref().filter(|e| !e.is_empty())
+        .or_else(|| resp.message.as_deref().filter(|m| !m.is_empty()));
+    if let Some(err) = err_msg {
+        anyhow::bail!("relayer WALLET-CREATE error: {}", err);
+    }
+    // STATE_FAILED: the on-chain tx was submitted but reverted (most likely the wallet
+    // already exists in the factory's owner mapping from a prior deployment).
+    let state = resp.state.as_deref().unwrap_or("");
+    if state == "STATE_FAILED" || state == "FAILED" {
+        return Ok(WalletCreateResult::Failed);
+    }
+    // Wallet already deployed — relayer returns walletAddress directly, no tx needed
+    if let Some(addr) = resp.wallet_address.filter(|a| !a.is_empty()) {
+        return Ok(WalletCreateResult::AlreadyDeployed(addr));
+    }
+    // Fresh deployment — a transaction was submitted; poll for confirmation
+    let tx_hash = resp.transaction_hash
+        .filter(|h| !h.is_empty())
+        .ok_or_else(|| anyhow::anyhow!(
+            "relayer WALLET-CREATE returned unexpected response: {}",
+            raw_resp
+        ))?;
+    Ok(WalletCreateResult::Transaction(tx_hash))
+}
+
+/// Submit a signed batch of calls via the Polymarket relayer (WALLET).
+///
+/// Builder credentials authorise the relayer to execute the batch on the deposit wallet.
+/// The EOA signature in `signature` validates the batch contents via ERC-1271.
+pub async fn relayer_wallet_batch(
+    client: &Client,
+    owner_addr: &str,
+    wallet_addr: &str,
+    nonce: u64,
+    deadline: u64,
+    calls: Vec<serde_json::Value>,
+    signature: &str,
+    builder: &BuilderCredentials,
+) -> Result<String> {
+    use crate::config::Contracts;
+    let url = format!("{}/submit", crate::config::Urls::RELAYER);
+    let body_json = serde_json::json!({
+        "type":      "WALLET",
+        "from":      owner_addr,
+        "to":        Contracts::DEPOSIT_WALLET_FACTORY, // relayer requires factory as 'to'
+        "nonce":     nonce.to_string(), // relayer expects nonce as string (same as /nonce response)
+        "signature": signature,
+        "depositWalletParams": {
+            "depositWallet": wallet_addr,
+            "deadline":      deadline.to_string(),
+            "calls":         calls,
+        },
+    });
+    let body_str = serde_json::to_string(&body_json)
+        .context("serializing WALLET batch body")?;
+    let headers = builder_l2_headers(
+        &builder.api_key,
+        &builder.secret,
+        &builder.passphrase,
+        "POST",
+        "/submit",
+        &body_str,
+    )?;
+    let mut req = client
+        .post(&url)
+        .header("Content-Type", "application/json")
+        .body(body_str);
+    for (k, v) in &headers {
+        req = req.header(k.as_str(), v.as_str());
+    }
+    let raw_resp = req
+        .send()
+        .await
+        .context("relayer WALLET batch request failed")?
+        .text()
+        .await
+        .context("relayer WALLET batch response read failed")?;
+    let resp: RelayerSubmitResponse = serde_json::from_str(&raw_resp)
+        .with_context(|| format!("parsing relayer WALLET batch response: {}", raw_resp))?;
+
+    if let Some(err) = resp.error.filter(|e| !e.is_empty()) {
+        anyhow::bail!("relayer WALLET batch error: {}", err);
+    }
+    resp.transaction_hash
+        .filter(|h| !h.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("relayer WALLET batch returned no transaction hash"))
+}
+
+/// Fetch the current nonce for a deposit wallet from the relayer.
+pub async fn get_wallet_nonce(client: &Client, owner_addr: &str) -> Result<u64> {
+    let url = format!(
+        "{}/nonce?address={}&type=WALLET",
+        crate::config::Urls::RELAYER,
+        owner_addr
+    );
+    let resp: WalletNonceResponse = client
+        .get(&url)
+        .send()
+        .await
+        .context("relayer /nonce request failed")?
+        .json()
+        .await
+        .context("relayer /nonce response parse failed")?;
+    Ok(resp.nonce)
+}
+
+/// Sync pUSD balance and allowance with the CLOB for a deposit wallet (signature_type=3).
+/// Must be called after depositing pUSD or completing approval batches.
+pub async fn sync_balance_allowance_deposit_wallet(
+    client: &Client,
+    wallet_addr: &str,
+    signer_addr: &str,
+    creds: &Credentials,
+) -> Result<()> {
+    use crate::config::Urls;
+    let path = format!(
+        "/balance-allowance/update?asset_type=COLLATERAL&signature_type=3&address={}",
+        wallet_addr
+    );
+    let headers = crate::auth::l2_headers(signer_addr, &creds.api_key, &creds.secret, &creds.passphrase, "GET", "/balance-allowance/update", "")?;
+    let url = format!("{}{}", Urls::clob(), path);
+    let mut req = client.get(&url);
+    for (k, v) in &headers {
+        req = req.header(k.as_str(), v.as_str());
+    }
+    let resp = req.send().await.context("balance-allowance/update signature_type=3 failed")?;
+    let status = resp.status();
+    let body = resp.text().await.unwrap_or_default();
+    if !status.is_success() {
+        anyhow::bail!("balance-allowance/update returned {}: {}", status, body);
+    }
+    Ok(())
 }

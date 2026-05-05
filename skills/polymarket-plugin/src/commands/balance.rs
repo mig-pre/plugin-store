@@ -24,10 +24,11 @@ pub async fn run() -> Result<()> {
 
 async fn run_inner() -> Result<()> {
     let eoa = get_wallet_address().await?;
-    let proxy = crate::config::load_credentials()
+    let (proxy, deposit_wallet) = crate::config::load_credentials_for(&eoa)
         .ok()
         .flatten()
-        .and_then(|c| c.proxy_wallet);
+        .map(|c| (c.proxy_wallet, c.deposit_wallet))
+        .unwrap_or((None, None));
 
     let usdc_e_contract = crate::config::Contracts::USDC_E;
     let pusd_contract   = crate::config::Contracts::PUSD;
@@ -75,6 +76,28 @@ async fn run_inner() -> Result<()> {
             "pusd_note": "pUSD is required for V2 exchange orders (~2026-04-28). USDC.e is auto-wrapped on buy."
         }
     });
+
+    // If deposit wallet is initialized, fetch its balances (pUSD only — no POL needed)
+    if let Some(ref dw_addr) = deposit_wallet {
+        let (dw_usdc_result, dw_pusd_result) = tokio::join!(
+            get_usdc_balance(dw_addr),
+            get_pusd_balance(dw_addr),
+        );
+        data["deposit_wallet"] = serde_json::json!({
+            "address": dw_addr,
+            "usdc_e": match dw_usdc_result {
+                Ok(v)  => format!("${:.2}", v),
+                Err(e) => format!("error: {}", e),
+            },
+            "usdc_e_contract": usdc_e_short,
+            "pusd": match dw_pusd_result {
+                Ok(v)  => format!("${:.2}", v),
+                Err(e) => format!("error: {}", e),
+            },
+            "pusd_contract": pusd_short,
+            "note": "Deposit wallet (sig_type=3 / POLY_1271). Fund with pUSD for gasless trading.",
+        });
+    }
 
     // If proxy wallet is initialized, fetch its balances too
     if let Some(ref proxy_addr) = proxy {

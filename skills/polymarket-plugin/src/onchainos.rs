@@ -796,6 +796,56 @@ pub async fn ctf_redeem_positions(condition_id: &str, collateral_addr: &str) -> 
     extract_tx_hash(&result)
 }
 
+/// ABI-encode and submit CTF redeemPositions via the deposit wallet relayer WALLET batch.
+///
+/// Used when winning outcome tokens are held by the deposit wallet (DEPOSIT_WALLET mode).
+/// The relayer executes the call from the deposit wallet's context, so CTF sees
+/// msg.sender = deposit_wallet, which holds the winning tokens.
+/// pUSD collateral is transferred to the deposit wallet after redemption.
+pub async fn ctf_redeem_via_deposit_wallet(
+    condition_id: &str,
+    collateral_addr: &str,
+    deposit_wallet: &str,
+    eoa_addr: &str,
+    builder: &crate::auth::BuilderCredentials,
+) -> Result<String> {
+    use crate::config::Contracts;
+    use crate::signing::{BatchParams, WalletCall, sign_batch_via_onchainos};
+    use crate::api::{get_wallet_nonce, relayer_wallet_batch};
+
+    let calldata = build_ctf_redeem_positions_calldata(condition_id, collateral_addr);
+    let calls = vec![WalletCall {
+        target: Contracts::CTF.to_string(),
+        value: 0,
+        data: calldata,
+    }];
+
+    let client = reqwest::Client::new();
+    let nonce = get_wallet_nonce(&client, eoa_addr).await
+        .map_err(|e| anyhow::anyhow!("Could not fetch wallet nonce for redeem batch: {}", e))?;
+    let deadline = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() + 300;
+
+    let calls_json: Vec<serde_json::Value> = calls.iter().map(|c| serde_json::json!({
+        "target": c.target,
+        "value":  c.value.to_string(),
+        "data":   c.data,
+    })).collect();
+
+    let batch_params = BatchParams {
+        wallet: deposit_wallet.to_string(),
+        nonce,
+        deadline,
+        calls,
+    };
+    let batch_sig = sign_batch_via_onchainos(&batch_params).await
+        .map_err(|e| anyhow::anyhow!("Batch signing for deposit wallet redeem failed: {}", e))?;
+
+    relayer_wallet_batch(&client, eoa_addr, deposit_wallet, nonce, deadline, calls_json, &batch_sig, builder).await
+}
+
 /// ABI-encode and submit CTF redeemPositions via the PROXY_FACTORY.
 ///
 /// Used when winning outcome tokens are held by the proxy wallet (POLY_PROXY mode).
@@ -931,6 +981,149 @@ pub async fn get_ctf_balance(owner: &str, token_id_decimal: &str) -> Result<u128
     Ok(u128::from_str_radix(hex, 16).unwrap_or(u128::MAX))
 }
 
+/// Variant of `get_ctf_balance` that takes the position ID as a 64-char hex string
+/// instead of decimal — useful when the position ID is computed via the on-chain
+/// `getPositionId` view function (which returns hex).
+pub async fn get_ctf_balance_hex(owner: &str, position_id_hex: &str) -> Result<u128> {
+    use crate::config::{Contracts, Urls};
+    let pid = position_id_hex.trim_start_matches("0x");
+    if pid.len() != 64 {
+        anyhow::bail!("position_id_hex must be 64 hex chars, got {}", pid.len());
+    }
+    let data = format!("0x00fdd58e{}{}", pad_address(owner), pid);
+    let body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "eth_call",
+        "params": [{ "to": Contracts::CTF, "data": data }, "latest"],
+        "id": 1
+    });
+    let v: serde_json::Value = reqwest::Client::new()
+        .post(Urls::polygon_rpc())
+        .json(&body)
+        .send()
+        .await
+        .context("Polygon RPC request failed")?
+        .json()
+        .await
+        .context("parsing CTF balanceOf response")?;
+    if let Some(err) = v.get("error") {
+        anyhow::bail!("Polygon RPC error in CTF balanceOf (hex): {}", err);
+    }
+    let hex = v["result"].as_str().unwrap_or("0x").trim_start_matches("0x");
+    if hex.is_empty() || hex.chars().all(|c| c == '0') {
+        return Ok(0);
+    }
+    Ok(u128::from_str_radix(hex, 16).unwrap_or(u128::MAX))
+}
+
+/// On-chain `CTF.getCollectionId(parentCollectionId, conditionId, indexSet)`.
+///
+/// CTF's collectionId computation uses BN254 elliptic-curve point addition
+/// internally (via hashToCurve), so it cannot be replicated locally without
+/// pulling in elliptic-curve dependencies — we delegate to the contract.
+///
+/// Returns the collectionId as a 64-char hex string (without 0x prefix).
+pub async fn ctf_get_collection_id_hex(
+    parent_collection_id_hex: &str,
+    condition_id_hex: &str,
+    index_set: u32,
+) -> Result<String> {
+    use sha3::{Digest, Keccak256};
+    use crate::config::{Contracts, Urls};
+
+    let selector = Keccak256::digest(b"getCollectionId(bytes32,bytes32,uint256)");
+    let selector_hex = hex::encode(&selector[..4]);
+
+    let parent_pad = format!(
+        "{:0>64}",
+        parent_collection_id_hex.trim_start_matches("0x")
+    );
+    let cond_pad = format!(
+        "{:0>64}",
+        condition_id_hex.trim_start_matches("0x")
+    );
+    let idx_pad = format!("{:064x}", index_set);
+    let data = format!("0x{}{}{}{}", selector_hex, parent_pad, cond_pad, idx_pad);
+
+    let body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "eth_call",
+        "params": [{ "to": Contracts::CTF, "data": data }, "latest"],
+        "id": 1
+    });
+    let v: serde_json::Value = reqwest::Client::new()
+        .post(Urls::polygon_rpc())
+        .json(&body)
+        .send()
+        .await
+        .context("Polygon RPC request failed (getCollectionId)")?
+        .json()
+        .await
+        .context("parsing getCollectionId response")?;
+    if let Some(err) = v.get("error") {
+        anyhow::bail!("Polygon RPC error in CTF.getCollectionId: {}", err);
+    }
+    let hex = v["result"].as_str().unwrap_or("0x").trim_start_matches("0x");
+    if hex.len() != 64 {
+        anyhow::bail!(
+            "getCollectionId returned unexpected length {} (expected 64): 0x{}",
+            hex.len(),
+            hex
+        );
+    }
+    Ok(hex.to_string())
+}
+
+/// On-chain `CTF.getPositionId(IERC20 collateralToken, bytes32 collectionId)`.
+///
+/// Returns the position ID as a 64-char hex string (without 0x prefix), suitable
+/// for direct use with `get_ctf_balance_hex`.
+pub async fn ctf_get_position_id_hex(
+    collateral_addr: &str,
+    collection_id_hex: &str,
+) -> Result<String> {
+    use sha3::{Digest, Keccak256};
+    use crate::config::{Contracts, Urls};
+
+    let selector = Keccak256::digest(b"getPositionId(address,bytes32)");
+    let selector_hex = hex::encode(&selector[..4]);
+
+    let collateral_pad = pad_address(collateral_addr);
+    let collection_pad = format!(
+        "{:0>64}",
+        collection_id_hex.trim_start_matches("0x")
+    );
+    let data = format!("0x{}{}{}", selector_hex, collateral_pad, collection_pad);
+
+    let body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "eth_call",
+        "params": [{ "to": Contracts::CTF, "data": data }, "latest"],
+        "id": 1
+    });
+    let v: serde_json::Value = reqwest::Client::new()
+        .post(Urls::polygon_rpc())
+        .json(&body)
+        .send()
+        .await
+        .context("Polygon RPC request failed (getPositionId)")?
+        .json()
+        .await
+        .context("parsing getPositionId response")?;
+    if let Some(err) = v.get("error") {
+        anyhow::bail!("Polygon RPC error in CTF.getPositionId: {}", err);
+    }
+    let hex = v["result"].as_str().unwrap_or("0x").trim_start_matches("0x");
+    if hex.len() != 64 {
+        anyhow::bail!(
+            "getPositionId returned unexpected length {} (expected 64): 0x{}",
+            hex.len(),
+            hex
+        );
+    }
+    Ok(hex.to_string())
+}
+
 /// ABI-encode NegRiskAdapter.redeemPositions(bytes32 conditionId, uint256[] amounts).
 ///
 /// `amounts` is indexed by outcome slot: amounts[0] = YES token balance, amounts[1] = NO token balance.
@@ -1037,6 +1230,24 @@ pub async fn get_usdc_balance(addr: &str) -> Result<f64> {
     get_erc20_balance_6dec(Contracts::USDC_E, addr).await
 }
 
+/// Return the current Polygon block number via eth_blockNumber.
+pub async fn get_current_block() -> Option<u64> {
+    use crate::config::Urls;
+    let v: serde_json::Value = reqwest::Client::new()
+        .post(Urls::polygon_rpc())
+        .json(&serde_json::json!({
+            "jsonrpc": "2.0", "method": "eth_blockNumber", "params": [], "id": 1
+        }))
+        .send()
+        .await
+        .ok()?
+        .json()
+        .await
+        .ok()?;
+    let hex = v["result"].as_str()?;
+    u64::from_str_radix(hex.trim_start_matches("0x"), 16).ok()
+}
+
 /// Get pUSD (ERC-20) balance for an address. Returns human-readable f64 (dollars).
 /// pUSD is the Polymarket USD collateral token that replaces USDC.e for V2 exchange contracts.
 pub async fn get_pusd_balance(addr: &str) -> Result<f64> {
@@ -1139,6 +1350,82 @@ pub async fn proxy_wrap_usdc_to_pusd(proxy_addr: &str, amount: u128) -> Result<S
 
     let result = wallet_contract_call(Contracts::PROXY_FACTORY, &calldata).await?;
     extract_tx_hash(&result)
+}
+
+/// Wrap USDC.e → pUSD for a deposit wallet via Polymarket relayer WALLET batch.
+///
+/// COLLATERAL_ONRAMP.wrap() requires `_to == msg.sender`, so the deposit wallet must
+/// call the onramp from its own context. This is done via a signed WALLET batch submitted
+/// to the Polymarket relayer — fully gasless (same mechanism as the approval batch in
+/// `setup-deposit-wallet`).
+///
+/// Batch calls:
+///   1. USDC_E.approve(COLLATERAL_ONRAMP, amount)
+///   2. COLLATERAL_ONRAMP.wrap(USDC_E, wallet_addr, amount)  ← msg.sender = wallet_addr = _to ✓
+///
+/// Returns the approval batch tx hash after on-chain confirmation.
+pub async fn deposit_wallet_wrap_usdc_to_pusd(
+    wallet_addr: &str,
+    owner_addr: &str,
+    amount: u128,
+    client: &reqwest::Client,
+    creds: &crate::config::Credentials,
+) -> Result<String> {
+    use sha3::{Digest, Keccak256};
+    use crate::api::{get_builder_api_key, get_wallet_nonce, relayer_wallet_batch};
+    use crate::config::Contracts;
+    use crate::signing::{sign_batch_via_onchainos, BatchParams, WalletCall};
+
+    // Fetch builder credentials (needed for relayer WALLET batch auth).
+    let builder = get_builder_api_key(client, creds, owner_addr).await
+        .map_err(|e| anyhow::anyhow!("Could not get builder credentials for wrap: {}", e))?;
+
+    // Call 1: USDC.e.approve(COLLATERAL_ONRAMP, amount)
+    let approve_sel = hex::encode(&Keccak256::digest(b"approve(address,uint256)")[..4]);
+    let approve_data = format!(
+        "0x{}{}{}",
+        approve_sel,
+        pad_address(Contracts::COLLATERAL_ONRAMP),
+        pad_u256(amount),
+    );
+
+    // Call 2: COLLATERAL_ONRAMP.wrap(USDC_E, wallet_addr, amount)
+    let wrap_sel = hex::encode(&Keccak256::digest(b"wrap(address,address,uint256)")[..4]);
+    let wrap_data = format!(
+        "0x{}{}{}{}",
+        wrap_sel,
+        pad_address(Contracts::USDC_E),
+        pad_address(wallet_addr),
+        pad_u256(amount),
+    );
+
+    let calls = vec![
+        WalletCall { target: Contracts::USDC_E.to_string(),            value: 0, data: approve_data },
+        WalletCall { target: Contracts::COLLATERAL_ONRAMP.to_string(), value: 0, data: wrap_data   },
+    ];
+
+    let nonce = get_wallet_nonce(client, owner_addr).await
+        .map_err(|e| anyhow::anyhow!("Could not fetch wallet nonce for wrap: {}", e))?;
+    let deadline = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() + 300;
+
+    let calls_json: Vec<serde_json::Value> = calls.iter().map(|c| serde_json::json!({
+        "target": c.target,
+        "value":  c.value.to_string(),
+        "data":   c.data,
+    })).collect();
+
+    let batch_params = BatchParams { wallet: wallet_addr.to_string(), nonce, deadline, calls };
+    let batch_sig = sign_batch_via_onchainos(&batch_params).await
+        .map_err(|e| anyhow::anyhow!("Batch signing failed for wrap: {}", e))?;
+
+    let tx = relayer_wallet_batch(client, owner_addr, wallet_addr, nonce, deadline, calls_json, &batch_sig, &builder).await
+        .map_err(|e| anyhow::anyhow!("Relayer WALLET batch for wrap failed: {}", e))?;
+
+    wait_for_tx_receipt(&tx, 120).await?;
+    Ok(tx)
 }
 
 /// Simulate a contract call via eth_call on Polygon. Returns Ok(()) if no revert.
@@ -1551,6 +1838,264 @@ pub async fn is_ctf_approved_for_all(owner: &str, operator: &str) -> Result<bool
     let hex = v["result"].as_str().unwrap_or("0x").trim_start_matches("0x");
     Ok(!hex.is_empty() && hex.trim_start_matches('0') == "1")
 }
+
+// ─── Deposit Wallet detection ─────────────────────────────────────────────────
+
+/// WalletCreated event signature hash (observed from on-chain factory deployment tx).
+///
+/// Event layout (3 indexed topics):
+///   topic[0] = this signature hash
+///   topic[1] = wallet address (indexed)
+///   topic[2] = owner address (indexed)
+///   topic[3] = walletId (indexed, = bytes32(uint160(owner)))
+///   data     = implementation address (non-indexed)
+const WALLET_CREATED_TOPIC: &str =
+    "0x7441de0ad639fe5d2bf1c22447715a0528b682385736bb40ae8dd92555eb8276";
+
+/// Wait for a WALLET-CREATE relayer tx to confirm and extract the deployed deposit wallet
+/// address from the factory's WalletCreated event log.
+///
+/// Returns the wallet address (lowercase, 0x-prefixed).
+pub async fn wait_for_wallet_create_receipt(
+    tx_hash: &str,
+    max_wait_secs: u64,
+) -> Result<String> {
+    use crate::config::{Contracts, Urls};
+    use std::time::{Duration, Instant};
+    use tokio::time::sleep;
+
+    let factory_lower = Contracts::DEPOSIT_WALLET_FACTORY.to_lowercase();
+    let deadline = Instant::now() + Duration::from_secs(max_wait_secs);
+    loop {
+        let body = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "eth_getTransactionReceipt",
+            "params": [tx_hash],
+            "id": 1
+        });
+        let resp = reqwest::Client::new()
+            .post(Urls::polygon_rpc())
+            .json(&body)
+            .send()
+            .await;
+        if let Ok(r) = resp {
+            if let Ok(v) = r.json::<serde_json::Value>().await {
+                if v["result"].is_object() {
+                    let status = v["result"]["status"].as_str().unwrap_or("0x1");
+                    if status == "0x0" {
+                        anyhow::bail!(
+                            "WALLET-CREATE tx {} reverted on-chain (status 0x0). \
+                             The factory's deploy() function requires OnlyOperator authorization. \
+                             Check that builder credentials are valid.",
+                            tx_hash
+                        );
+                    }
+                    // Parse wallet address from the factory's WalletCreated event
+                    if let Some(logs) = v["result"]["logs"].as_array() {
+                        for log in logs {
+                            let addr = log["address"].as_str().unwrap_or("").to_lowercase();
+                            if addr == factory_lower {
+                                if let Some(topics) = log["topics"].as_array() {
+                                    if topics.len() >= 2
+                                        && topics[0].as_str().unwrap_or("") == WALLET_CREATED_TOPIC
+                                    {
+                                        // topic[1] = indexed wallet address (32-byte ABI word)
+                                        let t1 = topics[1].as_str().unwrap_or("");
+                                        let hex = t1.trim_start_matches("0x");
+                                        if hex.len() >= 40 {
+                                            return Ok(format!("0x{}", &hex[hex.len() - 40..]));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    anyhow::bail!(
+                        "WALLET-CREATE tx {} confirmed (status 0x1) but no WalletCreated \
+                         event found in factory logs. This is unexpected — please report.",
+                        tx_hash
+                    );
+                }
+            }
+        }
+        if Instant::now() >= deadline {
+            anyhow::bail!(
+                "WALLET-CREATE tx {} not observed on Polygon within {}s. \
+                 Check Polygonscan to confirm the transaction was included.",
+                tx_hash,
+                max_wait_secs
+            );
+        }
+        sleep(Duration::from_millis(2000)).await;
+    }
+}
+
+/// Check if a deposit wallet has been deployed for the given EOA.
+///
+/// Strategy (two-pass):
+/// 1. Fast: `predictWalletAddress(owner, walletId)` — works for post-factory-upgrade wallets.
+/// 2. Fallback: `eth_getLogs` scan backwards in 9,999-block chunks (free-tier limit).
+///    Handles wallets deployed before a factory upgrade where the CREATE2 salt changed.
+///    Scans up to MAX_SCAN_BLOCKS of history (≈14 hours of Polygon blocks).
+///
+/// Returns `Some(wallet_addr)` if deployed (code present), `None` otherwise.
+pub async fn get_existing_deposit_wallet(eoa_addr: &str) -> Option<String> {
+    use crate::config::{Contracts, Urls};
+
+    let client = reqwest::Client::new();
+
+    // ── Pass 1: predictWalletAddress (fast, O(2) RPC calls) ─────────────────
+    let padded = pad_address(eoa_addr);
+    let data = format!("0x1f264778{padded}{padded}"); // selector + owner + walletId
+    let v: serde_json::Value = client
+        .post(Urls::polygon_rpc())
+        .json(&serde_json::json!({
+            "jsonrpc": "2.0", "method": "eth_call",
+            "params": [{"to": Contracts::DEPOSIT_WALLET_FACTORY, "data": data}, "latest"],
+            "id": 1
+        }))
+        .send()
+        .await
+        .ok()?
+        .json()
+        .await
+        .ok()?;
+
+    if v.get("error").is_none() {
+        let hex_result = v["result"].as_str().unwrap_or("").trim_start_matches("0x");
+        if hex_result.len() >= 64 {
+            let addr_hex = &hex_result[hex_result.len() - 40..];
+            if !addr_hex.chars().all(|c| c == '0') {
+                let wallet_addr = format!("0x{}", addr_hex);
+                if let Ok(code_resp) = client
+                    .post(Urls::polygon_rpc())
+                    .json(&serde_json::json!({
+                        "jsonrpc": "2.0", "method": "eth_getCode",
+                        "params": [&wallet_addr, "latest"], "id": 2
+                    }))
+                    .send()
+                    .await
+                {
+                    if let Ok(cv) = code_resp.json::<serde_json::Value>().await {
+                        let code = cv["result"].as_str().unwrap_or("0x");
+                        if code != "0x" && !code.is_empty() {
+                            return Some(wallet_addr);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Pass 2: eth_getLogs chunked backwards scan ───────────────────────────
+    // Uses polygon_logs_rpc() (publicnode) which supports ≤7,998 block range.
+    // drpc free tier rejects eth_getLogs above ~7,500 blocks despite claiming 10,000.
+    const CHUNK_SIZE: u64 = 7_499; // safely under publicnode's actual ~7,998 limit
+    const MAX_SCAN_BLOCKS: u64 = 150_000; // ≈21 hours of Polygon @ 2 blocks/sec
+
+    // Use the logs RPC endpoint (publicnode) for both block number and getLogs queries
+    // so both calls go to the same reliable node — drpc free tier can silently fail eth_blockNumber.
+    let logs_rpc = Urls::polygon_logs_rpc();
+    let blk_body = serde_json::json!({"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1});
+    let current_block = client.post(&logs_rpc).json(&blk_body).send().await.ok()?
+        .json::<serde_json::Value>().await.ok()
+        .and_then(|v| v["result"].as_str()
+            .and_then(|h| u64::from_str_radix(h.trim_start_matches("0x"), 16).ok())
+        )?;
+    let padded_owner = format!("0x{:0>64}", eoa_addr.trim_start_matches("0x").to_lowercase());
+    let scan_stop = current_block.saturating_sub(MAX_SCAN_BLOCKS);
+
+    let mut to_block = current_block;
+    while to_block > scan_stop {
+        let from_block = to_block.saturating_sub(CHUNK_SIZE).max(scan_stop);
+        let logs_body = serde_json::json!({
+            "jsonrpc": "2.0", "method": "eth_getLogs",
+            "params": [{
+                "address": Contracts::DEPOSIT_WALLET_FACTORY,
+                "fromBlock": format!("0x{:x}", from_block),
+                "toBlock":   format!("0x{:x}", to_block),
+                "topics": [WALLET_CREATED_TOPIC, serde_json::Value::Null, &padded_owner]
+            }],
+            "id": 3
+        });
+        if let Ok(resp) = client.post(&logs_rpc).json(&logs_body).send().await {
+            if let Ok(lv) = resp.json::<serde_json::Value>().await {
+                // Ignore RPC errors (e.g. transient range exceeded) and try next chunk
+                if lv.get("error").is_none() {
+                    if let Some(logs) = lv["result"].as_array() {
+                        if let Some(log) = logs.last() {
+                            if let Some(topics) = log["topics"].as_array() {
+                                if topics.len() >= 2 {
+                                    let t1 = topics[1].as_str().unwrap_or("");
+                                    let hex = t1.trim_start_matches("0x");
+                                    if hex.len() >= 40 {
+                                        let wallet = format!("0x{}", &hex[hex.len() - 40..]);
+                                        // Verify code still present
+                                        if let Ok(cr) = client
+                                            .post(Urls::polygon_rpc())
+                                            .json(&serde_json::json!({
+                                                "jsonrpc": "2.0", "method": "eth_getCode",
+                                                "params": [&wallet, "latest"], "id": 4
+                                            }))
+                                            .send().await
+                                        {
+                                            if let Ok(cv) = cr.json::<serde_json::Value>().await {
+                                                let code = cv["result"].as_str().unwrap_or("0x");
+                                                if code != "0x" && !code.is_empty() {
+                                                    return Some(wallet);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if from_block == 0 || from_block == scan_stop { break; }
+        to_block = from_block.saturating_sub(1);
+    }
+
+    None
+}
+
+/// Compute the deterministic deposit wallet address for an EOA without deploying it.
+/// Uses `predictWalletAddress(address owner, bytes32 walletId)`.
+pub async fn predict_deposit_wallet_address(eoa_addr: &str) -> Option<String> {
+    use crate::config::{Contracts, Urls};
+
+    let padded = pad_address(eoa_addr);
+    let data = format!("0x1f264778{padded}{padded}");
+
+    let body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "eth_call",
+        "params": [{"to": Contracts::DEPOSIT_WALLET_FACTORY, "data": data}, "latest"],
+        "id": 1
+    });
+
+    let v: serde_json::Value = reqwest::Client::new()
+        .post(Urls::polygon_rpc())
+        .json(&body)
+        .send()
+        .await
+        .ok()?
+        .json()
+        .await
+        .ok()?;
+
+    if v.get("error").is_some() { return None; }
+
+    let hex_result = v["result"].as_str()?.trim_start_matches("0x");
+    if hex_result.len() < 64 { return None; }
+    let addr_hex = &hex_result[hex_result.len() - 40..];
+    if addr_hex.chars().all(|c| c == '0') { return None; }
+
+    Some(format!("0x{}", addr_hex))
+}
+
 
 // ─── Unit Tests ───────────────────────────────────────────────────────────────
 

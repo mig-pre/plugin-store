@@ -128,9 +128,24 @@ async fn run_inner(
     // ── Normal deposit — amount required ────────────────────────────────────
     let signer_addr = crate::onchainos::get_wallet_address().await?;
     let creds = crate::auth::ensure_credentials(&client, &signer_addr).await?;
-    let proxy_wallet = creds.proxy_wallet.as_ref().ok_or_else(|| {
-        anyhow::anyhow!("No proxy wallet configured. Run `polymarket setup-proxy` first.")
-    })?;
+
+    // Resolve the destination wallet: deposit wallet (POLY_1271) or proxy (POLY_PROXY).
+    // In DEPOSIT_WALLET mode, funds go directly to the deposit wallet address.
+    // Note: the deposit wallet uses pUSD as collateral. USDC.e deposited here will need
+    // to be wrapped to pUSD before trading — the `buy` command auto-wraps if needed.
+    let (dest_wallet, dest_label) = if creds.mode == crate::config::TradingMode::DepositWallet {
+        let dw = creds.deposit_wallet.as_ref().ok_or_else(|| {
+            anyhow::anyhow!("DEPOSIT_WALLET mode set but no deposit wallet address found. Run `polymarket setup-deposit-wallet`.")
+        })?.clone();
+        (dw, "deposit wallet")
+    } else {
+        let proxy = creds.proxy_wallet.as_ref().ok_or_else(|| {
+            anyhow::anyhow!("No proxy wallet configured. Run `polymarket setup-proxy` first.")
+        })?.clone();
+        (proxy, "proxy wallet")
+    };
+    // Alias for backward compat with the rest of the function.
+    let proxy_wallet = &dest_wallet;
 
     // If amount is missing: run smart suggestion flow instead of plain error.
     if amount.is_none() {
@@ -195,6 +210,7 @@ async fn run_inner(
                         "chain": "polygon",
                         "from": signer_addr,
                         "to": proxy_wallet,
+                        "destination_type": dest_label,
                         "token": "USDC.e",
                         "amount": amount_f,
                         "amount_raw": amount_raw,
@@ -229,7 +245,8 @@ async fn run_inner(
                     "to": proxy_wallet,
                     "token": "USDC.e",
                     "amount": amount_f,
-                    "note": "USDC.e deposited to proxy wallet. Transaction confirmed on-chain."
+                    "destination_type": dest_label,
+                        "note": format!("USDC.e deposited to {} ({}).", dest_label, proxy_wallet)
                 }
             })
         );
