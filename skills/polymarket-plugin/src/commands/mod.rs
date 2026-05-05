@@ -15,6 +15,7 @@ pub mod redeem;
 pub mod rfq;
 pub mod sell;
 pub mod setup_proxy;
+pub mod setup_deposit_wallet;
 pub mod switch_mode;
 pub mod watch;
 pub mod withdraw;
@@ -224,7 +225,8 @@ fn classify_error(msg: &str, ctx: Option<&str>) -> (&'static str, String) {
         Some("redeem")       => "REDEEM_FAILED",
         Some("cancel")       => "CANCEL_FAILED",
         Some("rfq")          => "RFQ_FAILED",
-        Some("setup-proxy")  => "SETUP_PROXY_FAILED",
+        Some("setup-proxy")          => "SETUP_PROXY_FAILED",
+        Some("setup-deposit-wallet") => "SETUP_DEPOSIT_WALLET_FAILED",
         Some("deposit")      => "DEPOSIT_FAILED",
         Some("withdraw")     => "WITHDRAW_FAILED",
         Some("quickstart")   => "QUICKSTART_FAILED",

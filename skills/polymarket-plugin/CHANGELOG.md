@@ -1,5 +1,20 @@
 # Polymarket Plugin Changelog
 
+### v0.6.0 (2026-05-05) — Deposit wallet support (POLY_1271 / new user flow)
+
+- **feat**: New `TradingMode::DepositWallet` — ERC-1967 proxy per user, deployed by `DEPOSIT_WALLET_FACTORY`. Fully gasless (relayer-paid). `maker = signer = deposit_wallet_address`, `signature_type = 3` (POLY_1271 / ERC-1271).
+- **feat**: `setup-deposit-wallet` command — 6-step onboarding: deploy via relayer WALLET-CREATE → sign 5-target approval batch (pUSD + CTF ERC-1155) → sync CLOB balance-allowance `signature_type=3` → save mode.
+- **feat**: `get_existing_deposit_wallet` — on-chain factory probe + `eth_getCode` confirmation. Used by `quickstart` for creds-less recovery.
+- **feat**: `buy` / `sell` / `rfq` — DepositWallet branch: maker=signer=deposit_wallet, sig_type=3, `sign_order_v2_poly1271_via_onchainos`. No per-trade POL or approval needed.
+- **fix**: `sign_order_v2_poly1271_via_onchainos` — Implements Solady ERC-7739 TypedDataSign composite signature format. Plain EIP-712 over the order hash fails because the deposit wallet's `isValidSignature` re-hashes via the TypedDataSign envelope internally. The EOA now signs `keccak256("\x19\x01" || CTF_Exchange_domain_sep || TypedDataSign_struct_hash)` via onchainos EIP-712 JSON with `primaryType=TypedDataSign`. Wire format: `[65 ECDSA sig] + [32 app_domain_sep] + [32 contents_hash] + [186 ORDER_TYPE_STRING] + [2-byte len]` (317 bytes total). Live-verified: FOK buy matched, tx `0xd064ed98ad9626bbaa17afce05b8307beae0a62c1b3280fa022275364c85f859`.
+- **fix**: `buy` / `sell` V2 CLOB amount precision — CLOB V2 rejects orders where maker (USDC) has more than 2 decimal places or taker (shares) has more than 5. `buy` rounds maker UP when within user's requested budget (avoids falling below $1 market minimum), then recomputes taker from adjusted maker. `sell` rounds maker (shares) down to 5dp and taker (USDC received) down to 2dp. Adds `decimal_to_u256_bytes()` for 256-bit token ID ABI encoding without u128 overflow.
+- **feat**: `balance` — shows deposit wallet pUSD balance when deposit wallet is configured.
+- **feat**: `switch-mode` — accepts `deposit-wallet` in addition to `eoa`/`proxy`.
+- **feat**: `quickstart` — on first run (no creds.json): checks for existing proxy, then deposit wallet, then routes to `setup-deposit-wallet` for brand-new users.
+- **feat**: Relayer API — `relayer_wallet_create`, `relayer_wallet_batch`, `get_wallet_nonce`, `sync_balance_allowance_deposit_wallet`.
+- **feat**: Batch signing — `sign_batch_via_onchainos` (EIP-712 `DepositWallet.Batch` type).
+- **compat**: Existing EOA and PolyProxy users unaffected — `creds.json` mode field gates all routing.
+
 ### v0.5.1 (2026-04-27) — V2 cutover resilience + QA fixes
 
 - **fix**: `buy.rs` POLY_PROXY V2 allowance check now reads on-chain pUSD allowance (`get_pusd_allowance`) instead of CLOB `/balance-allowance`, which hard-codes `signature_type=0` and scopes the lookup to the EOA address. The bug caused a redundant `proxy_pusd_approve` to fire on every V2 buy after setup-proxy, wasting ~0.01 POL per trade. Source of truth is now consistent with `setup-proxy`.
