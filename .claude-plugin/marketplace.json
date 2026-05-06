@@ -223,6 +223,15 @@
       }
     },
     {
+      "name": "starter-coach",
+      "description": "Starter Coach V2 — conversational 6-step skill that guides users to build their own automated DEX spot-trading bot on OKX DEX. Onboard → Profile → Build Strategy → Paper Trade → Go Live. Uses OnchainOS CLI for all on-chain data and execution. No freeform trading code — emits validated JSON strategy specs.",
+      "source": "./skills/starter-coach",
+      "category": "utility",
+      "author": {
+        "name": "VibeCodeDaddy"
+      }
+    },
+    {
       "name": "top-rank-tokens-sniper",
       "description": "Top Rank Tokens Sniper v1.0 — OKX ranking leaderboard sniper with momentum scoring, 3-level safety, 6-layer exit system",
       "source": "./skills/top-rank-tokens-sniper",
