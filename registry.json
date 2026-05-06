@@ -321,6 +321,117 @@
       }
     },
     {
+      "name": "macro-intelligence",
+      "version": "1.0.0",
+      "description": "Unified macro intelligence feed — reads 7 sources, classifies events, scores sentiment, generates AI insights, exposes signals via HTTP API",
+      "author": {
+        "name": "victorlee"
+      },
+      "category": "trading-strategy",
+      "tags": [
+        "macro",
+        "news-aggregator",
+        "sentiment",
+        "signals",
+        "fred",
+        "finnhub"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/macro-intelligence"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/macro-intelligence",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/macro-intelligence/SKILL.md",
+      "modify_date": "1778049728",
+      "extra": {
+        "chains": [],
+        "protocols": [],
+        "risk_level": "medium"
+      }
+    },
+    {
+      "name": "mainstream-spot-order",
+      "version": "1.0.0",
+      "description": "Multi-chain DEX spot trading system with 6-signal ensemble, auto-research strategy optimization, and per-pair backtesting across SOL, ETH, BTC, BNB, AVAX, DOGE",
+      "author": {
+        "name": "victorlee"
+      },
+      "category": "trading-strategy",
+      "tags": [
+        "solana",
+        "ethereum",
+        "bsc",
+        "avalanche",
+        "onchainos",
+        "spot-trading",
+        "auto-research"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/mainstream-spot-order"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/mainstream-spot-order",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/mainstream-spot-order/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/mainstream-spot-order/SUMMARY.md",
+      "modify_date": "1778049728",
+      "extra": {
+        "chains": [
+          "solana",
+          "ethereum",
+          "bsc",
+          "avalanche"
+        ],
+        "protocols": [],
+        "risk_level": "high"
+      }
+    },
+    {
+      "name": "market-structure-analyzer",
+      "version": "3.0.0",
+      "description": "Crypto market-structure research agent — 24+ indicators across derivatives, options, on-chain, and macro sentiment with live K-line dashboard and composite scoring",
+      "author": {
+        "name": "VibeCodeDaddy"
+      },
+      "category": "analytics",
+      "tags": [
+        "bitcoin",
+        "ethereum",
+        "derivatives",
+        "options",
+        "on-chain",
+        "market-structure",
+        "gamma-wall",
+        "mvrv",
+        "smart-money",
+        "live-dashboard"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/market-structure-analyzer"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/market-structure-analyzer",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/market-structure-analyzer/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/market-structure-analyzer/SUMMARY.md",
+      "modify_date": "1778049728",
+      "extra": {
+        "chains": [
+          "bitcoin",
+          "ethereum"
+        ],
+        "protocols": [],
+        "risk_level": "medium"
+      }
+    },
+    {
       "name": "meme-trench-scanner",
       "version": "1.0",
       "description": "Meme Trench Scanner v1.0 — Solana Meme automated trading bot with 11 Launchpad coverage, 7-layer exit system, TraderSoul AI observation",
@@ -450,6 +561,41 @@
         "chains": [
           "base",
           "xlayer"
+        ],
+        "protocols": [],
+        "risk_level": "high"
+      }
+    },
+    {
+      "name": "one-click-token-launch",
+      "version": "1.0.0",
+      "description": "One-click multi-launchpad token creation with bundled buy, IPFS metadata, MEV protection across 6 launchpads on Solana and BSC",
+      "author": {
+        "name": "victorlee"
+      },
+      "category": "trading-strategy",
+      "tags": [
+        "solana",
+        "bsc",
+        "onchainos",
+        "one-click-token-launch",
+        "meme-coin"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/one-click-token-launch"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/one-click-token-launch",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/one-click-token-launch/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/one-click-token-launch/SUMMARY.md",
+      "modify_date": "1778049728",
+      "extra": {
+        "chains": [
+          "solana",
+          "bsc"
         ],
         "protocols": [],
         "risk_level": "high"
@@ -741,6 +887,46 @@
       }
     },
     {
+      "name": "rwa-alpha",
+      "version": "1.1.0",
+      "description": "RWA Alpha — Real World Asset intelligence trading. Macro event detection + Polymarket confirmation + on-chain price action → auto-trade tokenized treasury/gold/yield/governance tokens via OKX DEX. Three modes: Yield Optimizer / Macro Trader / Full Alpha. Multi-chain Ethereum + Solana.",
+      "author": {
+        "name": "VibeCodeDaddy"
+      },
+      "category": "trading-strategy",
+      "tags": [
+        "rwa",
+        "real-world-assets",
+        "treasury",
+        "gold",
+        "macro",
+        "yield",
+        "spot-trading",
+        "ethereum",
+        "solana",
+        "polymarket"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/rwa-alpha"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/rwa-alpha",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/rwa-alpha/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/rwa-alpha/SUMMARY.md",
+      "modify_date": "1778049728",
+      "extra": {
+        "chains": [
+          "ethereum",
+          "solana"
+        ],
+        "protocols": [],
+        "risk_level": "high"
+      }
+    },
+    {
       "name": "smart-money-signal-copy-trade",
       "version": "1.0",
       "description": "Smart Money Signal Copy Trade v1.0 — Smart money signal tracker with cost-aware TP, 15-check safety, 7-layer exit system",
@@ -803,6 +989,7 @@
       },
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/starter-coach",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/starter-coach/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/starter-coach/SUMMARY.md",
       "modify_date": "1778040953",
       "extra": {
         "chains": [
@@ -909,6 +1096,40 @@
         ],
         "protocols": [],
         "risk_level": "medium"
+      }
+    },
+    {
+      "name": "wallet-tracker-mcap",
+      "version": "1.0.0",
+      "description": "Wallet copy-trade bot -- monitors target Solana wallets and auto-mirrors meme token buys/sells with MC target gating, tiered TP, trailing stop, and 4-tier risk grading",
+      "author": {
+        "name": "victorlee"
+      },
+      "category": "trading-strategy",
+      "tags": [
+        "solana",
+        "onchainos",
+        "wallet-tracker-mcap",
+        "copy-trade",
+        "meme-coin"
+      ],
+      "type": "community-developer",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/wallet-tracker-mcap"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/wallet-tracker-mcap",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/wallet-tracker-mcap/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/wallet-tracker-mcap/SUMMARY.md",
+      "modify_date": "1778049728",
+      "extra": {
+        "chains": [
+          "solana"
+        ],
+        "protocols": [],
+        "risk_level": "high"
       }
     }
   ]
