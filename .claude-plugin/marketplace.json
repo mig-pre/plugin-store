@@ -97,6 +97,33 @@
       }
     },
     {
+      "name": "macro-intelligence",
+      "description": "Unified macro intelligence feed — reads 7 sources, classifies events, scores sentiment, generates AI insights, exposes signals via HTTP API",
+      "source": "./skills/macro-intelligence",
+      "category": "utility",
+      "author": {
+        "name": "victorlee"
+      }
+    },
+    {
+      "name": "mainstream-spot-order",
+      "description": "Multi-chain DEX spot trading system with 6-signal ensemble, auto-research strategy optimization, and per-pair backtesting across SOL, ETH, BTC, BNB, AVAX, DOGE",
+      "source": "./skills/mainstream-spot-order",
+      "category": "utility",
+      "author": {
+        "name": "victorlee"
+      }
+    },
+    {
+      "name": "market-structure-analyzer",
+      "description": "Crypto market-structure research agent — 24+ indicators across derivatives, options, on-chain, and macro sentiment with live K-line dashboard and composite scoring",
+      "source": "./skills/market-structure-analyzer",
+      "category": "utility",
+      "author": {
+        "name": "VibeCodeDaddy"
+      }
+    },
+    {
       "name": "meme-trench-scanner",
       "description": "Meme Trench Scanner v1.0 — Solana Meme automated trading bot with 11 Launchpad coverage, 7-layer exit system, TraderSoul AI observation",
       "source": "./skills/meme-trench-scanner",
@@ -130,6 +157,15 @@
       "category": "utility",
       "author": {
         "name": "OKX"
+      }
+    },
+    {
+      "name": "one-click-token-launch",
+      "description": "One-click multi-launchpad token creation with bundled buy, IPFS metadata, MEV protection across 6 launchpads on Solana and BSC",
+      "source": "./skills/one-click-token-launch",
+      "category": "utility",
+      "author": {
+        "name": "victorlee"
       }
     },
     {
@@ -214,6 +250,15 @@
       }
     },
     {
+      "name": "rwa-alpha",
+      "description": "RWA Alpha — Real World Asset intelligence trading. Macro event detection + Polymarket confirmation + on-chain price action → auto-trade tokenized treasury/gold/yield/governance tokens via OKX DEX. Three modes: Yield Optimizer / Macro Trader / Full Alpha. Multi-chain Ethereum + Solana.",
+      "source": "./skills/rwa-alpha",
+      "category": "utility",
+      "author": {
+        "name": "VibeCodeDaddy"
+      }
+    },
+    {
       "name": "smart-money-signal-copy-trade",
       "description": "Smart Money Signal Copy Trade v1.0 — Smart money signal tracker with cost-aware TP, 15-check safety, 7-layer exit system",
       "source": "./skills/smart-money-signal-copy-trade",
@@ -256,6 +301,15 @@
       "category": "utility",
       "author": {
         "name": "GeoGu360"
+      }
+    },
+    {
+      "name": "wallet-tracker-mcap",
+      "description": "Wallet copy-trade bot -- monitors target Solana wallets and auto-mirrors meme token buys/sells with MC target gating, tiered TP, trailing stop, and 4-tier risk grading",
+      "source": "./skills/wallet-tracker-mcap",
+      "category": "utility",
+      "author": {
+        "name": "victorlee"
       }
     }
   ]
