@@ -333,3 +333,148 @@ pub async fn get_spot_asset_meta(info_url: &str, coin: &str) -> anyhow::Result<(
     // asset_index = 10000 + market_index (used in HL order actions for spot)
     Ok((10000 + mkt_idx, mkt_idx, sz_decimals))
 }
+
+// ─── HIP-4 (Outcome Markets) ─────────────────────────────────────────────────
+//
+// HIP-4 introduces fully-collateralized binary YES/NO outcome contracts that
+// settle within the 0.001..0.999 price range and represent implied probability.
+// They live inside the spot subsystem (no separate clearinghouse), so:
+//
+//   - Outcome positions appear as `spotClearinghouseState.balances` entries
+//     under coin string `+<encoding>`
+//   - Outcome orderbook / order placement / l2Book / allMids use coin string
+//     `#<encoding>` for the same underlying outcome side
+//   - Settlement is fully automatic at expiry (oracle posts result; YES holders
+//     credit 1 USDH per share, NO holders credit 0 — or vice versa). No claim
+//     action required.
+//
+// Asset id namespace: `100_000_000 + encoding` where `encoding = 10*outcome_id + side`.
+// Side is 0 (Yes) or 1 (No).
+//
+// Trading is denominated in USDH (Hyperliquid native stablecoin), spot token
+// at index 360 on mainnet (USDH/USDC pair = market `@230`, ratio ~0.999995).
+
+/// Asset id offset for HIP-4 outcomes.
+pub const OUTCOME_ASSET_ID_BASE: u64 = 100_000_000;
+/// YES side index per HIP-4 spec.
+pub const OUTCOME_SIDE_YES: u8 = 0;
+/// NO side index per HIP-4 spec.
+pub const OUTCOME_SIDE_NO: u8 = 1;
+
+/// Compute the HIP-4 global asset id for one side of an outcome.
+/// asset_id = 100_000_000 + 10 * outcome_id + side
+pub fn outcome_asset_id(outcome_id: u32, side: u8) -> u64 {
+    debug_assert!(side <= 1, "outcome side must be 0 (YES) or 1 (NO)");
+    OUTCOME_ASSET_ID_BASE + 10u64 * outcome_id as u64 + side as u64
+}
+
+/// Coin string used for ORDER PLACEMENT, l2Book lookups, and allMids: `#<encoding>`.
+/// Distinct from the balance-context form returned by `outcome_balance_coin`.
+pub fn outcome_trade_coin(outcome_id: u32, side: u8) -> String {
+    debug_assert!(side <= 1);
+    format!("#{}", 10 * outcome_id + side as u32)
+}
+
+/// Coin string used in `spotClearinghouseState.balances` entries: `+<encoding>`.
+/// Distinct from the trading-context form returned by `outcome_trade_coin` —
+/// HL deliberately uses two different prefixes so the same underlying side
+/// asset can be unambiguously addressed in either context.
+pub fn outcome_balance_coin(outcome_id: u32, side: u8) -> String {
+    debug_assert!(side <= 1);
+    format!("+{}", 10 * outcome_id + side as u32)
+}
+
+/// Parse an outcome coin string in EITHER form (`#<encoding>` or `+<encoding>`).
+/// Returns (outcome_id, side) on success, None if the string is not a HIP-4
+/// encoding or is malformed.
+pub fn parse_outcome_coin(coin: &str) -> Option<(u32, u8)> {
+    let rest = coin.strip_prefix('#').or_else(|| coin.strip_prefix('+'))?;
+    let encoding: u32 = rest.parse().ok()?;
+    let side = (encoding % 10) as u8;
+    if side > 1 {
+        return None;
+    }
+    let outcome_id = encoding / 10;
+    Some((outcome_id, side))
+}
+
+/// One outcome (recurring or builder-deployed). Mirrors HL's `outcomeMeta.outcomes[]`.
+#[derive(Debug, Clone)]
+pub struct OutcomeSpec {
+    pub outcome_id: u32,
+    pub name: String,
+    pub description: String,
+    pub side_names: (String, String),
+}
+
+impl OutcomeSpec {
+    /// Parse a recurring-priceBinary description into structured fields.
+    /// e.g. `"class:priceBinary|underlying:BTC|expiry:20260505-0600|targetPrice:79980|period:1d"`
+    /// Returns None for non-priceBinary outcomes (e.g. categorical questions).
+    pub fn parse_recurring(&self) -> Option<RecurringSpec> {
+        if !self.description.starts_with("class:priceBinary|") {
+            return None;
+        }
+        let mut parts: std::collections::HashMap<&str, &str> = std::collections::HashMap::new();
+        for kv in self.description.split('|') {
+            if let Some((k, v)) = kv.split_once(':') {
+                parts.insert(k, v);
+            }
+        }
+        Some(RecurringSpec {
+            class: parts.get("class")?.to_string(),
+            underlying: parts.get("underlying")?.to_string(),
+            expiry: parts.get("expiry")?.to_string(),
+            target_price: parts.get("targetPrice")?.parse().ok()?,
+            period: parts.get("period")?.to_string(),
+        })
+    }
+}
+
+/// Parsed recurring-priceBinary description.
+#[derive(Debug, Clone)]
+pub struct RecurringSpec {
+    pub class: String,
+    pub underlying: String,
+    /// e.g. "20260505-0600" (UTC-ish timestamp string in HL's format).
+    pub expiry: String,
+    pub target_price: f64,
+    pub period: String,
+}
+
+/// Fetch the HIP-4 outcome universe from `info {"type":"outcomeMeta"}`.
+pub async fn fetch_outcome_meta(info_url: &str) -> anyhow::Result<Vec<OutcomeSpec>> {
+    let body = json!({"type": "outcomeMeta"});
+    let resp = info_post(info_url, body).await?;
+    let arr = resp["outcomes"].as_array().cloned().unwrap_or_default();
+    let mut out = Vec::with_capacity(arr.len());
+    for o in arr {
+        let outcome_id = match o["outcome"].as_u64() {
+            Some(v) => v as u32,
+            None => continue,
+        };
+        let name = o["name"].as_str().unwrap_or("").to_string();
+        let description = o["description"].as_str().unwrap_or("").to_string();
+        let side_names = {
+            let arr = o["sideSpecs"].as_array();
+            let yes = arr
+                .and_then(|a| a.first())
+                .and_then(|s| s["name"].as_str())
+                .unwrap_or("Yes")
+                .to_string();
+            let no = arr
+                .and_then(|a| a.get(1))
+                .and_then(|s| s["name"].as_str())
+                .unwrap_or("No")
+                .to_string();
+            (yes, no)
+        };
+        out.push(OutcomeSpec {
+            outcome_id,
+            name,
+            description,
+            side_names,
+        });
+    }
+    Ok(out)
+}

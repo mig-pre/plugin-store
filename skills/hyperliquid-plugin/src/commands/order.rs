@@ -271,9 +271,19 @@ pub async fn run(args: OrderArgs) -> anyhow::Result<()> {
         None
     };
 
-    // Estimate required margin; default to 10x if --leverage not provided
+    // Estimate required margin; default to 10x if --leverage not provided.
+    // Reduce-only orders close existing positions (release margin, don't add) — the
+    // balance gate below would otherwise wrongly reject reduce-only attempts when the
+    // account is near liquidation (perp balance low because losing position is tying
+    // up collateral). Treat required_margin as 0 for reduce-only.
     let effective_leverage = args.leverage.map(|l| l as f64).unwrap_or(10.0);
-    let required_margin = if notional > 0.0 { notional / effective_leverage } else { 0.0 };
+    let required_margin = if args.reduce_only {
+        0.0
+    } else if notional > 0.0 {
+        notional / effective_leverage
+    } else {
+        0.0
+    };
 
     // Build balance landscape JSON (included in preview + stop output)
     let balance_json = balances_opt.as_ref().map(|b| {
