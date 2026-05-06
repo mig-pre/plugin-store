@@ -1,5 +1,3 @@
-# starter-coach
-
 ## Overview
 
 Starter Coach is a conversational 6-step skill that guides users to design, backtest, paper trade, and deploy their own automated DEX spot-trading bot on OKX DEX.

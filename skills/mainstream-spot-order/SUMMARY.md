@@ -1,5 +1,3 @@
-# mainstream-spot-order
-
 ## Overview
 
 Mainstream Spot Order is a multi-chain DEX spot trading system that runs a 6-signal ensemble (Momentum, EMA, RSI, MACD, Bollinger Bands, BTC Overlay) on 15-minute bars across 6 mainstream token pairs with AI-driven strategy optimization.

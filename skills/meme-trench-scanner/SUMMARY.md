@@ -1,5 +1,3 @@
-# meme-trench-scanner
-
 ## Overview
 
 Meme Trench Scanner is a Solana meme-token trading bot that scans 11 launchpads every 10 seconds, detects entries via TX acceleration, volume surge, and buy-sell ratio signals, runs deep safety checks, and manages exits through a 7-layer system.

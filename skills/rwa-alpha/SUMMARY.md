@@ -1,5 +1,3 @@
-# rwa-alpha
-
 ## Overview
 
 RWA Alpha is a Real World Asset intelligence trading skill that combines macro event detection, Polymarket probability confirmation, and on-chain price action to auto-trade tokenized treasury, gold, yield, and governance tokens via OKX DEX.

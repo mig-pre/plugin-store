@@ -1,5 +1,3 @@
-# one-click-token-launch
-
 ## Overview
 
 One-Click Token Launch is a multi-launchpad token creation skill that deploys a new token with optional bundled initial buy, IPFS metadata upload, and MEV protection in a single command across 6 launchpads on Solana and BSC.

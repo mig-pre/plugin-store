@@ -1,5 +1,3 @@
-# smart-money-signal-copy-trade
-
 ## Overview
 
 Smart Money Signal Copy Trade is a Solana copy-trading bot that polls OKX Smart Money, KOL, and Whale buy signals every 20 seconds, triggers entries on co-rider consensus (≥3 wallets buying the same token simultaneously), and manages exits via a 7-layer system with cost-aware take profit.

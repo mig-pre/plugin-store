@@ -1,5 +1,3 @@
-# top-rank-tokens-sniper
-
 ## Overview
 
 Top Rank Tokens Sniper is a Solana ranking-leaderboard sniper that scans the OKX 1-hour gainers Top 20 every 10 seconds, snipes tokens on their first leaderboard appearance after 25 safety checks, and auto-exits when a token drops out of the Top 20.

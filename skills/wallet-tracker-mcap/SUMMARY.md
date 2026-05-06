@@ -1,5 +1,3 @@
-# wallet-tracker-mcap
-
 ## Overview
 
 Wallet Tracker is a Solana copy-trading bot that monitors target wallets for meme token trades and automatically mirrors buy and sell actions with MC target gating, 4-tier risk grading, and a 5-trigger exit system.

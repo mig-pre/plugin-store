@@ -1,5 +1,3 @@
-# macro-intelligence
-
 ## Overview
 
 Macro Intelligence is a unified macro signal feed that reads 7 data sources, classifies macro events, scores market sentiment, and exposes real-time regime signals via a local HTTP API for other skills and agents to consume.
