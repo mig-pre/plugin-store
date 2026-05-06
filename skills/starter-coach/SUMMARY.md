@@ -1,13 +1,25 @@
 # starter-coach
-Conversational 6-step skill that guides users to build their own automated DEX spot-trading bot on OKX DEX — from zero to live in one session, with paper trading gate and legal disclaimers built in.
 
-## Highlights
-- 6-step guided flow: Onboard → Profile → Build Strategy → Backtest → Paper Trade → Go Live
-- 7 goal archetypes: Stack Sats, Buy the Dip, Follow Smart Money, Copy-trade Wallet, Snipe Tokens, Ride the Trend, Something Else
-- Bilingual support: English and Chinese (auto-detected)
-- Backtesting with disclaimer: "Past performance does not guarantee future results"
-- Paper trading gate — users must pass paper trade before going live
-- Live mode requires explicit "CONFIRM" acknowledgment, logged to audit file
-- Kelly-based position sizing + configurable risk parameters
-- All on-chain execution via OnchainOS Agentic Wallet (TEE signing, no API key needed)
-- Validated JSON strategy specs — no freeform trading code generated
+## Overview
+
+Starter Coach is a conversational 6-step skill that guides any user — beginner or experienced — to design, backtest, paper trade, and deploy their own automated DEX spot-trading bot on OKX DEX. It asks the right questions, builds a validated strategy spec, runs a backtest, gates live mode behind a paper trading requirement, and requires explicit confirmation before any real funds are used. All on-chain execution is powered by OnchainOS Agentic Wallet with TEE signing — no API key needed.
+
+## Prerequisites
+
+- OnchainOS CLI installed (`onchainos --version`)
+- OKX Agentic Wallet logged in (`onchainos wallet status`)
+- Python 3.8+
+- Sufficient balance on your chosen chain for trading
+
+## Quick Start
+
+1. Install the skill:
+   ```bash
+   plugin-store install starter-coach
+   ```
+2. Start the coach:
+   ```
+   Start starter coach
+   ```
+3. Follow the 6-step flow: **Onboard → Profile → Build Strategy → Backtest → Paper Trade → Go Live**
+4. When ready to go live, type `CONFIRM` to activate live mode
