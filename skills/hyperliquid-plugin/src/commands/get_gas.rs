@@ -66,8 +66,13 @@ async fn hype_balance(address: &str) -> anyhow::Result<f64> {
         .await?
         .json()
         .await?;
-    let hex = resp["result"].as_str().unwrap_or("0x0");
-    let wei = u128::from_str_radix(hex.trim_start_matches("0x"), 16).unwrap_or(0);
+    if let Some(err) = resp.get("error") {
+        anyhow::bail!("HyperEVM eth_getBalance error: {}", err);
+    }
+    let hex = resp["result"].as_str()
+        .ok_or_else(|| anyhow::anyhow!("HyperEVM eth_getBalance: missing 'result' field in response"))?;
+    let wei = u128::from_str_radix(hex.trim_start_matches("0x"), 16)
+        .map_err(|e| anyhow::anyhow!("HyperEVM eth_getBalance: malformed hex '{}': {}", hex, e))?;
     Ok(wei as f64 / 1e18)
 }
 

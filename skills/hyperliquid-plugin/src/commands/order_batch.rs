@@ -1,9 +1,10 @@
 use clap::Args;
 use serde::Deserialize;
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::io::Read;
 
-use crate::api::{fetch_perp_dexs, get_all_mids, get_asset_meta_for_coin, parse_coin};
+use crate::api::{fetch_perp_dexs, get_all_mids_for_dex, get_asset_meta_for_coin, parse_coin};
 use crate::config::{info_url, exchange_url, normalize_coin, now_ms, CHAIN_ID, ARBITRUM_CHAIN_ID};
 use crate::onchainos::{onchainos_hl_sign, report_plugin_info, resolve_wallet};
 use crate::signing::{build_batch_order_action, round_px, submit_exchange_request};
@@ -146,18 +147,41 @@ pub async fn run(args: OrderBatchArgs) -> anyhow::Result<()> {
         }
     }
 
-    // Fetch all-mids once so we can construct market-order slippage prices and
-    // auto-bump tiny sizes below the $10 notional floor.
-    let mids = match get_all_mids(info).await {
-        Ok(v) => v,
-        Err(e) => {
-            println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry."));
-            return Ok(());
-        }
-    };
-
     // Fetch dex registry once (HIP-3: resolves "xyz:CL" -> asset 110029 etc.)
     let registry = fetch_perp_dexs(info).await.unwrap_or_default();
+
+    // HIP-3: a batch can span multiple DEXs (signing covers any-asset body), and each
+    // DEX has its own mids endpoint. Build a per-DEX mids cache by collecting the
+    // distinct DEXs in this batch and fetching them in parallel — falling back to the
+    // single default-DEX mids endpoint would silently miss xyz:CL / cash:HOOD / etc.,
+    // producing mid_f=0.0 and breaking both the slippage-px computation and the
+    // $10-notional auto-bump downstream.
+    let mut distinct_dexes: Vec<Option<String>> = Vec::new();
+    for o in inputs.iter() {
+        let (dex_opt, _) = parse_coin(&o.coin);
+        if !distinct_dexes.iter().any(|d| d == &dex_opt) {
+            distinct_dexes.push(dex_opt);
+        }
+    }
+    let mid_futs = distinct_dexes.iter().map(|d| {
+        let d_owned = d.clone();
+        async move {
+            let res = get_all_mids_for_dex(info, d_owned.as_deref()).await;
+            (d_owned, res)
+        }
+    });
+    let mid_results: Vec<(Option<String>, anyhow::Result<Value>)> =
+        futures::future::join_all(mid_futs).await;
+    let mut mids_by_dex: HashMap<Option<String>, Value> = HashMap::new();
+    for (d, r) in mid_results {
+        match r {
+            Ok(v) => { mids_by_dex.insert(d, v); }
+            Err(e) => {
+                println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry."));
+                return Ok(());
+            }
+        }
+    }
 
     // Build each order element, resolving asset_idx + rounding per-coin.
     // HIP-3: orders within one batch CAN target different DEXs (signing covers any-asset
@@ -192,7 +216,11 @@ pub async fn run(args: OrderBatchArgs) -> anyhow::Result<()> {
         let sz_factor = 10_f64.powi(sz_decimals as i32);
         let mut size_rounded = (size_f * sz_factor).round() / sz_factor;
 
-        let mid_f: f64 = mids.get(&coin)
+        // Pick the mids dict for this order's DEX (default vs builder).
+        let mids_for_this = mids_by_dex.get(&dex_opt_in)
+            .or_else(|| mids_by_dex.get(&None))   // fallback if dex_opt_in is None but key was inserted as None
+            .expect("mids_by_dex covers all distinct dexes in batch");
+        let mid_f: f64 = mids_for_this.get(&coin)
             .and_then(|v| v.as_str())
             .and_then(|s| s.parse().ok())
             .unwrap_or(0.0);

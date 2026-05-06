@@ -204,11 +204,15 @@ pub async fn run(args: SpotCancelArgs) -> anyhow::Result<()> {
         let asset_idx = match &spot_coin_filter {
             Some((_, ai, _)) => *ai,
             None => {
-                // coin_field is "@N"
-                let n: usize = coin_field
-                    .trim_start_matches('@')
-                    .parse()
-                    .unwrap_or(0);
+                // coin_field is "@N" — skip orders with malformed coin (defensive: don't
+                // silently default to N=0 = PURR/USDC and cancel the wrong market).
+                let n: usize = match coin_field.trim_start_matches('@').parse() {
+                    Ok(v) => v,
+                    Err(e) => {
+                        eprintln!("[spot-cancel] Skipping order {} with unparseable coin '{}': {}", oid, coin_field, e);
+                        continue;
+                    }
+                };
                 10000 + n
             }
         };

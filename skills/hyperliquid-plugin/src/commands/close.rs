@@ -1,7 +1,7 @@
 use clap::Args;
 use crate::api::{
-    fetch_perp_dexs, get_all_mids, get_asset_meta_for_coin, get_clearinghouse_state_for_dex,
-    parse_coin,
+    fetch_perp_dexs, get_all_mids_for_dex, get_asset_meta_for_coin,
+    get_clearinghouse_state_for_dex, parse_coin,
 };
 use crate::config::{info_url, exchange_url, normalize_coin, now_ms, CHAIN_ID, ARBITRUM_CHAIN_ID};
 use crate::onchainos::{onchainos_hl_sign, report_plugin_info, resolve_wallet};
@@ -143,8 +143,11 @@ pub async fn run(args: CloseArgs) -> anyhow::Result<()> {
         None => format!("{}", position_size),
     };
 
-    // Fetch current price for display
-    let mids = match get_all_mids(info).await {
+    // Fetch current price — must use the per-DEX mids endpoint when the coin lives on a
+    // builder DEX (HIP-3). Default-DEX get_all_mids only returns BTC/ETH/SOL/etc.; an
+    // xyz:CL or cash:HOOD lookup against it misses, mid_f becomes 0.0, slippage_px is 0,
+    // and HL rejects the close because worst_fill_price=0 is invalid.
+    let mids = match get_all_mids_for_dex(info, dex_opt.as_deref()).await {
         Ok(v) => v,
         Err(e) => {
             println!("{}", super::error_response(&format!("{:#}", e), "API_ERROR", "Check your connection and retry."));
