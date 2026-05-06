@@ -8,6 +8,7 @@ use crate::onchainos::{
     ctf_redeem_positions, ctf_redeem_via_proxy, decimal_str_to_hex64, get_ctf_balance,
     get_ctf_balance_hex, ctf_get_collection_id_hex, ctf_get_position_id_hex,
     get_existing_proxy, get_pol_balance, get_wallet_address, negrisk_redeem_positions,
+    negrisk_redeem_via_deposit_wallet, negrisk_redeem_via_proxy,
     wait_for_tx_receipt_labeled,
 };
 
@@ -231,21 +232,17 @@ async fn redeem_one(
     });
 
     if neg_risk {
-        // NegRisk markets: call NegRiskAdapter.redeemPositions(conditionId, [yes_bal, no_bal]).
-        // Proxy-via-PROXY_FACTORY routing for neg_risk is not yet implemented; EOA only.
-        if r.proxy && !r.eoa {
-            return Err(anyhow!(
-                "Neg_risk redeem from proxy wallet is not yet supported by this plugin. \
-                 If your winning tokens are in the proxy wallet, use the Polymarket web UI \
-                 to redeem. EOA redeem via NegRiskAdapter is fully supported."
-            ));
-        }
-
         // Query on-chain ERC-1155 balances for each outcome token.
         // Propagate RPC errors (don't unwrap_or(0)) — silently treating an RPC failure as
         // "no balance" would tell users their winning tokens don't exist when really the
         // node is just unavailable.
-        let wallet = if r.proxy && proxy_addr.is_some() { proxy_addr.unwrap() } else { eoa_addr };
+        let wallet = if r.proxy && proxy_addr.is_some() {
+            proxy_addr.unwrap()
+        } else if r.deposit_wallet && deposit_wallet_addr.is_some() {
+            deposit_wallet_addr.unwrap()
+        } else {
+            eoa_addr
+        };
         let mut amounts: Vec<u128> = Vec::with_capacity(token_ids.len());
         for tid in token_ids {
             let bal = get_ctf_balance(wallet, tid).await
@@ -275,22 +272,63 @@ async fn redeem_one(
 
         let total_shares: u128 = amounts.iter().sum();
         eprintln!(
-            "[polymarket] NegRisk redeem: {} total shares across {} outcomes — submitting NegRiskAdapter.redeemPositions...",
+            "[polymarket] NegRisk redeem: {} total shares across {} outcomes...",
             total_shares, amounts.len()
         );
-        let tx = negrisk_redeem_positions(condition_id, &amounts, eoa_addr).await?;
-        eprintln!(
-            "[polymarket] NegRisk redeem tx {} — waiting up to {}s for on-chain confirmation...",
-            tx, REDEEM_WAIT_SECS
-        );
-        wait_for_tx_receipt_labeled(&tx, REDEEM_WAIT_SECS, "NegRisk redeem").await?;
-        out["eoa_tx"] = serde_json::Value::String(tx);
+
+        if r.eoa {
+            eprintln!(
+                "[polymarket] EOA holds winning tokens — submitting NegRiskAdapter.redeemPositions..."
+            );
+            let tx = negrisk_redeem_positions(condition_id, &amounts, eoa_addr).await?;
+            eprintln!(
+                "[polymarket] NegRisk EOA redeem tx {} — waiting up to {}s for on-chain confirmation...",
+                tx, REDEEM_WAIT_SECS
+            );
+            wait_for_tx_receipt_labeled(&tx, REDEEM_WAIT_SECS, "NegRisk EOA redeem").await?;
+            out["eoa_tx"] = serde_json::Value::String(tx);
+        }
+
+        if r.proxy {
+            eprintln!(
+                "[polymarket] Proxy holds winning tokens — submitting NegRiskAdapter.redeemPositions via PROXY_FACTORY..."
+            );
+            let tx = negrisk_redeem_via_proxy(condition_id, &amounts).await?;
+            eprintln!(
+                "[polymarket] NegRisk proxy redeem tx {} — waiting up to {}s for on-chain confirmation...",
+                tx, REDEEM_WAIT_SECS
+            );
+            wait_for_tx_receipt_labeled(&tx, REDEEM_WAIT_SECS, "NegRisk proxy redeem").await?;
+            out["proxy_tx"] = serde_json::Value::String(tx);
+        }
+
+        if r.deposit_wallet {
+            let dw = deposit_wallet_addr.unwrap();
+            eprintln!(
+                "[polymarket] Deposit wallet holds winning tokens — submitting NegRiskAdapter.redeemPositions via relayer WALLET batch..."
+            );
+            // Fetch builder credentials for relayer auth.
+            let clob_creds = crate::auth::ensure_credentials(client, eoa_addr).await
+                .map_err(|e| anyhow::anyhow!("Could not load CLOB credentials for deposit wallet neg_risk redeem: {}", e))?;
+            let builder = crate::api::get_builder_api_key(client, &clob_creds, eoa_addr).await
+                .map_err(|e| anyhow::anyhow!("Could not derive builder credentials for relayer: {}", e))?;
+            let tx = negrisk_redeem_via_deposit_wallet(
+                condition_id, &amounts, dw, eoa_addr, &builder,
+            ).await?;
+            eprintln!(
+                "[polymarket] NegRisk deposit wallet redeem tx {} — waiting up to {}s for confirmation...",
+                tx, REDEEM_WAIT_SECS
+            );
+            wait_for_tx_receipt_labeled(&tx, REDEEM_WAIT_SECS, "NegRisk deposit wallet redeem").await?;
+            out["deposit_wallet_tx"] = serde_json::Value::String(tx);
+        }
+
         out["amounts"] = serde_json::Value::Array(
             amounts.iter().map(|a| serde_json::Value::String(a.to_string())).collect()
         );
 
         out["note"] = serde_json::Value::String(
-            "NegRiskAdapter.redeemPositions confirmed. USDC.e transferred to EOA.".into(),
+            "NegRiskAdapter.redeemPositions confirmed. Collateral (USDC.e) transferred to respective wallet(s).".into(),
         );
     } else {
         // Standard binary market: call CTF.redeemPositions.

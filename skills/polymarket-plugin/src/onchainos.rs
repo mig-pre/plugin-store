@@ -1168,6 +1168,100 @@ pub async fn negrisk_redeem_positions(
     extract_tx_hash(&result)
 }
 
+/// ABI-encode and submit NegRiskAdapter.redeemPositions via the PROXY_FACTORY.
+///
+/// Used when winning outcome tokens are held by the proxy wallet (POLY_PROXY mode).
+pub async fn negrisk_redeem_via_proxy(
+    condition_id: &str,
+    amounts: &[u128],
+) -> Result<String> {
+    use crate::config::Contracts;
+    use sha3::{Digest, Keccak256};
+
+    let inner_calldata = build_negrisk_redeem_calldata(condition_id, amounts);
+    let inner_bytes = hex::decode(inner_calldata.trim_start_matches("0x")).expect("negrisk redeem calldata");
+    let inner_len = inner_bytes.len();
+    let pad_len = (32 - inner_len % 32) % 32;
+    let inner_padded = format!("{}{}", inner_calldata.trim_start_matches("0x"), "00".repeat(pad_len));
+
+    let outer_selector = Keccak256::digest(b"proxy((uint8,address,uint256,bytes)[])");
+    let outer_selector_hex = hex::encode(&outer_selector[..4]);
+    let target_padded = pad_address(Contracts::NEG_RISK_ADAPTER);
+    let data_len_padded = format!("{:064x}", inner_len);
+
+    let calldata = format!(
+        "0x{}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}\
+         {}",
+        outer_selector_hex,
+        "0000000000000000000000000000000000000000000000000000000000000020",
+        "0000000000000000000000000000000000000000000000000000000000000001",
+        "0000000000000000000000000000000000000000000000000000000000000020",
+        "0000000000000000000000000000000000000000000000000000000000000001",
+        target_padded,
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000080",
+        data_len_padded,
+        inner_padded,
+    );
+
+    let result = wallet_contract_call(Contracts::PROXY_FACTORY, &calldata).await?;
+    extract_tx_hash(&result)
+}
+
+/// ABI-encode and submit NegRiskAdapter.redeemPositions via the deposit wallet relayer WALLET batch.
+///
+/// Used when winning outcome tokens are held by the deposit wallet (DEPOSIT_WALLET mode).
+pub async fn negrisk_redeem_via_deposit_wallet(
+    condition_id: &str,
+    amounts: &[u128],
+    deposit_wallet: &str,
+    eoa_addr: &str,
+    builder: &crate::auth::BuilderCredentials,
+) -> Result<String> {
+    use crate::config::Contracts;
+    use crate::signing::{BatchParams, WalletCall, sign_batch_via_onchainos};
+    use crate::api::{get_wallet_nonce, relayer_wallet_batch};
+
+    let calldata = build_negrisk_redeem_calldata(condition_id, amounts);
+    let calls = vec![WalletCall {
+        target: Contracts::NEG_RISK_ADAPTER.to_string(),
+        value: 0,
+        data: calldata,
+    }];
+
+    let client = reqwest::Client::new();
+    let nonce = get_wallet_nonce(&client, eoa_addr).await
+        .map_err(|e| anyhow::anyhow!("Could not fetch wallet nonce for neg_risk redeem batch: {}", e))?;
+    let deadline = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() + 300;
+
+    let calls_json: Vec<serde_json::Value> = calls.iter().map(|c| serde_json::json!({
+        "target": c.target,
+        "value":  c.value.to_string(),
+        "data":   c.data,
+    })).collect();
+
+    let batch_params = BatchParams {
+        wallet: deposit_wallet.to_string(),
+        nonce,
+        deadline,
+        calls,
+    };
+    let batch_sig = sign_batch_via_onchainos(&batch_params).await
+        .map_err(|e| anyhow::anyhow!("Batch signing for deposit wallet neg_risk redeem failed: {}", e))?;
+
+    relayer_wallet_batch(&client, eoa_addr, deposit_wallet, nonce, deadline, calls_json, &batch_sig, builder).await
+}
 
 /// Get native POL balance for an address (eth_getBalance). Returns human-readable f64 (POL).
 pub async fn get_pol_balance(addr: &str) -> Result<f64> {
