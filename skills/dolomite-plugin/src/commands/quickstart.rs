@@ -76,7 +76,19 @@ pub async fn run(args: QuickstartArgs) -> anyhow::Result<()> {
 
     let market_results = futures::future::join_all(market_futs).await;
 
-    let native_bal = native_res.unwrap_or(0);
+    // EVM-012: native gas balance failure must surface as RPC error rather
+    // than misroute to `insufficient_gas` on every public-RPC blip.
+    let native_bal = match native_res {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(
+                &format!("Failed to read native balance on {}: {:#}", chain.key, e),
+                "RPC_ERROR",
+                "Public RPC may be limited; retry shortly.",
+            ));
+            return Ok(());
+        }
+    };
 
     // 3. Aggregate
     let mut rpc_failures = 0;
@@ -186,11 +198,14 @@ async fn scan_market(
 
     let (bal_res, pos_res, borrow_res) = tokio::join!(bal_fut, pos_fut, borrow_rate_fut);
 
-    let wallet_bal = bal_res.unwrap_or(0);
-    let (supply_raw, borrow_raw) = match pos_res {
-        Ok((sign, value)) if sign => (value, 0),     // positive = supply
-        Ok((sign, value)) if !sign => (0, value),    // negative = borrow
-        _ => (0, 0),
+    // EVM-012: balance + position reads MUST propagate via `?` so the caller's
+    // filter_map (which counts these as `rpc_failures` and may route to
+    // `rpc_degraded`) sees them. Silent unwrap_or(0) used to make the status
+    // decision tree fire on bad data.
+    let wallet_bal = bal_res?;
+    let (supply_raw, borrow_raw) = match pos_res? {
+        (sign, value) if sign  => (value, 0),     // positive = supply
+        (_,    value)          => (0, value),     // negative = borrow
     };
     // Supply APY = borrow_rate × earnings_rate / 1e18
     let supply_apy = borrow_res.ok()

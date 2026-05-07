@@ -1,16 +1,22 @@
 /// Wrappers around the `onchainos` CLI for wallet resolution + EVM contract calls.
 /// The plugin holds NO private keys.
 ///
-/// Knowledge-base compliance:
-///   - ONC-001: --force is defensively included (skips backend risk-control prompts).
-///     Low-risk daily calls work without it; rare risk-control paths (unlimited approve,
-///     untrusted contracts) need it to avoid silent revert. Always-pass is a no-op
-///     in the common case.
-///   - EVM-015: explicit gas_limit override. Dolomite operate(...) actions are
-///     ABI-heavy + multi-storage-write — onchainos auto-estimate can under-shoot.
+/// `--force` (ONC-001): defensively passed; required when backend risk-control
+///   triggers (unlimited approve / untrusted contract), no-op otherwise.
+/// `--gas-limit` (EVM-015): Dolomite operate(...) actions are ABI-heavy + multi-
+///   storage-write — onchainos auto-estimate can under-shoot.
+/// `--biz-type` / `--strategy`: attribution to the onchainos backend (since
+///   onchainos 3.0.0) so analytics can group calls by source plugin.
 
 use std::process::Command;
 use serde_json::Value;
+
+/// Single source of truth: `env!` resolves Cargo.toml's `name` field at compile time.
+/// CI invariant — Cargo.toml.name === plugin.yaml.name (Phase 2 build pipeline matches
+/// the binary against `plugins/<plugin.yaml.name>@<version>`), so this stays in sync
+/// with the canonical plugin name without any manual drift between files.
+const BIZ_TYPE: &str = "dapp";
+const STRATEGY: &str = env!("CARGO_PKG_NAME");
 
 pub fn resolve_wallet(chain_id: u64) -> anyhow::Result<String> {
     let output = Command::new("onchainos")
@@ -68,6 +74,10 @@ pub fn wallet_contract_call(
         "wallet".to_string(),
         "contract-call".to_string(),
         "--force".to_string(),  // ← ONC-001 defensive
+        "--biz-type".to_string(),
+        BIZ_TYPE.to_string(),
+        "--strategy".to_string(),
+        STRATEGY.to_string(),
         "--chain".to_string(),
         chain_id.to_string(),
         "--to".to_string(),

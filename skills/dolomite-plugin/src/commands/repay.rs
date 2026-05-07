@@ -72,10 +72,19 @@ pub async fn run(args: RepayArgs) -> anyhow::Result<()> {
             "Run `onchainos wallet addresses`."),
     };
 
-    // Read current debt for this token + position
-    let (sign, debt_value) = get_account_wei(
+    // Read current debt for this token + position. EVM-012: RPC failure must
+    // not be silently rendered as "no debt" — that would tell users repay is
+    // a no-op when in fact a real obligation exists.
+    let (sign, debt_value) = match get_account_wei(
         chain.dolomite_margin, &from_addr, args.position_account_number, market_id as u128, chain.rpc,
-    ).await.unwrap_or((true, 0));
+    ).await {
+        Ok(t) => t,
+        Err(e) => return print_err(
+            &format!("Failed to read {} debt position from DolomiteMargin on {}: {:#}", symbol, chain.key, e),
+            "RPC_ERROR",
+            "Public RPC may be limited; retry shortly.",
+        ),
+    };
     if sign || debt_value == 0 {
         return print_err(
             &format!(
@@ -115,14 +124,31 @@ async fn run_repay_all(
     decimals: u32,
     debt_value: u128,
 ) -> anyhow::Result<()> {
-    // Read main (source) supply for this token
-    let (main_sign, main_supply) = get_account_wei(
+    // Read main (source) supply for this token. EVM-012: RPC failure must
+    // not be silently rendered as "supply=0" — that would mis-route the
+    // branch decision below (forcing a wallet-funded top-up when the user
+    // actually had main-account supply available).
+    let (main_sign, main_supply) = match get_account_wei(
         chain.dolomite_margin, from_addr, args.from_account_number, market_id, chain.rpc,
-    ).await.unwrap_or((true, 0));
+    ).await {
+        Ok(t) => t,
+        Err(e) => return print_err(
+            &format!("Failed to read main-account supply from DolomiteMargin on {}: {:#}", chain.key, e),
+            "RPC_ERROR",
+            "Public RPC may be limited; retry shortly.",
+        ),
+    };
     let main_supply_atomic: u128 = if main_sign { main_supply } else { 0 };
 
-    // Wallet balance for potential top-up
-    let wallet_bal = erc20_balance(token_addr, from_addr, chain.rpc).await.unwrap_or(0);
+    // Wallet balance for potential top-up. EVM-012: surface RPC errors
+    // distinctly from "0 balance".
+    let wallet_bal = match erc20_balance(token_addr, from_addr, chain.rpc).await {
+        Ok(v) => v,
+        Err(e) => return print_err(
+            &format!("Failed to read {} wallet balance on {}: {:#}", symbol, chain.key, e),
+            "RPC_ERROR", "Public RPC may be limited; retry shortly.",
+        ),
+    };
 
     // Buffer for branch B top-up: covers ~30s of interest accrual at 100% APY
     // for typical small-to-medium debts (1000 atom = $0.001 for stables, 10^15 wei
@@ -205,7 +231,13 @@ async fn run_repay_all(
             fmt_token_amount(topup_atomic, decimals), symbol);
 
         // Approve if needed (EVM-006)
-        let allowance = erc20_allowance(token_addr, from_addr, chain.dolomite_margin, chain.rpc).await.unwrap_or(0);
+        let allowance = match erc20_allowance(token_addr, from_addr, chain.dolomite_margin, chain.rpc).await {
+            Ok(v) => v,
+            Err(e) => return print_err(
+                &format!("Failed to read {} allowance for DolomiteMargin on {}: {:#}", symbol, chain.key, e),
+                "RPC_ERROR", "Public RPC may be limited; retry shortly.",
+            ),
+        };
         if allowance < topup_atomic {
             let approve_data = build_approve_max(chain.dolomite_margin);
             eprintln!("[repay-all] Approving {} for DolomiteMargin…", symbol);
@@ -330,7 +362,13 @@ async fn run_repay_partial(
     };
 
     // Pre-flight: wallet must have enough of the repay token
-    let bal = erc20_balance(token_addr, from_addr, chain.rpc).await.unwrap_or(0);
+    let bal = match erc20_balance(token_addr, from_addr, chain.rpc).await {
+        Ok(v) => v,
+        Err(e) => return print_err(
+            &format!("Failed to read {} wallet balance on {}: {:#}", symbol, chain.key, e),
+            "RPC_ERROR", "Public RPC may be limited; retry shortly.",
+        ),
+    };
     if bal < amount_raw {
         return print_err(
             &format!(

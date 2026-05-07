@@ -40,9 +40,14 @@ pub async fn run(args: MarketsArgs) -> anyhow::Result<()> {
         ARB_KNOWN_MARKETS.iter().map(|(mid, sym, _)| (*mid as u128, *sym)).collect()
     };
 
-    // Earnings rate is global — read once
-    let earnings_rate = get_earnings_rate(chain.dolomite_margin, chain.rpc).await
-        .unwrap_or(850_000_000_000_000_000);
+    // Earnings rate is global — read once. EVM-012: keep the soft 85% default
+    // (display-only field; APY rendering is non-critical) but surface the
+    // RPC failure so callers can mark the rendered APY as best-effort.
+    let (earnings_rate, earnings_rate_query_error) =
+        match get_earnings_rate(chain.dolomite_margin, chain.rpc).await {
+            Ok(v) => (v, None),
+            Err(e) => (850_000_000_000_000_000u128, Some(format!("{:#}", e))),
+        };
 
     // Parallel: per-market borrow rate + total par
     let futs: Vec<_> = market_ids.iter().map(|(mid, sym)| {
@@ -59,7 +64,15 @@ pub async fn run(args: MarketsArgs) -> anyhow::Result<()> {
 
     let entries: Vec<Value> = results.into_iter().map(|(mid, sym, b_rate, total)| {
         let dec = token_decimals(sym).unwrap_or(18);
-        let (sp, bp) = total.unwrap_or((0, 0));
+        // EVM-012: track per-market RPC failures so callers can tell "0
+        // supply / 0 borrow" from "RPC failed". Silent (0,0) used to break
+        // utilization analysis and hide active markets behind zero values.
+        let mut errs: Vec<String> = Vec::new();
+        let (sp, bp) = match total {
+            Some(t) => t,
+            None => { errs.push("get_market_total_par".into()); (0, 0) }
+        };
+        if b_rate.is_none() { errs.push("get_market_borrow_rate".into()); }
         let supply_apy = b_rate.map(|br| supply_rate_from(br, earnings_rate)).map(rate_to_apy);
         let borrow_apy = b_rate.map(rate_to_apy);
         json!({
@@ -74,6 +87,7 @@ pub async fn run(args: MarketsArgs) -> anyhow::Result<()> {
             "utilization_pct": if sp > 0 {
                 Some(format!("{:.2}", (bp as f64 / sp as f64) * 100.0))
             } else { None },
+            "partial_data_errors": if errs.is_empty() { None } else { Some(errs) },
         })
     }).collect();
 
@@ -84,6 +98,7 @@ pub async fn run(args: MarketsArgs) -> anyhow::Result<()> {
         "source": if args.all { "live_enumeration" } else { "well_known_whitelist" },
         "count": entries.len(),
         "markets": entries,
+        "earnings_rate_query_error": earnings_rate_query_error,
         "note": if !args.all { "Showing 7 most-common markets. Use --all for full on-chain enumeration (~30+ markets)." } else { "" },
     }))?);
     Ok(())

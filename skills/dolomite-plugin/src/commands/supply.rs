@@ -137,8 +137,16 @@ pub async fn run(args: SupplyArgs) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    // Approve token to DepositWithdrawalProxy (EVM-006 wait_for_tx)
-    let allowance = erc20_allowance(token_addr, &from_addr, chain.dolomite_margin, chain.rpc).await.unwrap_or(0);
+    // Approve token to DepositWithdrawalProxy (EVM-006 wait_for_tx).
+    // EVM-012: surface RPC failures rather than silently re-approving on every blip.
+    let allowance = match erc20_allowance(token_addr, &from_addr, chain.dolomite_margin, chain.rpc).await {
+        Ok(v) => v,
+        Err(e) => return print_err(
+            &format!("Failed to read {} allowance for DolomiteMargin on {}: {:#}", symbol, chain.key, e),
+            "RPC_ERROR",
+            "Public RPC may be limited; retry shortly.",
+        ),
+    };
     if allowance < amount_raw {
         let approve_data = build_approve_max(chain.dolomite_margin);
         eprintln!("[supply] Approving {} for DepositWithdrawalProxy…", symbol);

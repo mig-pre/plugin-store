@@ -153,11 +153,20 @@ pub async fn run(args: BorrowArgs) -> anyhow::Result<()> {
         );
     }
 
-    // Pre-flight: main account must have ≥ collateral_amount of collateral_token (only if opening)
+    // Pre-flight: main account must have ≥ collateral_amount of collateral_token (only if opening).
+    // EVM-012: RPC failure must not be silently rendered as "supply=0" — that
+    // would block a legitimate borrow when the user actually has the collateral.
     if !skip_open {
-        let (main_sign, main_supply) = get_account_wei(
+        let (main_sign, main_supply) = match get_account_wei(
             chain.dolomite_margin, &from_addr, 0, coll_market as u128, chain.rpc,
-        ).await.unwrap_or((true, 0));
+        ).await {
+            Ok(t) => t,
+            Err(e) => return print_err(
+                &format!("Failed to read main-account collateral supply from DolomiteMargin on {}: {:#}", chain.key, e),
+                "RPC_ERROR",
+                "Public RPC may be limited; retry shortly.",
+            ),
+        };
         if !main_sign || main_supply < coll_amount_raw {
             return print_err(
                 &format!(

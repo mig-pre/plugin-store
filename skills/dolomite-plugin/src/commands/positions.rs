@@ -30,13 +30,28 @@ pub async fn run(args: PositionsArgs) -> anyhow::Result<()> {
         },
     };
 
-    // Get aggregate USD-equiv values first (single RPC, fastest)
-    let (supply_value, borrow_value) = get_account_values(
+    // Get aggregate USD-equiv values first (single RPC, fastest).
+    // EVM-012: distinguish RPC failure from "no positions". Silent (0, 0)
+    // fallback rendered as "you have no Dolomite positions" — misleading
+    // users with active positions whenever the public RPC blipped.
+    let (supply_value, borrow_value) = match get_account_values(
         chain.dolomite_margin, &wallet, args.account_number, chain.rpc,
-    ).await.unwrap_or((0, 0));
+    ).await {
+        Ok(t) => t,
+        Err(e) => return print_err(
+            &format!("Failed to read aggregate account values from DolomiteMargin on {}: {:#}", chain.key, e),
+            "RPC_ERROR",
+            "Public RPC may be limited; retry shortly.",
+        ),
+    };
 
-    let earnings_rate = get_earnings_rate(chain.dolomite_margin, chain.rpc).await
-        .unwrap_or(850_000_000_000_000_000);
+    // EVM-012: keep the soft 85% default (display-only APY) but expose the
+    // RPC failure so callers can mark the supply APY as best-effort.
+    let (earnings_rate, earnings_rate_query_error) =
+        match get_earnings_rate(chain.dolomite_margin, chain.rpc).await {
+            Ok(v) => (v, None),
+            Err(e) => (850_000_000_000_000_000u128, Some(format!("{:#}", e))),
+        };
 
     // Per-market scan (parallel) — only show non-zero positions
     let futs: Vec<_> = ARB_KNOWN_MARKETS.iter().map(|(mid, sym, _)| {
@@ -53,8 +68,23 @@ pub async fn run(args: PositionsArgs) -> anyhow::Result<()> {
     let results = futures::future::join_all(futs).await;
 
     let mut entries: Vec<Value> = Vec::new();
+    let mut partial_markets: Vec<Value> = Vec::new();
     for (mid, sym, pos, borrow_rate) in results {
-        let (sign, value) = pos.unwrap_or((true, 0));
+        // EVM-012: track per-market RPC failures so they don't silently
+        // disappear via the L58 zero-filter. Sign defaults to true (supply)
+        // for the rendering branch, but the entry itself is moved to
+        // `partial_markets` so the user is aware data is missing.
+        let (sign, value) = match pos {
+            Some(t) => t,
+            None => {
+                partial_markets.push(json!({
+                    "market_id": mid,
+                    "symbol": sym,
+                    "error": "get_account_wei RPC failed",
+                }));
+                continue;
+            }
+        };
         if value == 0 { continue; }
         let dec = token_decimals(sym).unwrap_or(18);
         let kind = if sign { "supply" } else { "borrow" };
@@ -96,6 +126,8 @@ pub async fn run(args: PositionsArgs) -> anyhow::Result<()> {
         "utilization": utilization.map(|u| format!("{:.4}", u)),
         "position_count": entries.len(),
         "positions": entries,
+        "partial_markets": partial_markets,
+        "earnings_rate_query_error": earnings_rate_query_error,
         "note": "Account number 0 is the main account. Isolated borrow positions use other account numbers; pass --account-number N to inspect them.",
     }))?);
     Ok(())
