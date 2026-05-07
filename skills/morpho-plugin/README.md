@@ -24,7 +24,7 @@ Supply, borrow and earn yield on [Morpho](https://morpho.org/) — a permissionl
 ## Install
 
 ```bash
-npx skills add mig-pre/plugin-store-community --skill morpho
+npx skills add okx/plugin-store-community --skill morpho
 ```
 
 ## Usage Examples
@@ -57,7 +57,7 @@ morpho claim-rewards
 
 ## Source
 
-- Plugin Store entry: [mig-pre/plugin-store-community](https://github.com/mig-pre/plugin-store-community/tree/main/submissions/morpho)
+- Plugin Store entry: [okx/plugin-store-community](https://github.com/okx/plugin-store-community/tree/main/submissions/morpho)
 
 ## License
 
