@@ -159,7 +159,21 @@ async fn run_inner(args: HealthFactorArgs) -> Result<()> {
     let controller_asset      = r2[0].as_address().unwrap_or_default();
     let unit_of_account       = r2[1].as_address().unwrap_or_default();
     let oracle                = r2[2].as_address().unwrap_or_default();
-    let debt_amount           = r2[3].as_u128().unwrap_or(0);
+    // EVM-012: debtOf is the canonical debt read for HF. If the sub-call
+    // reverts (RPC issue / controller misbehavior), silent fallback to 0
+    // would render below as `debt_in_uoa == 0 → HF = INFINITY` — misleading
+    // users into thinking they're safe when their debt couldn't be read.
+    // Fail closed: propagate as RPC_ERROR (the run() wrapper classifies it
+    // via classify_error in commands/mod.rs).
+    let debt_amount = match r2[3].as_u128() {
+        Some(v) => v,
+        None => anyhow::bail!(
+            "RPC request failed: controller {} debtOf({}) returned no data on chain {} \
+             (multicall sub-call reverted). Health factor cannot be reported without \
+             an authoritative debt read.",
+            controller, wallet, args.chain
+        ),
+    };
 
     // Per-collateral data
     struct CollInfo {
@@ -267,8 +281,20 @@ async fn run_inner(args: HealthFactorArgs) -> Result<()> {
             "credit_in_uoa_raw":    credit.to_string(),
         }));
     }
+    // EVM-012: debt oracle quote is critical for HF correctness. Silent
+    // fallback to 0 here would render HF = collateral / 0 → INFINITY, telling
+    // users they're safe when in fact the oracle just couldn't price their debt.
+    // Fail closed: propagate as RPC_ERROR.
     let debt_in_uoa = if debt_amount > 0 {
-        quote_iter.next().and_then(|r| r.as_u128()).unwrap_or(0)
+        match quote_iter.next().and_then(|r| r.as_u128()) {
+            Some(v) => v,
+            None => anyhow::bail!(
+                "RPC request failed: oracle quote for debt asset {} → unitOfAccount {} \
+                 returned no data on chain {}. Health factor cannot be computed without \
+                 an authoritative debt-asset price.",
+                controller_asset, unit_of_account, args.chain
+            ),
+        }
     } else { 0 };
 
     // HF = collateral_credit / debt_value (ratio in unit-of-account terms)

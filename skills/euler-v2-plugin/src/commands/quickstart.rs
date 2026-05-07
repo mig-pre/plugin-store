@@ -110,6 +110,7 @@ async fn run_inner(args: QuickstartArgs) -> Result<()> {
     let mut open_positions: u64 = 0;
     let mut has_borrow = false;
     let mut has_supply = false;
+    let mut vault_rpc_failures: u64 = 0;  // EVM-012: track per-vault read failures
     for chunk in candidates.chunks(RPC_CONCURRENCY) {
         let futs = chunk.iter().map(|addr| {
             let chain = args.chain;
@@ -122,13 +123,25 @@ async fn run_inner(args: QuickstartArgs) -> Result<()> {
                     eth_call(chain, &addr, &bal_call),
                     eth_call(chain, &addr, &debt_call),
                 );
-                let shares = bal_res.ok().map(|h| parse_uint256_to_u128(&h)).unwrap_or(0);
-                let debt   = debt_res.ok().map(|h| parse_uint256_to_u128(&h)).unwrap_or(0);
-                (shares, debt)
+                // EVM-012: silent unwrap_or(0) on per-vault RPC failure used to
+                // mis-route quickstart to `no_funds` status when the user
+                // actually had positions in vaults that just had transient RPC
+                // failures. Track each call's success so we can surface the
+                // count to the caller and let them retry with confidence.
+                let shares_opt = bal_res.ok().map(|h| parse_uint256_to_u128(&h));
+                let debt_opt   = debt_res.ok().map(|h| parse_uint256_to_u128(&h));
+                (shares_opt, debt_opt)
             }
         });
         let results: Vec<_> = futures::future::join_all(futs).await;
-        for (shares, debt) in results {
+        for (shares_opt, debt_opt) in results {
+            // Count RPC failures (either the balance OR debt read for this
+            // vault failed). Don't double-count if both fail.
+            if shares_opt.is_none() || debt_opt.is_none() {
+                vault_rpc_failures += 1;
+            }
+            let shares = shares_opt.unwrap_or(0);
+            let debt   = debt_opt.unwrap_or(0);
             if shares > 0 || debt > 0 { open_positions += 1; }
             if shares > 0 { has_supply = true; }
             if debt > 0   { has_borrow = true; }
@@ -202,6 +215,7 @@ async fn run_inner(args: QuickstartArgs) -> Result<()> {
                 "tip": tip,
                 "vault_count": vault_count,
                 "open_positions": open_positions,
+                "vault_rpc_failures": vault_rpc_failures,
                 "supply_value_usd": supply_value_usd,
                 "borrow_value_usd": borrow_value_usd,
                 "health_factor": health_factor,

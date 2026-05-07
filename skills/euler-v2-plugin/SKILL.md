@@ -1,7 +1,7 @@
 ---
 name: euler-v2-plugin
 description: "Supply, borrow and earn yield on Euler v2 - a modular lending protocol with isolated-risk EVK (Euler Vault Kit) vaults. Trigger phrases: supply to euler, deposit to euler vault, borrow from euler, repay euler loan, euler health factor, my euler positions, euler vault apy, claim euler rewards, list euler vaults, evk vault."
-version: 0.1.0
+version: 0.1.1
 author: GeoGu360
 tags:
   - lending
@@ -26,7 +26,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/euler-v2-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.1.0"
+LOCAL_VER="0.1.1"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -138,12 +138,12 @@ mkdir -p ~/.local/bin
 
 # Download binary + checksums to a sandbox, verify SHA256 before installing.
 BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/euler-v2-plugin@0.1.0"
+RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/euler-v2-plugin@0.1.1"
 curl -fsSL "${RELEASE_BASE}/euler-v2-plugin-${TARGET}${EXT}" -o "$BIN_TMP/euler-v2-plugin${EXT}" || {
   echo "ERROR: failed to download euler-v2-plugin-${TARGET}${EXT}" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for euler-v2-plugin@0.1.0" >&2
+  echo "ERROR: failed to download checksums.txt for euler-v2-plugin@0.1.1" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 
 EXPECTED=$(awk -v b="euler-v2-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
@@ -167,7 +167,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/euler-v2-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.1.0" > "$HOME/.plugin-store/managed/euler-v2-plugin"
+echo "0.1.1" > "$HOME/.plugin-store/managed/euler-v2-plugin"
 ```
 
 ---
@@ -389,3 +389,21 @@ If OKX adds Euler v2 contracts to its TEE whitelist in the future, the plugin ca
 - Source code: https://github.com/GeoGu360/plugin-store/tree/main/skills/euler-v2-plugin
 - Euler v2 docs: see the EVK whitepaper on the Euler Finance docs site
 - Euler app: https://app.euler.finance
+
+---
+
+## Changelog
+
+### v0.1.1 (2026-05-07)
+
+- **feat**: `wallet contract-call` (executed only on `--confirm` for state-changing commands like `borrow` / `enable-collateral` / `claim-rewards`) now passes `--biz-type dapp` and `--strategy euler-v2-plugin` (onchainos 3.0.0+) so backend attribution dashboards can group calls by source plugin. User confirmation flow is unchanged: write commands still preview their effects and require an explicit `--confirm` flag before any contract call is signed.
+- **fix (EVM-012)**: critical safety reads in `health-factor` no longer silently render as `HF = INFINITY` on RPC failure. Two specific cases:
+  - `controller.debtOf(user)` failure inside the canonical multicall now bails with a structured RPC error instead of falling back to `debt = 0` (which would have rendered `debt_in_uoa = 0 → HF = INFINITY → status: safe` even though the actual debt could not be read).
+  - The debt-asset oracle quote sub-call failure inside the same multicall now bails as well, instead of falling back to `debt_in_uoa = 0 → HF = INFINITY`. With both fixes, a transient public-RPC outage on either of these two reads now surfaces as `RPC_ERROR` rather than misleadingly clean health.
+- **fix (EVM-012)**: `quickstart` per-vault `balanceOf` / `debtOf` reads were previously zeroed silently on RPC failure, which could route users with active positions to the `no_funds` status when a transient RPC blip prevented reading their actual holdings. Failures are now counted into a new `vault_rpc_failures` field in the output JSON so callers can tell "this user has no positions" from "some vault reads failed — retry".
+
+### v0.1.0 (initial release)
+
+- 9 commands across Ethereum / Base / Arbitrum: `quickstart`, `list-vaults`, `get-vault`, `positions`, `health-factor`, `enable-controller` / `disable-controller`, `enable-collateral` / `disable-collateral`, `borrow` / `repay`, `claim-rewards`.
+- TEE-aware EVK integration: pre-flight detects which entry points the OKX agentic wallet whitelist accepts and routes around the rest (`transfer + skim` for supply, `repayWithShares` for repay).
+- Multicall3-bundled reads for vault enumeration + position scanning.

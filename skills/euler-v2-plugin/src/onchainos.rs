@@ -7,12 +7,17 @@
 ///   backend may add a confirmation prompt for risk-flagged contracts; passing the
 ///   prompt through to the user is acceptable since this is the user-facing tx.
 ///
-/// `--force` semantics (per [ONC-001]): only matters when backend triggers a
-/// confirmation prompt; for low-risk calls it's a no-op. We pass it on approves
-/// defensively; for main txs we let onchainos surface backend prompts naturally.
+/// `--force` (ONC-001): only matters when backend triggers a confirmation
+///   prompt; for low-risk calls it's a no-op. Passed defensively on approves;
+///   for main txs we let onchainos surface backend prompts naturally.
+/// `--biz-type` / `--strategy`: attribution to the onchainos backend (since
+///   onchainos 3.0.0) so analytics can group calls by source plugin.
 
 use anyhow::{Context, Result};
 use serde_json::Value;
+
+const BIZ_TYPE: &str = "dapp";
+const STRATEGY: &str = "euler-v2-plugin";
 
 /// Sign an EIP-712 structured message via `onchainos wallet sign-message`.
 /// Required for some Euler operations (e.g. permit-style approvals planned for v0.2).
@@ -71,6 +76,8 @@ pub async fn wallet_contract_call(
     let mut args: Vec<String> = vec![
         "wallet".into(),
         "contract-call".into(),
+        "--biz-type".into(), BIZ_TYPE.into(),
+        "--strategy".into(), STRATEGY.into(),
         "--chain".into(), chain_str,
         "--to".into(), to.into(),
         "--input-data".into(), input_data.into(),
