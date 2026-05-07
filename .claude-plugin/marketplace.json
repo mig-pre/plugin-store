@@ -25,6 +25,15 @@
       }
     },
     {
+      "name": "aerodrome-amm-plugin",
+      "description": "Swap tokens and provide liquidity on Aerodrome AMM (volatile/stable pools) on Base",
+      "source": "./skills/aerodrome-amm-plugin",
+      "category": "utility",
+      "author": {
+        "name": "OKX"
+      }
+    },
+    {
       "name": "aerodrome-slipstream-plugin",
       "description": "Swap tokens and manage concentrated liquidity positions on Aerodrome Slipstream (CLMM) on Base",
       "source": "./skills/aerodrome-slipstream-plugin",
@@ -319,6 +328,15 @@
       "category": "utility",
       "author": {
         "name": "skylavis-sky"
+      }
+    },
+    {
+      "name": "quickswap-plugin",
+      "description": "Swap tokens and provide concentrated liquidity on QuickSwap V3 CLMM on Polygon",
+      "source": "./skills/quickswap-plugin",
+      "category": "utility",
+      "author": {
+        "name": "OKX"
       }
     },
     {
