@@ -4,8 +4,8 @@ description: "Kamino Liquidity KVault earn vaults on Solana. Deposit tokens to e
 license: MIT
 metadata:
   author: GeoGu360
-  version: "0.1.2"
-version: "0.1.2"
+  version: "0.1.4"
+version: "0.1.4"
 author: GeoGu360
 ---
 
@@ -22,7 +22,7 @@ author: GeoGu360
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/kamino-liquidity-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.1.2"
+LOCAL_VER="0.1.3"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -33,7 +33,7 @@ if [ -f "$UPDATE_CACHE" ]; then
 fi
 
 if [ "$DO_CHECK" = true ]; then
-  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/mig-pre/plugin-store/main/skills/kamino-liquidity-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
+  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-liquidity-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
   if [ -n "$REMOTE_VER" ]; then
     mkdir -p "$HOME/.plugin-store/update-cache"
     echo "$REMOTE_VER" > "$UPDATE_CACHE"
@@ -43,7 +43,7 @@ fi
 REMOTE_VER=$(cat "$UPDATE_CACHE" 2>/dev/null || echo "$LOCAL_VER")
 if [ "$REMOTE_VER" != "$LOCAL_VER" ]; then
   echo "Update available: kamino-liquidity-plugin v$LOCAL_VER -> v$REMOTE_VER. Updating..."
-  npx skills add mig-pre/plugin-store --skill kamino-liquidity-plugin --yes --global 2>/dev/null || true
+  npx skills add okx/plugin-store --skill kamino-liquidity-plugin --yes --global 2>/dev/null || true
   echo "Updated kamino-liquidity-plugin to v$REMOTE_VER. Please re-read this SKILL.md."
 fi
 ```
@@ -51,50 +51,14 @@ fi
 ### Install onchainos CLI + Skills (auto-injected)
 
 ```bash
-# 1. Install onchainos CLI — pin to latest release tag, verify SHA256
-#    of the installer before executing (no curl|sh from main).
-if ! command -v onchainos >/dev/null 2>&1; then
-  set -e
-  LATEST_TAG=$(curl -sSL --max-time 5 \
-    "https://api.github.com/repos/okx/onchainos-skills/releases/latest" \
-    | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-  if [ -z "$LATEST_TAG" ]; then
-    echo "ERROR: failed to resolve latest onchainos release tag (network or rate limit)." >&2
-    echo "       Manual install: https://github.com/okx/onchainos-skills" >&2
-    exit 1
-  fi
-
-  ONCHAINOS_TMP=$(mktemp -d)
-  curl -sSL --max-time 30 \
-    "https://raw.githubusercontent.com/okx/onchainos-skills/${LATEST_TAG}/install.sh" \
-    -o "$ONCHAINOS_TMP/install.sh"
-  curl -sSL --max-time 30 \
-    "https://github.com/okx/onchainos-skills/releases/download/${LATEST_TAG}/installer-checksums.txt" \
-    -o "$ONCHAINOS_TMP/installer-checksums.txt"
-
-  EXPECTED=$(awk '$2 ~ /install\.sh$/ {print $1; exit}' "$ONCHAINOS_TMP/installer-checksums.txt")
-  if command -v sha256sum >/dev/null 2>&1; then
-    ACTUAL=$(sha256sum "$ONCHAINOS_TMP/install.sh" | awk '{print $1}')
-  else
-    ACTUAL=$(shasum -a 256 "$ONCHAINOS_TMP/install.sh" | awk '{print $1}')
-  fi
-  if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
-    echo "ERROR: onchainos installer SHA256 mismatch — refusing to execute." >&2
-    echo "       expected=$EXPECTED  actual=$ACTUAL  tag=$LATEST_TAG" >&2
-    rm -rf "$ONCHAINOS_TMP"
-    exit 1
-  fi
-
-  sh "$ONCHAINOS_TMP/install.sh"
-  rm -rf "$ONCHAINOS_TMP"
-  set +e
-fi
+# 1. Install onchainos CLI
+onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/okx/onchainos-skills/main/install.sh | sh
 
 # 2. Install onchainos skills (enables AI agent to use onchainos commands)
 npx skills add okx/onchainos-skills --yes --global
 
 # 3. Install plugin-store skills (enables plugin discovery and management)
-npx skills add mig-pre/plugin-store --skill plugin-store --yes --global
+npx skills add okx/plugin-store --skill plugin-store --yes --global
 ```
 
 ### Install kamino-liquidity-plugin binary + launcher (auto-injected)
@@ -105,11 +69,11 @@ LAUNCHER="$HOME/.plugin-store/launcher.sh"
 CHECKER="$HOME/.plugin-store/update-checker.py"
 if [ ! -f "$LAUNCHER" ]; then
   mkdir -p "$HOME/.plugin-store"
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
   chmod +x "$LAUNCHER"
 fi
 if [ ! -f "$CHECKER" ]; then
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
 fi
 
 # Clean up old installation
@@ -131,40 +95,17 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-
-# Download binary + checksums to a sandbox, verify SHA256 before installing.
-BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/kamino-liquidity-plugin@0.1.2"
-curl -fsSL "${RELEASE_BASE}/kamino-liquidity-plugin-${TARGET}${EXT}" -o "$BIN_TMP/kamino-liquidity-plugin${EXT}" || {
-  echo "ERROR: failed to download kamino-liquidity-plugin-${TARGET}${EXT}" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for kamino-liquidity-plugin@0.1.2" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-
-EXPECTED=$(awk -v b="kamino-liquidity-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
-if command -v sha256sum >/dev/null 2>&1; then
-  ACTUAL=$(sha256sum "$BIN_TMP/kamino-liquidity-plugin${EXT}" | awk '{print $1}')
-else
-  ACTUAL=$(shasum -a 256 "$BIN_TMP/kamino-liquidity-plugin${EXT}" | awk '{print $1}')
-fi
-if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
-  echo "ERROR: kamino-liquidity-plugin SHA256 mismatch — refusing to install." >&2
-  echo "       expected=$EXPECTED  actual=$ACTUAL  target=${TARGET}" >&2
-  rm -rf "$BIN_TMP"; exit 1
-fi
-
-mv "$BIN_TMP/kamino-liquidity-plugin${EXT}" ~/.local/bin/.kamino-liquidity-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/kamino-liquidity-plugin@0.1.3/kamino-liquidity-plugin-${TARGET}${EXT}" -o ~/.local/bin/.kamino-liquidity-plugin-core${EXT}
 chmod +x ~/.local/bin/.kamino-liquidity-plugin-core${EXT}
-rm -rf "$BIN_TMP"
 
 # Symlink CLI name to universal launcher
 ln -sf "$LAUNCHER" ~/.local/bin/kamino-liquidity-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.1.2" > "$HOME/.plugin-store/managed/kamino-liquidity-plugin"
+echo "0.1.3" > "$HOME/.plugin-store/managed/kamino-liquidity-plugin"
 ```
+
 
 ---
 
@@ -192,7 +133,7 @@ Kamino Liquidity provides auto-compounding KVault earn vaults on Solana. Users d
 
 Before running any command:
 
-1. **Binary installed**: run `kamino-liquidity --version`. If not found, reinstall the plugin via `npx skills add mig-pre/plugin-store --skill kamino-liquidity`
+1. **Binary installed**: run `kamino-liquidity --version`. If not found, reinstall the plugin via `npx skills add okx/plugin-store --skill kamino-liquidity`
 2. **onchainos available**: run `onchainos --version`. If not found, reinstall via your platform's skill manager
 3. **Wallet connected**: run `onchainos wallet balance` to confirm your wallet is active
 
@@ -200,6 +141,53 @@ Before running any command:
 
 > **Write operations require `--confirm`**: Run the command first without `--confirm` to preview
 > the transaction details. Add `--confirm` to broadcast.
+
+### quickstart — Wallet status and first command suggestion
+
+Shows wallet balances, active KVault positions, and suggests the best next action.
+
+**Usage:**
+```
+kamino-liquidity quickstart [--wallet <address>]
+```
+
+**Arguments:**
+- `--wallet` — Solana wallet address (optional; resolved from onchainos if omitted)
+
+**Trigger phrases:**
+- "Get started with Kamino"
+- "What should I do first on Kamino?"
+- "Check my Kamino status"
+- "Kamino quickstart"
+
+**Output fields:** `ok`, `about`, `wallet`, `assets` (sol_balance, usdc_balance, all_tokens), `kvault_positions`, `status` (active/ready/needs_gas/needs_funds/no_funds), `suggestion`, `next_command`, `onboarding_steps` (array of 5 steps, only when status != active)
+
+**Example output:**
+```json
+{
+  "ok": true,
+  "about": "Kamino KVaults are automated yield-optimization vaults on Solana...",
+  "wallet": "DTEqFXyFM9aMSGu9sw3PpRsZce6xqqmaUbGkFjmeieGE",
+  "assets": {
+    "sol_balance": "1.234567",
+    "usdc_balance": "50.000000",
+    "all_tokens": [{"symbol": "SOL", "balance": "1.234567"}, {"symbol": "USDC", "balance": "50.000000"}]
+  },
+  "kvault_positions": 0,
+  "status": "ready",
+  "suggestion": "Wallet is funded. You can deposit USDC into a KVault to start earning yield.",
+  "next_command": "kamino-liquidity vaults --token USDC",
+  "onboarding_steps": [
+    {"step": 1, "title": "Check available vaults", "command": "kamino-liquidity vaults --token USDC"},
+    {"step": 2, "title": "Preview a deposit", "command": "kamino-liquidity deposit --vault <VAULT_ADDRESS> --amount <AMOUNT> --dry-run"},
+    {"step": 3, "title": "Execute deposit", "command": "kamino-liquidity deposit --vault <VAULT_ADDRESS> --amount <AMOUNT> --confirm"},
+    {"step": 4, "title": "Check positions", "command": "kamino-liquidity positions"},
+    {"step": 5, "title": "Withdraw when ready", "command": "kamino-liquidity withdraw --vault <VAULT_ADDRESS> --amount <SHARES> --confirm"}
+  ]
+}
+```
+
+---
 
 ### vaults — List KVaults
 
@@ -298,6 +286,7 @@ kamino-liquidity deposit --vault <address> --amount <amount> [--chain 501] [--wa
 - `--chain` — Chain ID (must be 501, default: 501)
 - `--wallet` — Solana wallet address (optional; resolved from onchainos if omitted)
 - `--dry-run` — Preview transaction without broadcasting
+- `--confirm` — Broadcast the transaction (required for on-chain execution)
 
 **Trigger phrases:**
 - "Deposit 0.001 SOL into Kamino vault GEodMs..."
@@ -340,6 +329,7 @@ kamino-liquidity withdraw --vault <address> --amount <shares> [--chain 501] [--w
 - `--chain` — Chain ID (must be 501, default: 501)
 - `--wallet` — Solana wallet address (optional; resolved from onchainos if omitted)
 - `--dry-run` — Preview transaction without broadcasting
+- `--confirm` — Broadcast the transaction (required for on-chain execution)
 
 **Trigger phrases:**
 - "Withdraw from Kamino vault GEodMs..."
@@ -376,7 +366,7 @@ kamino-liquidity withdraw --vault <address> --amount <shares> [--chain 501] [--w
 
 | Error | Likely Cause | Resolution |
 |-------|-------------|------------|
-| Binary not found | Plugin not installed | Run `npx skills add mig-pre/plugin-store --skill kamino-liquidity` |
+| Binary not found | Plugin not installed | Run `npx skills add okx/plugin-store --skill kamino-liquidity` |
 | onchainos not found | CLI not installed | Run the onchainos install script |
 | Insufficient balance | Not enough funds | Check balance with `onchainos wallet balance` |
 | Transaction reverted | Contract rejected TX | Check parameters and try again |
