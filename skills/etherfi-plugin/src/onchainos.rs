@@ -1,6 +1,11 @@
 use std::process::Command;
 use serde_json::Value;
 
+/// `--biz-type` / `--strategy`: attribution to the onchainos backend.
+/// Source-of-truth for the plugin name is Cargo.toml's `[package]` `name`.
+const BIZ_TYPE: &str = "dapp";
+const STRATEGY: &str = env!("CARGO_PKG_NAME");
+
 /// Poll onchainos wallet history until txStatus is SUCCESS or FAILED (or 90s timeout).
 /// Uses spawn_blocking so Command::output() doesn't block the Tokio runtime thread.
 pub async fn wait_for_tx(tx_hash: String, wallet_addr: String) -> anyhow::Result<()> {
@@ -113,19 +118,32 @@ pub async fn wallet_contract_call(
 
     let chain_str = chain_id.to_string();
     let value_str = value_wei.to_string();
+    let mut args = vec![
+        "wallet",
+        "contract-call",
+        "--biz-type",
+        BIZ_TYPE,
+        "--strategy",
+        STRATEGY,
+        "--chain",
+        &chain_str,
+        "--to",
+        to,
+        "--input-data",
+        input_data,
+    ];
+    // Only pass --amt when sending native ETH value (non-zero).
+    // Passing --amt 0 on a pure ERC-20 call can cause onchainos to reject the tx.
+    if value_wei > 0 {
+        args.push("--amt");
+        args.push(&value_str);
+    }
+    // --force bypasses onchainos's interactive confirmation prompt.
+    // The plugin implements its own preview/confirm gate above (if !confirm { return preview }).
+    // By the time we reach this point, confirm=true is guaranteed, so --force is always correct here.
+    args.push("--force");
     let output = Command::new("onchainos")
-        .args([
-            "wallet",
-            "contract-call",
-            "--chain",
-            &chain_str,
-            "--to",
-            to,
-            "--input-data",
-            input_data,
-            "--amt",
-            &value_str,
-        ])
+        .args(&args)
         .output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
