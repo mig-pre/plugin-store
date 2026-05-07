@@ -16,8 +16,12 @@
 use anyhow::{Context, Result};
 use serde_json::Value;
 
+/// Single source of truth: `env!` resolves Cargo.toml's `name` field at compile time.
+/// CI invariant — Cargo.toml.name === plugin.yaml.name (Phase 2 build pipeline matches
+/// the binary against `plugins/<plugin.yaml.name>@<version>`), so this stays in sync
+/// with the canonical plugin name without any manual drift between files.
 const BIZ_TYPE: &str = "dapp";
-const STRATEGY: &str = "euler-v2-plugin";
+const STRATEGY: &str = env!("CARGO_PKG_NAME");
 
 /// Sign an EIP-712 structured message via `onchainos wallet sign-message`.
 /// Required for some Euler operations (e.g. permit-style approvals planned for v0.2).
