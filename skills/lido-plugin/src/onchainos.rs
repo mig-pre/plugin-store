@@ -1,11 +1,11 @@
-use std::process::Command;
+use tokio::process::Command;
 use serde_json::Value;
 
-pub fn resolve_wallet(chain_id: u64) -> anyhow::Result<String> {
+pub async fn resolve_wallet(chain_id: u64) -> anyhow::Result<String> {
     let chain_str = chain_id.to_string();
     let output = Command::new("onchainos")
         .args(["wallet", "balance", "--chain", &chain_str])
-        .output()?;
+        .output().await?;
     let json: Value = serde_json::from_str(&String::from_utf8_lossy(&output.stdout))?;
     // Try data.address first (legacy), then data.details[0].tokenAssets[0].address
     if let Some(addr) = json["data"]["address"].as_str() {
@@ -20,6 +20,11 @@ pub fn resolve_wallet(chain_id: u64) -> anyhow::Result<String> {
 
 /// dry_run=true: early return simulated response. Never pass --dry-run to onchainos.
 /// force=true: pass --force to onchainos to bypass confirmation prompts and actually broadcast.
+/// `--biz-type` / `--strategy`: attribution to the onchainos backend.
+/// Source-of-truth for the plugin name is Cargo.toml's `[package]` `name`.
+const BIZ_TYPE: &str = "dapp";
+const STRATEGY: &str = env!("CARGO_PKG_NAME");
+
 pub async fn wallet_contract_call(
     chain_id: u64,
     to: &str,
@@ -41,6 +46,10 @@ pub async fn wallet_contract_call(
     let mut args = vec![
         "wallet",
         "contract-call",
+        "--biz-type",
+        BIZ_TYPE,
+        "--strategy",
+        STRATEGY,
         "--chain",
         &chain_str,
         "--to",
@@ -61,7 +70,7 @@ pub async fn wallet_contract_call(
         if force {
         args.push("--force");
     }
-    let output = Command::new("onchainos").args(&args).output()?;
+    let output = Command::new("onchainos").args(&args).output().await?;
     let stdout = String::from_utf8_lossy(&output.stdout);
     Ok(serde_json::from_str(&stdout)?)
 }

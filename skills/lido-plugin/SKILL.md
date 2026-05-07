@@ -1,7 +1,7 @@
 ---
 name: lido-plugin
 description: Stake ETH with Lido liquid staking protocol to receive stETH, manage withdrawals, and track staking rewards. Supports staking, balance queries, withdrawal requests, withdrawal status, and claiming finalized withdrawals on Ethereum mainnet.
-version: "0.2.7"
+version: "0.2.9"
 author: GeoGu360
 ---
 
@@ -18,7 +18,7 @@ author: GeoGu360
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/lido-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.2.7"
+LOCAL_VER="0.2.8"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -29,7 +29,7 @@ if [ -f "$UPDATE_CACHE" ]; then
 fi
 
 if [ "$DO_CHECK" = true ]; then
-  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/mig-pre/plugin-store/main/skills/lido-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
+  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/okx/plugin-store/main/skills/lido-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
   if [ -n "$REMOTE_VER" ]; then
     mkdir -p "$HOME/.plugin-store/update-cache"
     echo "$REMOTE_VER" > "$UPDATE_CACHE"
@@ -39,7 +39,7 @@ fi
 REMOTE_VER=$(cat "$UPDATE_CACHE" 2>/dev/null || echo "$LOCAL_VER")
 if [ "$REMOTE_VER" != "$LOCAL_VER" ]; then
   echo "Update available: lido-plugin v$LOCAL_VER -> v$REMOTE_VER. Updating..."
-  npx skills add mig-pre/plugin-store --skill lido-plugin --yes --global 2>/dev/null || true
+  npx skills add okx/plugin-store --skill lido-plugin --yes --global 2>/dev/null || true
   echo "Updated lido-plugin to v$REMOTE_VER. Please re-read this SKILL.md."
 fi
 ```
@@ -47,50 +47,14 @@ fi
 ### Install onchainos CLI + Skills (auto-injected)
 
 ```bash
-# 1. Install onchainos CLI — pin to latest release tag, verify SHA256
-#    of the installer before executing (no curl|sh from main).
-if ! command -v onchainos >/dev/null 2>&1; then
-  set -e
-  LATEST_TAG=$(curl -sSL --max-time 5 \
-    "https://api.github.com/repos/okx/onchainos-skills/releases/latest" \
-    | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-  if [ -z "$LATEST_TAG" ]; then
-    echo "ERROR: failed to resolve latest onchainos release tag (network or rate limit)." >&2
-    echo "       Manual install: https://github.com/okx/onchainos-skills" >&2
-    exit 1
-  fi
-
-  ONCHAINOS_TMP=$(mktemp -d)
-  curl -sSL --max-time 30 \
-    "https://raw.githubusercontent.com/okx/onchainos-skills/${LATEST_TAG}/install.sh" \
-    -o "$ONCHAINOS_TMP/install.sh"
-  curl -sSL --max-time 30 \
-    "https://github.com/okx/onchainos-skills/releases/download/${LATEST_TAG}/installer-checksums.txt" \
-    -o "$ONCHAINOS_TMP/installer-checksums.txt"
-
-  EXPECTED=$(awk '$2 ~ /install\.sh$/ {print $1; exit}' "$ONCHAINOS_TMP/installer-checksums.txt")
-  if command -v sha256sum >/dev/null 2>&1; then
-    ACTUAL=$(sha256sum "$ONCHAINOS_TMP/install.sh" | awk '{print $1}')
-  else
-    ACTUAL=$(shasum -a 256 "$ONCHAINOS_TMP/install.sh" | awk '{print $1}')
-  fi
-  if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
-    echo "ERROR: onchainos installer SHA256 mismatch — refusing to execute." >&2
-    echo "       expected=$EXPECTED  actual=$ACTUAL  tag=$LATEST_TAG" >&2
-    rm -rf "$ONCHAINOS_TMP"
-    exit 1
-  fi
-
-  sh "$ONCHAINOS_TMP/install.sh"
-  rm -rf "$ONCHAINOS_TMP"
-  set +e
-fi
+# 1. Install onchainos CLI
+onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/okx/onchainos-skills/main/install.sh | sh
 
 # 2. Install onchainos skills (enables AI agent to use onchainos commands)
 npx skills add okx/onchainos-skills --yes --global
 
 # 3. Install plugin-store skills (enables plugin discovery and management)
-npx skills add mig-pre/plugin-store --skill plugin-store --yes --global
+npx skills add okx/plugin-store --skill plugin-store --yes --global
 ```
 
 ### Install lido-plugin binary + launcher (auto-injected)
@@ -101,11 +65,11 @@ LAUNCHER="$HOME/.plugin-store/launcher.sh"
 CHECKER="$HOME/.plugin-store/update-checker.py"
 if [ ! -f "$LAUNCHER" ]; then
   mkdir -p "$HOME/.plugin-store"
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
   chmod +x "$LAUNCHER"
 fi
 if [ ! -f "$CHECKER" ]; then
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
 fi
 
 # Clean up old installation
@@ -127,40 +91,17 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-
-# Download binary + checksums to a sandbox, verify SHA256 before installing.
-BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/lido-plugin@0.2.7"
-curl -fsSL "${RELEASE_BASE}/lido-plugin-${TARGET}${EXT}" -o "$BIN_TMP/lido-plugin${EXT}" || {
-  echo "ERROR: failed to download lido-plugin-${TARGET}${EXT}" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for lido-plugin@0.2.7" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-
-EXPECTED=$(awk -v b="lido-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
-if command -v sha256sum >/dev/null 2>&1; then
-  ACTUAL=$(sha256sum "$BIN_TMP/lido-plugin${EXT}" | awk '{print $1}')
-else
-  ACTUAL=$(shasum -a 256 "$BIN_TMP/lido-plugin${EXT}" | awk '{print $1}')
-fi
-if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
-  echo "ERROR: lido-plugin SHA256 mismatch — refusing to install." >&2
-  echo "       expected=$EXPECTED  actual=$ACTUAL  target=${TARGET}" >&2
-  rm -rf "$BIN_TMP"; exit 1
-fi
-
-mv "$BIN_TMP/lido-plugin${EXT}" ~/.local/bin/.lido-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/lido-plugin@0.2.8/lido-plugin-${TARGET}${EXT}" -o ~/.local/bin/.lido-plugin-core${EXT}
 chmod +x ~/.local/bin/.lido-plugin-core${EXT}
-rm -rf "$BIN_TMP"
 
 # Symlink CLI name to universal launcher
 ln -sf "$LAUNCHER" ~/.local/bin/lido-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.2.7" > "$HOME/.plugin-store/managed/lido-plugin"
+echo "0.2.8" > "$HOME/.plugin-store/managed/lido-plugin"
 ```
+
 
 ---
 
@@ -189,6 +130,49 @@ Before running any command:
 1. Verify `onchainos` is installed: `onchainos --version` (requires ≥ 2.0.0)
 2. For write operations, verify wallet is logged in: `onchainos wallet balance --chain 1 --output json`
 3. If wallet check fails, prompt: "Please log in with `onchainos wallet login` first."
+
+## Quickstart
+
+**New to Lido?** Run these steps in order:
+
+1. **Check current staking APR**
+   ```bash
+   lido-plugin get-apy
+   ```
+   Returns the current stETH APR (typically 3–5%).
+
+2. **Check your stETH balance**
+   ```bash
+   lido-plugin balance
+   ```
+
+3. **Preview a stake** (no transaction sent)
+   ```bash
+   lido-plugin stake --amount-eth 0.1
+   ```
+   Shows the APR and expected stETH received. No funds move until you add `--confirm`.
+
+4. **Stake ETH → receive stETH** (after reviewing the preview)
+   ```bash
+   lido-plugin stake --amount-eth 0.1 --confirm
+   ```
+
+**Withdrawal flow** (when you want ETH back — takes 1–5 days to finalize):
+
+```bash
+# Step 1: Request withdrawal
+lido-plugin request-withdrawal --amount-steth 0.1 --confirm
+
+# Step 2: Monitor status
+lido-plugin get-withdrawals
+
+# Step 3: Claim once finalized (use request ID from get-withdrawals output)
+lido-plugin claim-withdrawal --ids <REQUEST_ID> --confirm
+```
+
+> `wrap` / `unwrap` convert between stETH and wstETH (non-rebasing form used by DeFi protocols such as Aave and Compound).
+
+---
 
 ## Contract Addresses (Ethereum Mainnet)
 
