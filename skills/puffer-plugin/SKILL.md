@@ -6,7 +6,7 @@ description: >
   1-step instant withdraw (single tx, pays the exit fee - default 1%) or the 2-step queued
   withdraw (fee-free, ~14 days). All write commands print structured JSON to stdout so external
   agents can decide the next step without parsing stderr.
-version: 0.1.0
+version: 0.1.1
 author: GeoGu360
 tags:
   - liquid-staking
@@ -31,7 +31,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/puffer-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.1.0"
+LOCAL_VER="0.1.1"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -143,12 +143,12 @@ mkdir -p ~/.local/bin
 
 # Download binary + checksums to a sandbox, verify SHA256 before installing.
 BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/puffer-plugin@0.1.0"
+RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/puffer-plugin@0.1.1"
 curl -fsSL "${RELEASE_BASE}/puffer-plugin-${TARGET}${EXT}" -o "$BIN_TMP/puffer-plugin${EXT}" || {
   echo "ERROR: failed to download puffer-plugin-${TARGET}${EXT}" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for puffer-plugin@0.1.0" >&2
+  echo "ERROR: failed to download checksums.txt for puffer-plugin@0.1.1" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 
 EXPECTED=$(awk -v b="puffer-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
@@ -172,7 +172,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/puffer-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.1.0" > "$HOME/.plugin-store/managed/puffer-plugin"
+echo "0.1.1" > "$HOME/.plugin-store/managed/puffer-plugin"
 ```
 
 ---
@@ -413,3 +413,12 @@ For `request-withdraw` the gas check uses a static cap (60k + 250k) instead of `
 - **pufETH is `ERC-4626`.** `convertToAssets` / `previewRedeem` / `maxRedeem` / `redeem` / `withdraw` all behave to spec; `depositETH` and `depositStETH` are Puffer extensions.
 - **Source code:** [PufferVaultV5.sol](https://github.com/PufferFinance/puffer-contracts/blob/master/mainnet-contracts/src/PufferVaultV5.sol), [PufferWithdrawalManager.sol](https://github.com/PufferFinance/puffer-contracts/blob/master/mainnet-contracts/src/PufferWithdrawalManager.sol).
 - **APY source:** DeFiLlama pool `bac6982a-f344-42f7-9af4-a9882f4a77f0` (project `puffer-stake`). Best-effort; returns `null` if offline.
+
+---
+
+## Changelog
+
+### v0.1.1 (2026-05-07)
+
+- **feat**: `wallet contract-call` (executed only on `--confirm` for state-changing commands like `stake` / `instant-withdraw` / `request-withdraw` / `claim-withdraw`) now passes `--biz-type dapp` and `--strategy puffer-plugin` (onchainos 3.0.0+) so backend attribution dashboards can group calls by source plugin. User confirmation flow is unchanged: write commands still preview their effects and require an explicit `--confirm` flag before any contract call is signed.
+- **note (EVM-012)**: this plugin was already EVM-012-aware in v0.1.0 — `positions.rs` has an explicit comment "Balances and rate - fail loudly on RPC errors (no unwrap_or(0))" and pre-flight reads in `request_withdraw.rs` use `?` propagation. The remaining `unwrap_or(...)` instances are all post-tx delta-display reads (after `wait_for_tx` confirmed status=0x1) or documented conservative fallbacks (e.g. `stake.rs` falls back to a 1:1 pufETH:ETH rate when the rate quote read fails, which is conservative-correct since pufETH never dips below 1:1 by design). No fixes needed.
