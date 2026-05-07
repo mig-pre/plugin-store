@@ -448,7 +448,7 @@ collateral" and per-account `(liquidity, shortfall)`.
 
 ### v0.1.1 (2026-05-07)
 
-- **feat**: `wallet contract-call` now passes `--biz-type dapp` and `--strategy compound-v2-plugin` (onchainos 3.0.0+) so backend attribution dashboards can group calls by source plugin.
+- **feat**: `wallet contract-call` (executed only on `--confirm` for state-changing commands) now passes `--biz-type dapp` and `--strategy compound-v2-plugin` (onchainos 3.0.0+) so backend attribution dashboards can group calls by source plugin. User confirmation flow is unchanged: write commands still preview their effects and require an explicit `--confirm` flag before any contract call is signed.
 - **fix (EVM-012)**: 16-place sweep of silent `unwrap_or(0)` RPC error swallowers across cToken read paths. Before the sweep, public RPC blips were rendered as user-facing "0" values and triggered misleading status decisions. Highlights:
   - `quickstart` / `positions`: account liquidity from Comptroller no longer falls back to `(0, 0, 0)` on RPC failure (which rendered as "shortfall=0, liquidity=0" — letting users believe they were safe when they could have been liquidatable). Now returns structured `RPC_ERROR` JSON via stdout.
   - `quickstart`: per-market balance reads in `scan_market` propagate via `?` so the existing `rpc_failures` counter routes the user to `rpc_degraded`. `native_balance` failure now bails with `RPC_ERROR` instead of misrouting to `insufficient_gas`.
