@@ -1,7 +1,7 @@
 ---
 name: pancakeswap-v3-plugin
 description: "Swap tokens and manage liquidity on PancakeSwap V3 on Ethereum, BNB Chain, Base, Arbitrum, and Linea"
-version: "1.0.4"
+version: "1.0.6"
 author: "GeoGu360"
 tags:
   - dex
@@ -25,7 +25,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/pancakeswap-v3-plugin"
 CACHE_MAX=3600
-LOCAL_VER="1.0.4"
+LOCAL_VER="1.0.5"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -36,7 +36,7 @@ if [ -f "$UPDATE_CACHE" ]; then
 fi
 
 if [ "$DO_CHECK" = true ]; then
-  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/mig-pre/plugin-store/main/skills/pancakeswap-v3-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
+  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v3-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
   if [ -n "$REMOTE_VER" ]; then
     mkdir -p "$HOME/.plugin-store/update-cache"
     echo "$REMOTE_VER" > "$UPDATE_CACHE"
@@ -46,7 +46,7 @@ fi
 REMOTE_VER=$(cat "$UPDATE_CACHE" 2>/dev/null || echo "$LOCAL_VER")
 if [ "$REMOTE_VER" != "$LOCAL_VER" ]; then
   echo "Update available: pancakeswap-v3-plugin v$LOCAL_VER -> v$REMOTE_VER. Updating..."
-  npx skills add mig-pre/plugin-store --skill pancakeswap-v3-plugin --yes --global 2>/dev/null || true
+  npx skills add okx/plugin-store --skill pancakeswap-v3-plugin --yes --global 2>/dev/null || true
   echo "Updated pancakeswap-v3-plugin to v$REMOTE_VER. Please re-read this SKILL.md."
 fi
 ```
@@ -54,50 +54,14 @@ fi
 ### Install onchainos CLI + Skills (auto-injected)
 
 ```bash
-# 1. Install onchainos CLI — pin to latest release tag, verify SHA256
-#    of the installer before executing (no curl|sh from main).
-if ! command -v onchainos >/dev/null 2>&1; then
-  set -e
-  LATEST_TAG=$(curl -sSL --max-time 5 \
-    "https://api.github.com/repos/okx/onchainos-skills/releases/latest" \
-    | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-  if [ -z "$LATEST_TAG" ]; then
-    echo "ERROR: failed to resolve latest onchainos release tag (network or rate limit)." >&2
-    echo "       Manual install: https://github.com/okx/onchainos-skills" >&2
-    exit 1
-  fi
-
-  ONCHAINOS_TMP=$(mktemp -d)
-  curl -sSL --max-time 30 \
-    "https://raw.githubusercontent.com/okx/onchainos-skills/${LATEST_TAG}/install.sh" \
-    -o "$ONCHAINOS_TMP/install.sh"
-  curl -sSL --max-time 30 \
-    "https://github.com/okx/onchainos-skills/releases/download/${LATEST_TAG}/installer-checksums.txt" \
-    -o "$ONCHAINOS_TMP/installer-checksums.txt"
-
-  EXPECTED=$(awk '$2 ~ /install\.sh$/ {print $1; exit}' "$ONCHAINOS_TMP/installer-checksums.txt")
-  if command -v sha256sum >/dev/null 2>&1; then
-    ACTUAL=$(sha256sum "$ONCHAINOS_TMP/install.sh" | awk '{print $1}')
-  else
-    ACTUAL=$(shasum -a 256 "$ONCHAINOS_TMP/install.sh" | awk '{print $1}')
-  fi
-  if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
-    echo "ERROR: onchainos installer SHA256 mismatch — refusing to execute." >&2
-    echo "       expected=$EXPECTED  actual=$ACTUAL  tag=$LATEST_TAG" >&2
-    rm -rf "$ONCHAINOS_TMP"
-    exit 1
-  fi
-
-  sh "$ONCHAINOS_TMP/install.sh"
-  rm -rf "$ONCHAINOS_TMP"
-  set +e
-fi
+# 1. Install onchainos CLI
+onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/okx/onchainos-skills/main/install.sh | sh
 
 # 2. Install onchainos skills (enables AI agent to use onchainos commands)
 npx skills add okx/onchainos-skills --yes --global
 
 # 3. Install plugin-store skills (enables plugin discovery and management)
-npx skills add mig-pre/plugin-store --skill plugin-store --yes --global
+npx skills add okx/plugin-store --skill plugin-store --yes --global
 ```
 
 ### Install pancakeswap-v3-plugin binary + launcher (auto-injected)
@@ -108,11 +72,11 @@ LAUNCHER="$HOME/.plugin-store/launcher.sh"
 CHECKER="$HOME/.plugin-store/update-checker.py"
 if [ ! -f "$LAUNCHER" ]; then
   mkdir -p "$HOME/.plugin-store"
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
   chmod +x "$LAUNCHER"
 fi
 if [ ! -f "$CHECKER" ]; then
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
 fi
 
 # Clean up old installation
@@ -134,40 +98,17 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-
-# Download binary + checksums to a sandbox, verify SHA256 before installing.
-BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/pancakeswap-v3-plugin@1.0.4"
-curl -fsSL "${RELEASE_BASE}/pancakeswap-v3-plugin-${TARGET}${EXT}" -o "$BIN_TMP/pancakeswap-v3-plugin${EXT}" || {
-  echo "ERROR: failed to download pancakeswap-v3-plugin-${TARGET}${EXT}" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for pancakeswap-v3-plugin@1.0.4" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-
-EXPECTED=$(awk -v b="pancakeswap-v3-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
-if command -v sha256sum >/dev/null 2>&1; then
-  ACTUAL=$(sha256sum "$BIN_TMP/pancakeswap-v3-plugin${EXT}" | awk '{print $1}')
-else
-  ACTUAL=$(shasum -a 256 "$BIN_TMP/pancakeswap-v3-plugin${EXT}" | awk '{print $1}')
-fi
-if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
-  echo "ERROR: pancakeswap-v3-plugin SHA256 mismatch — refusing to install." >&2
-  echo "       expected=$EXPECTED  actual=$ACTUAL  target=${TARGET}" >&2
-  rm -rf "$BIN_TMP"; exit 1
-fi
-
-mv "$BIN_TMP/pancakeswap-v3-plugin${EXT}" ~/.local/bin/.pancakeswap-v3-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/pancakeswap-v3-plugin@1.0.5/pancakeswap-v3-plugin-${TARGET}${EXT}" -o ~/.local/bin/.pancakeswap-v3-plugin-core${EXT}
 chmod +x ~/.local/bin/.pancakeswap-v3-plugin-core${EXT}
-rm -rf "$BIN_TMP"
 
 # Symlink CLI name to universal launcher
 ln -sf "$LAUNCHER" ~/.local/bin/pancakeswap-v3-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "1.0.4" > "$HOME/.plugin-store/managed/pancakeswap-v3-plugin"
+echo "1.0.5" > "$HOME/.plugin-store/managed/pancakeswap-v3-plugin"
 ```
+
 
 ---
 
@@ -508,6 +449,9 @@ This command is read-only — no transactions, no gas. Default chain is BNB Chai
 
 ## Changelog
 
+### v1.0.5
+- **fix**: `eth_call` / `eth_call_with_gas` now return an explicit error when the RPC response is missing the `result` field. Previously, malformed responses were silently coerced to `"0x"` and decoded as zero, which produced misleading zero balances / zero ticks when an RPC node misbehaved (EVM-012).
+
 ### v1.0.4
 - **feat**: Add `quickstart` command — checks BNB/USDT/USDC balances and LP positions on BNB Chain, returns `about` + `onboarding_steps` + `next_command` for 5 user states (active/ready/needs_gas/needs_funds/no_funds).
 - **fix**: Add `ethereum-rpc.publicnode.com` and `linea-rpc.publicnode.com` to `plugin.yaml` `api_calls` — both chains were supported since v1.0.0 but their RPC domains were missing from the CI security whitelist.
@@ -534,4 +478,6 @@ This command is read-only — no transactions, no gas. Default chain is BNB Chai
 ### v0.2.1 (2026-04-11)
 
 - **fix**: Surface RPC errors in `pools` command instead of silently showing `tick: 0` when a node rate-limits the request.
+
+
 
