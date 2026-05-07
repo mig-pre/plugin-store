@@ -194,7 +194,7 @@
     },
     {
       "name": "dolomite-plugin",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": "Dolomite Finance lending/borrowing on Arbitrum - supply assets to earn interest, open isolated borrow positions, repay, withdraw via DolomiteMargin.",
       "author": {
         "name": "GeoGu360"
@@ -214,7 +214,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/dolomite-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/dolomite-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/dolomite-plugin/SUMMARY.md",
-      "modify_date": "1778133007",
+      "modify_date": "1778129892",
       "extra": {
         "chains": [
           "solana",
