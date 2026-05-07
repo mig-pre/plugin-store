@@ -1,6 +1,6 @@
 ---
 name: kamino-lend-plugin
-version: "0.1.3"
+version: "0.1.5"
 description: Supply, borrow, and manage positions on Kamino Lend — the leading Solana lending protocol
 author: GeoGu360
 ---
@@ -18,7 +18,7 @@ author: GeoGu360
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/kamino-lend-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.1.3"
+LOCAL_VER="0.1.4"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -29,7 +29,7 @@ if [ -f "$UPDATE_CACHE" ]; then
 fi
 
 if [ "$DO_CHECK" = true ]; then
-  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/mig-pre/plugin-store/main/skills/kamino-lend-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
+  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-lend-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
   if [ -n "$REMOTE_VER" ]; then
     mkdir -p "$HOME/.plugin-store/update-cache"
     echo "$REMOTE_VER" > "$UPDATE_CACHE"
@@ -39,7 +39,7 @@ fi
 REMOTE_VER=$(cat "$UPDATE_CACHE" 2>/dev/null || echo "$LOCAL_VER")
 if [ "$REMOTE_VER" != "$LOCAL_VER" ]; then
   echo "Update available: kamino-lend-plugin v$LOCAL_VER -> v$REMOTE_VER. Updating..."
-  npx skills add mig-pre/plugin-store --skill kamino-lend-plugin --yes --global 2>/dev/null || true
+  npx skills add okx/plugin-store --skill kamino-lend-plugin --yes --global 2>/dev/null || true
   echo "Updated kamino-lend-plugin to v$REMOTE_VER. Please re-read this SKILL.md."
 fi
 ```
@@ -47,50 +47,14 @@ fi
 ### Install onchainos CLI + Skills (auto-injected)
 
 ```bash
-# 1. Install onchainos CLI — pin to latest release tag, verify SHA256
-#    of the installer before executing (no curl|sh from main).
-if ! command -v onchainos >/dev/null 2>&1; then
-  set -e
-  LATEST_TAG=$(curl -sSL --max-time 5 \
-    "https://api.github.com/repos/okx/onchainos-skills/releases/latest" \
-    | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-  if [ -z "$LATEST_TAG" ]; then
-    echo "ERROR: failed to resolve latest onchainos release tag (network or rate limit)." >&2
-    echo "       Manual install: https://github.com/okx/onchainos-skills" >&2
-    exit 1
-  fi
-
-  ONCHAINOS_TMP=$(mktemp -d)
-  curl -sSL --max-time 30 \
-    "https://raw.githubusercontent.com/okx/onchainos-skills/${LATEST_TAG}/install.sh" \
-    -o "$ONCHAINOS_TMP/install.sh"
-  curl -sSL --max-time 30 \
-    "https://github.com/okx/onchainos-skills/releases/download/${LATEST_TAG}/installer-checksums.txt" \
-    -o "$ONCHAINOS_TMP/installer-checksums.txt"
-
-  EXPECTED=$(awk '$2 ~ /install\.sh$/ {print $1; exit}' "$ONCHAINOS_TMP/installer-checksums.txt")
-  if command -v sha256sum >/dev/null 2>&1; then
-    ACTUAL=$(sha256sum "$ONCHAINOS_TMP/install.sh" | awk '{print $1}')
-  else
-    ACTUAL=$(shasum -a 256 "$ONCHAINOS_TMP/install.sh" | awk '{print $1}')
-  fi
-  if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
-    echo "ERROR: onchainos installer SHA256 mismatch — refusing to execute." >&2
-    echo "       expected=$EXPECTED  actual=$ACTUAL  tag=$LATEST_TAG" >&2
-    rm -rf "$ONCHAINOS_TMP"
-    exit 1
-  fi
-
-  sh "$ONCHAINOS_TMP/install.sh"
-  rm -rf "$ONCHAINOS_TMP"
-  set +e
-fi
+# 1. Install onchainos CLI
+onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/okx/onchainos-skills/main/install.sh | sh
 
 # 2. Install onchainos skills (enables AI agent to use onchainos commands)
 npx skills add okx/onchainos-skills --yes --global
 
 # 3. Install plugin-store skills (enables plugin discovery and management)
-npx skills add mig-pre/plugin-store --skill plugin-store --yes --global
+npx skills add okx/plugin-store --skill plugin-store --yes --global
 ```
 
 ### Install kamino-lend-plugin binary + launcher (auto-injected)
@@ -101,11 +65,11 @@ LAUNCHER="$HOME/.plugin-store/launcher.sh"
 CHECKER="$HOME/.plugin-store/update-checker.py"
 if [ ! -f "$LAUNCHER" ]; then
   mkdir -p "$HOME/.plugin-store"
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
   chmod +x "$LAUNCHER"
 fi
 if [ ! -f "$CHECKER" ]; then
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
 fi
 
 # Clean up old installation
@@ -127,40 +91,17 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-
-# Download binary + checksums to a sandbox, verify SHA256 before installing.
-BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/kamino-lend-plugin@0.1.3"
-curl -fsSL "${RELEASE_BASE}/kamino-lend-plugin-${TARGET}${EXT}" -o "$BIN_TMP/kamino-lend-plugin${EXT}" || {
-  echo "ERROR: failed to download kamino-lend-plugin-${TARGET}${EXT}" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for kamino-lend-plugin@0.1.3" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-
-EXPECTED=$(awk -v b="kamino-lend-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
-if command -v sha256sum >/dev/null 2>&1; then
-  ACTUAL=$(sha256sum "$BIN_TMP/kamino-lend-plugin${EXT}" | awk '{print $1}')
-else
-  ACTUAL=$(shasum -a 256 "$BIN_TMP/kamino-lend-plugin${EXT}" | awk '{print $1}')
-fi
-if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
-  echo "ERROR: kamino-lend-plugin SHA256 mismatch — refusing to install." >&2
-  echo "       expected=$EXPECTED  actual=$ACTUAL  target=${TARGET}" >&2
-  rm -rf "$BIN_TMP"; exit 1
-fi
-
-mv "$BIN_TMP/kamino-lend-plugin${EXT}" ~/.local/bin/.kamino-lend-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/kamino-lend-plugin@0.1.4/kamino-lend-plugin-${TARGET}${EXT}" -o ~/.local/bin/.kamino-lend-plugin-core${EXT}
 chmod +x ~/.local/bin/.kamino-lend-plugin-core${EXT}
-rm -rf "$BIN_TMP"
 
 # Symlink CLI name to universal launcher
 ln -sf "$LAUNCHER" ~/.local/bin/kamino-lend-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.1.3" > "$HOME/.plugin-store/managed/kamino-lend-plugin"
+echo "0.1.4" > "$HOME/.plugin-store/managed/kamino-lend-plugin"
 ```
+
 
 ---
 
@@ -190,6 +131,70 @@ Before executing any command:
 
 > **Write operations require `--confirm`**: Run the command first without `--confirm` to preview
 > the transaction details. Add `--confirm` to broadcast.
+
+### quickstart — Wallet Status and Onboarding
+
+Trigger phrases:
+- "Get started with Kamino"
+- "Kamino quickstart"
+- "What can I do on Kamino?"
+- "Check my Kamino wallet"
+- "Am I ready to use Kamino Lend?"
+
+```bash
+kamino-lend quickstart
+kamino-lend quickstart --wallet <WALLET_ADDRESS>
+```
+
+**Output fields:**
+- `about`: one-line description of Kamino Lend
+- `wallet`: resolved Solana wallet address
+- `assets.sol_balance`: SOL balance (UI units)
+- `assets.usdc_balance`: USDC balance (UI units)
+- `status`: one of `active`, `ready`, `needs_gas`, `needs_funds`, `no_funds`
+- `suggestion`: human-readable status message
+- `next_command`: the single most useful next command to run
+- `onboarding_steps` (only when status ≠ `active`): step-by-step guide to get started
+
+| Status | Meaning |
+|--------|---------|
+| `active` | Has active lending positions — suggest checking them |
+| `ready` | Has SOL + USDC — ready to supply |
+| `needs_gas` | Has USDC but needs SOL for transaction fees |
+| `needs_funds` | Has SOL but needs USDC or other tokens to supply |
+| `no_funds` | No SOL or USDC — needs to fund wallet first |
+
+---
+
+### reserves — List All Available Lending Assets
+
+Trigger phrases:
+- "What can I supply on Kamino?"
+- "What tokens does Kamino Lend support?"
+- "Show Kamino lending rates"
+- "Kamino available assets"
+- "What's the APY for [token] on Kamino?"
+
+```bash
+kamino-lend reserves
+kamino-lend reserves --min-apy 2
+```
+
+**Parameters:**
+- `--min-apy`: Only show reserves with supply APY ≥ this value (optional, e.g. `2` = 2%)
+
+**Output fields per reserve:**
+- `symbol`: token symbol (e.g., USDC, SOL, JitoSOL, WBTC)
+- `supply_apy_pct`: current supply (lending) APY as percentage
+- `borrow_apy_pct`: current borrow APY as percentage
+- `tvl_usd`: total value locked in USD
+- `supply_example`: ready-to-run supply command
+
+> **Fastest query path**: Single call to `https://yields.llama.fi/pools` (DeFiLlama),
+> filtered to `project=kamino-lend, chain=Solana`. Returns all reserves in ~1s.
+> No per-reserve iteration needed.
+
+---
 
 ### markets — View Lending Markets
 
@@ -258,7 +263,7 @@ Parameters:
 - `--wallet`: Override wallet address (optional)
 - `--market`: Override market address (optional)
 
-**Important:** After user confirmation, executes via `onchainos wallet contract-call --chain 501 --unsigned-tx <base58_tx> --force`. The transaction is fetched from Kamino API and immediately submitted (Solana blockhash expires in ~60 seconds).
+**Important:** After user confirmation, executes via `onchainos wallet contract-call --chain 501 --unsigned-tx <base58_tx> --force`. The transaction is fetched from Kamino API and immediately submitted (Solana blockhash expires in ~60 seconds). The command waits for on-chain confirmation (polls `onchainos wallet history` until `txStatus: SUCCESS`) before returning `ok: true`.
 
 ---
 
@@ -281,7 +286,7 @@ Parameters: Same as `supply`.
 
 **Note:** Withdrawing when you have outstanding borrows may fail if it would bring health factor below 1.0. Check positions first.
 
-After user confirmation, submits transaction via `onchainos wallet contract-call`.
+After user confirmation, submits transaction via `onchainos wallet contract-call` and waits for on-chain confirmation before returning success.
 
 ---
 
@@ -303,17 +308,38 @@ Before executing a real borrow, **ask user to confirm** and warn about liquidati
 
 ---
 
-### repay — Repay Borrowed Assets (Dry-run)
+### repay — Repay Borrowed Assets
 
 Trigger phrases:
 - "Repay [amount] [token] on Kamino"
 - "Pay back my [token] loan on Kamino"
 - "Reduce my Kamino debt"
+- "Repay all my Kamino debt"
 
 ```bash
 kamino-lend repay --token SOL --amount 0.001 --dry-run
 kamino-lend repay --token USDC --amount 0.01 --dry-run
+kamino-lend repay --token PYUSD --amount all --confirm
 ```
+
+**Parameters:**
+- `--token`: Token symbol or reserve address
+- `--amount`: Amount in UI units, or `all`/`max` to repay the full outstanding balance (recommended — avoids interest-accrual shortfall errors)
+- `--dry-run`: Preview without submitting
+- `--confirm`: Execute and broadcast
+
+**Output fields (on success):**
+- `txHash`: confirmed transaction hash
+- `token`: token symbol
+- `amount`: amount passed by user
+- `action`: `"repay"`
+- `note`: human-readable note (e.g. if full debt was repaid or auto-swap was triggered)
+- `auto_swap`: `true` if a Jupiter swap was automatically triggered to cover an interest shortfall
+- `explorer`: Solscan link
+
+> **Tip:** Always prefer `--amount all` when closing a debt entirely. Passing an exact amount often fails because interest accrues between transaction build and execution, leaving sub-minimum dust that Kamino rejects.
+
+> **Interest shortfall auto-recovery:** When `--amount all` is used and the wallet is short by a few atoms due to accrued interest, the skill automatically swaps 0.001 SOL → the required token via Jupiter before repaying. The output includes `"auto_swap": true` so external agents know this side-effect occurred.
 
 Before executing a real repay, **ask user to confirm** the repayment details.
 
@@ -327,6 +353,9 @@ Before executing a real repay, **ask user to confirm** the repayment details.
 | `base64→base58 conversion failed` | API returned invalid tx | Retry; the API transaction may have expired |
 | `Cannot resolve wallet address` | Not logged in to onchainos | Run `onchainos wallet balance --chain 501` to verify login |
 | `Unknown token 'X'` | Unsupported token symbol | Use USDC or SOL, or pass reserve address directly |
+| `Net value remaining too small` | Partial repay leaves sub-minimum dust (interest accrued) | Use `--amount all` to repay full debt; or swap more tokens in first |
+| `transaction simulation failed: InstructionError Custom:1` | SPL token transfer failed — wallet has less than current debt (1 atom short due to accrued interest) | Use `--amount all` — the skill auto-swaps 0.001 SOL via Jupiter to cover the shortfall |
+| `INTEREST_SHORTFALL` (error_code) | Wallet is short a few atoms due to interest, and Jupiter auto-swap also failed | Manually swap a small amount of SOL → the token (e.g. 0.001 SOL), then retry |
 
 ## Routing Rules
 
