@@ -547,7 +547,7 @@
     },
     {
       "name": "lifi-plugin",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": "LI.FI cross-chain bridge & swap aggregator - list chains/tokens, get quotes, execute bridges/swaps, track tx status across Ethereum, Arbitrum, Base, BSC, Polygon, and Optimism.",
       "author": {
         "name": "GeoGu360"
@@ -569,7 +569,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/lifi-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/lifi-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/lifi-plugin/SUMMARY.md",
-      "modify_date": "1778133007",
+      "modify_date": "1778130889",
       "extra": {
         "chains": [
           "solana",
@@ -1028,7 +1028,7 @@
     },
     {
       "name": "puffer-plugin",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": "Liquid restaking on Puffer Finance - deposit ETH to mint pufETH, instant or queued withdraw, check positions",
       "author": {
         "name": "GeoGu360"
@@ -1048,7 +1048,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/puffer-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/puffer-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/puffer-plugin/SUMMARY.md",
-      "modify_date": "1778133007",
+      "modify_date": "1778130895",
       "extra": {
         "chains": [
           "ethereum",
