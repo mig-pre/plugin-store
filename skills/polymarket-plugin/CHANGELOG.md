@@ -1,6 +1,13 @@
 # Polymarket Plugin Changelog
 
-### v0.6.0 (2026-05-05) — Deposit wallet support (POLY_1271 / new user flow)
+### v0.6.2 (2026-05-06) — NegRisk redemption support for proxy/deposit wallets
+
+- **feat**: Enabled `neg_risk` (multi-outcome) market redemptions for **POLY_PROXY** and **DEPOSIT_WALLET** modes.
+- **fix**: Implemented `negrisk_redeem_via_proxy` using PROXY_FACTORY routing.
+- **fix**: Implemented `negrisk_redeem_via_deposit_wallet` using gasless relayer WALLET batches.
+- **fix**: Updated `redeem` command to automatically detect and route NegRisk tokens held in EOA, proxy, or deposit wallets.
+
+### v0.6.1 (2026-05-05)
 
 - **feat**: New `TradingMode::DepositWallet` — ERC-1967 proxy per user, deployed by `DEPOSIT_WALLET_FACTORY`. Fully gasless (relayer-paid). `maker = signer = deposit_wallet_address`, `signature_type = 3` (POLY_1271 / ERC-1271).
 - **feat**: `setup-deposit-wallet` command — 6-step onboarding: deploy via relayer WALLET-CREATE → sign 5-target approval batch (pUSD + CTF ERC-1155) → sync CLOB balance-allowance `signature_type=3` → save mode.
