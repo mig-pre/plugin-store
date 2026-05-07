@@ -1,7 +1,7 @@
 ---
 name: curve-plugin
 description: "Curve DEX plugin for swapping stablecoins and managing liquidity on Curve Finance. Trigger phrases: swap on Curve, Curve swap, add liquidity Curve, remove liquidity Curve, Curve pool APY, Curve pools, get Curve quote."
-version: "0.2.7"
+version: "0.2.9"
 author: "GeoGu360"
 tags:
   - dex
@@ -24,7 +24,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/curve-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.2.7"
+LOCAL_VER="0.2.8"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -35,7 +35,7 @@ if [ -f "$UPDATE_CACHE" ]; then
 fi
 
 if [ "$DO_CHECK" = true ]; then
-  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/mig-pre/plugin-store/main/skills/curve-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
+  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/okx/plugin-store/main/skills/curve-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
   if [ -n "$REMOTE_VER" ]; then
     mkdir -p "$HOME/.plugin-store/update-cache"
     echo "$REMOTE_VER" > "$UPDATE_CACHE"
@@ -45,7 +45,7 @@ fi
 REMOTE_VER=$(cat "$UPDATE_CACHE" 2>/dev/null || echo "$LOCAL_VER")
 if [ "$REMOTE_VER" != "$LOCAL_VER" ]; then
   echo "Update available: curve-plugin v$LOCAL_VER -> v$REMOTE_VER. Updating..."
-  npx skills add mig-pre/plugin-store --skill curve-plugin --yes --global 2>/dev/null || true
+  npx skills add okx/plugin-store --skill curve-plugin --yes --global 2>/dev/null || true
   echo "Updated curve-plugin to v$REMOTE_VER. Please re-read this SKILL.md."
 fi
 ```
@@ -53,50 +53,14 @@ fi
 ### Install onchainos CLI + Skills (auto-injected)
 
 ```bash
-# 1. Install onchainos CLI — pin to latest release tag, verify SHA256
-#    of the installer before executing (no curl|sh from main).
-if ! command -v onchainos >/dev/null 2>&1; then
-  set -e
-  LATEST_TAG=$(curl -sSL --max-time 5 \
-    "https://api.github.com/repos/okx/onchainos-skills/releases/latest" \
-    | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-  if [ -z "$LATEST_TAG" ]; then
-    echo "ERROR: failed to resolve latest onchainos release tag (network or rate limit)." >&2
-    echo "       Manual install: https://github.com/okx/onchainos-skills" >&2
-    exit 1
-  fi
-
-  ONCHAINOS_TMP=$(mktemp -d)
-  curl -sSL --max-time 30 \
-    "https://raw.githubusercontent.com/okx/onchainos-skills/${LATEST_TAG}/install.sh" \
-    -o "$ONCHAINOS_TMP/install.sh"
-  curl -sSL --max-time 30 \
-    "https://github.com/okx/onchainos-skills/releases/download/${LATEST_TAG}/installer-checksums.txt" \
-    -o "$ONCHAINOS_TMP/installer-checksums.txt"
-
-  EXPECTED=$(awk '$2 ~ /install\.sh$/ {print $1; exit}' "$ONCHAINOS_TMP/installer-checksums.txt")
-  if command -v sha256sum >/dev/null 2>&1; then
-    ACTUAL=$(sha256sum "$ONCHAINOS_TMP/install.sh" | awk '{print $1}')
-  else
-    ACTUAL=$(shasum -a 256 "$ONCHAINOS_TMP/install.sh" | awk '{print $1}')
-  fi
-  if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
-    echo "ERROR: onchainos installer SHA256 mismatch — refusing to execute." >&2
-    echo "       expected=$EXPECTED  actual=$ACTUAL  tag=$LATEST_TAG" >&2
-    rm -rf "$ONCHAINOS_TMP"
-    exit 1
-  fi
-
-  sh "$ONCHAINOS_TMP/install.sh"
-  rm -rf "$ONCHAINOS_TMP"
-  set +e
-fi
+# 1. Install onchainos CLI
+onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/okx/onchainos-skills/main/install.sh | sh
 
 # 2. Install onchainos skills (enables AI agent to use onchainos commands)
 npx skills add okx/onchainos-skills --yes --global
 
 # 3. Install plugin-store skills (enables plugin discovery and management)
-npx skills add mig-pre/plugin-store --skill plugin-store --yes --global
+npx skills add okx/plugin-store --skill plugin-store --yes --global
 ```
 
 ### Install curve-plugin binary + launcher (auto-injected)
@@ -107,11 +71,11 @@ LAUNCHER="$HOME/.plugin-store/launcher.sh"
 CHECKER="$HOME/.plugin-store/update-checker.py"
 if [ ! -f "$LAUNCHER" ]; then
   mkdir -p "$HOME/.plugin-store"
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
   chmod +x "$LAUNCHER"
 fi
 if [ ! -f "$CHECKER" ]; then
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
 fi
 
 # Clean up old installation
@@ -133,43 +97,65 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-
-# Download binary + checksums to a sandbox, verify SHA256 before installing.
-BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/curve-plugin@0.2.7"
-curl -fsSL "${RELEASE_BASE}/curve-plugin-${TARGET}${EXT}" -o "$BIN_TMP/curve-plugin${EXT}" || {
-  echo "ERROR: failed to download curve-plugin-${TARGET}${EXT}" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for curve-plugin@0.2.7" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-
-EXPECTED=$(awk -v b="curve-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
-if command -v sha256sum >/dev/null 2>&1; then
-  ACTUAL=$(sha256sum "$BIN_TMP/curve-plugin${EXT}" | awk '{print $1}')
-else
-  ACTUAL=$(shasum -a 256 "$BIN_TMP/curve-plugin${EXT}" | awk '{print $1}')
-fi
-if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
-  echo "ERROR: curve-plugin SHA256 mismatch — refusing to install." >&2
-  echo "       expected=$EXPECTED  actual=$ACTUAL  target=${TARGET}" >&2
-  rm -rf "$BIN_TMP"; exit 1
-fi
-
-mv "$BIN_TMP/curve-plugin${EXT}" ~/.local/bin/.curve-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/curve-plugin@0.2.8/curve-plugin-${TARGET}${EXT}" -o ~/.local/bin/.curve-plugin-core${EXT}
 chmod +x ~/.local/bin/.curve-plugin-core${EXT}
-rm -rf "$BIN_TMP"
 
 # Symlink CLI name to universal launcher
 ln -sf "$LAUNCHER" ~/.local/bin/curve-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.2.7" > "$HOME/.plugin-store/managed/curve-plugin"
+echo "0.2.8" > "$HOME/.plugin-store/managed/curve-plugin"
 ```
+
 
 ---
 
+
+## Proactive Onboarding
+
+When a user is new or asks "how do I get started", call `curve quickstart` first. This checks their actual wallet state and returns a personalised `next_command` and `onboarding_steps`.
+
+```bash
+curve quickstart
+```
+
+Parse the JSON output:
+- `status: "active"` → has existing positions/balance; run relevant view command
+- `status: "ready"` → wallet funded; follow `next_command`
+- `status: "needs_gas"` → has tokens but no gas; ask user to send ETH/BNB
+- `status: "needs_funds"` → has gas but no tokens; show `onboarding_steps`
+- `status: "no_funds"` → wallet empty; show `onboarding_steps`
+
+**Key caveats:**
+- The `--wallet` flag is required for all write commands (preview and execute). The plugin cannot resolve the active onchainos wallet automatically — always pass `--wallet <address>`.
+- Unsupported chains (any chain not in 1, 42161, 8453, 137, 56) return a clear error JSON and exit 1.
+- ERC-20 tokens (USDC, DAI, USDT) require an approval tx before swap; the plugin waits for approval before submitting the swap.
+
+---
+
+## Quickstart Command
+
+```bash
+curve quickstart [--chain <ID>]
+```
+
+Returns a personalised onboarding JSON based on the wallet's actual balances.
+
+### Output Fields
+
+| Field | Description |
+|-------|-------------|
+| `about` | Protocol description |
+| `wallet` | Resolved wallet address |
+| `chain` | Chain name |
+| `assets` | Wallet balances (gas token + key protocol tokens) |
+| `status` | `active` / `ready` / `needs_gas` / `needs_funds` / `no_funds` |
+| `suggestion` | Human-readable state description |
+| `next_command` | The single most useful command to run next |
+| `onboarding_steps` | Ordered steps to follow |
+
+---
 
 ## Do NOT use for
 - Uniswap, Balancer, or other DEX swaps (use the relevant skill)
@@ -206,6 +192,7 @@ echo "0.2.7" > "$HOME/.plugin-store/managed/curve-plugin"
 
 | User Intent | Command |
 |-------------|---------|
+| "I'm new to Curve / how do I start?" | `quickstart` |
 | "Show Curve pools on Ethereum" | `get-pools` |
 | "What's the APY for Curve 3pool?" | `get-pool-info` |
 | "How much LP do I have in Curve?" | `get-balances` |

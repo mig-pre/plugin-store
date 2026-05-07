@@ -9,6 +9,7 @@ pub async fn run(
     min_mint_str: String,
     wallet: Option<String>,
     dry_run: bool,
+    confirm: bool,
 ) -> Result<()> {
     let chain_name = config::chain_name(chain_id);
     let rpc_url = config::rpc_url(chain_id);
@@ -66,10 +67,54 @@ pub async fn run(
     // Parse min_mint as LP tokens (always 18 decimals)
     let min_mint = rpc::parse_human_amount(&min_mint_str, 18)?;
 
+    // Build calldata using (potentially capped) amounts — needed for preview output too
+    let calldata = match n_coins {
+        2 => curve_abi::encode_add_liquidity_2([amounts[0], amounts[1]], min_mint),
+        3 => curve_abi::encode_add_liquidity_3([amounts[0], amounts[1], amounts[2]], min_mint),
+        4 => curve_abi::encode_add_liquidity_4(
+            [amounts[0], amounts[1], amounts[2], amounts[3]],
+            min_mint,
+        ),
+        _ => anyhow::bail!("Unsupported pool size: {} coins", n_coins),
+    };
+
+    // Confirm gate: show preview and exit if --confirm not given (and not dry-run)
+    if !dry_run && !confirm {
+        let pool_name = pool.map(|p| p.name.as_str()).unwrap_or("unknown");
+        let amounts_display: Vec<String> = if let Some(p) = pool {
+            amounts.iter().enumerate().map(|(i, &a)| {
+                let dec: u8 = p.coins.get(i)
+                    .and_then(|c| c.decimals.as_deref())
+                    .and_then(|d| d.parse().ok())
+                    .unwrap_or(18);
+                format!("{:.6}", a as f64 / 10f64.powi(dec as i32))
+            }).collect()
+        } else {
+            amounts.iter().map(|&a| format!("{:.6}", a as f64 / 1e18)).collect()
+        };
+        println!(
+            "{}",
+            serde_json::json!({
+                "ok": true,
+                "preview": true,
+                "operation": "add-liquidity",
+                "chain": chain_name,
+                "pool_address": pool_address,
+                "pool_name": pool_name,
+                "amounts": amounts_display,
+                "amounts_raw": amounts.iter().map(|a| a.to_string()).collect::<Vec<_>>(),
+                "min_mint_raw": min_mint.to_string(),
+                "calldata": calldata,
+                "note": "Re-run with --confirm to execute on-chain."
+            })
+        );
+        return Ok(());
+    }
+
     // Pre-flight balance check — verify wallet holds enough of each token before approving.
     // Slippage from a prior swap can leave a small shortfall (e.g. 1.499471 USDT when 1.5 was
     // requested). Cap down if gap ≤ 1%; bail with a human-readable error if gap > 1%.
-    if !dry_run {
+    if !dry_run && confirm {
         if let Some(p) = pool {
             for (i, coin) in p.coins.iter().enumerate() {
                 if amounts[i] == 0 {
@@ -109,7 +154,7 @@ pub async fn run(
         }
     }
 
-    // Build add_liquidity calldata using (potentially capped) amounts
+    // Rebuild calldata after potential pre-flight balance cap (amounts may have changed)
     let calldata = match n_coins {
         2 => curve_abi::encode_add_liquidity_2([amounts[0], amounts[1]], min_mint),
         3 => curve_abi::encode_add_liquidity_3([amounts[0], amounts[1], amounts[2]], min_mint),
@@ -181,6 +226,10 @@ pub async fn run(
         }
     }
 
+    // Snapshot LP balance before so we can report minted amount after
+    let lp_token = rpc::lp_token_address(&pool_address, rpc_url).await;
+    let lp_before = rpc::balance_of(&lp_token, &wallet_addr, rpc_url).await.unwrap_or(0);
+
     // Execute add_liquidity — requires --force
     let result = onchainos::wallet_contract_call(
         chain_id,
@@ -196,6 +245,16 @@ pub async fn run(
     let tx_hash = onchainos::extract_tx_hash_or_err(&result)?;
     let explorer = config::explorer_url(chain_id, &tx_hash);
     let pool_name = pool.map(|p| p.name.as_str()).unwrap_or("unknown");
+
+    // Wait for confirmation then compute LP delta
+    let _ = onchainos::wait_for_tx(chain_id, tx_hash.clone(), wallet_addr.clone()).await;
+    let lp_after = rpc::balance_of(&lp_token, &wallet_addr, rpc_url).await.unwrap_or(lp_before);
+    let lp_minted = lp_after.saturating_sub(lp_before);
+    let lp_received = if lp_minted > 0 {
+        format!("{:.8}", lp_minted as f64 / 1e18)
+    } else {
+        "unknown (check explorer)".to_string()
+    };
 
     let amounts_display: Vec<String> = if let Some(p) = pool {
         amounts.iter().enumerate().map(|(i, &a)| {
@@ -219,6 +278,7 @@ pub async fn run(
             "amounts": amounts_display,
             "amounts_raw": amounts.iter().map(|a| a.to_string()).collect::<Vec<_>>(),
             "min_mint_raw": min_mint.to_string(),
+            "lp_received": lp_received,
             "tx_hash": tx_hash,
             "explorer": explorer
         })

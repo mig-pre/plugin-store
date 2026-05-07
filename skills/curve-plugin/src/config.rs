@@ -60,7 +60,8 @@ pub fn resolve_token_address(symbol: &str, chain_id: u64) -> String {
         ("FRAX", 1) => "0x853d955aCEf822Db058eb8505911ED77F175b99e".to_string(),
         ("STETH", 1) | ("WSTETH", 1) => "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84".to_string(),
         // Arbitrum (42161)
-        ("USDC", 42161) => "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8".to_string(),
+        // Curve pools on Arbitrum use bridged USDC.e, not native USDC
+        ("USDC", 42161) | ("USDC.E", 42161) => "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8".to_string(),
         ("USDT", 42161) => "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9".to_string(),
         ("WETH", 42161) => "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1".to_string(),
         ("DAI", 42161) => "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1".to_string(),
