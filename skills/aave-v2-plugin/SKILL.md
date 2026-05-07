@@ -1,7 +1,7 @@
 ---
 name: aave-v2-plugin
 description: Aave V2 exit tool on Ethereum, Polygon, and Avalanche - all reserves are governance-frozen. Redeem aTokens, repay debt cleanly via uint256.max sentinel, claim stkAAVE/WMATIC/WAVAX rewards. New supply/borrow rejected; redirects to aave-v3-plugin
-version: "0.1.0"
+version: "0.1.1"
 author: GeoGu360
 tags:
   - aave
@@ -29,7 +29,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/aave-v2-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.1.0"
+LOCAL_VER="0.1.1"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -141,12 +141,12 @@ mkdir -p ~/.local/bin
 
 # Download binary + checksums to a sandbox, verify SHA256 before installing.
 BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/aave-v2-plugin@0.1.0"
+RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/aave-v2-plugin@0.1.1"
 curl -fsSL "${RELEASE_BASE}/aave-v2-plugin-${TARGET}${EXT}" -o "$BIN_TMP/aave-v2-plugin${EXT}" || {
   echo "ERROR: failed to download aave-v2-plugin-${TARGET}${EXT}" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for aave-v2-plugin@0.1.0" >&2
+  echo "ERROR: failed to download checksums.txt for aave-v2-plugin@0.1.1" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 
 EXPECTED=$(awk -v b="aave-v2-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
@@ -170,7 +170,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/aave-v2-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.1.0" > "$HOME/.plugin-store/managed/aave-v2-plugin"
+echo "0.1.1" > "$HOME/.plugin-store/managed/aave-v2-plugin"
 ```
 
 ---
@@ -520,6 +520,18 @@ The borrow command refuses to submit if pre-flight HF < 1.10. `repay` always suc
 ---
 
 ## Changelog
+
+### v0.1.1 (2026-05-07)
+
+- **feat**: `wallet contract-call` now passes `--biz-type dapp` and `--strategy aave-v2-plugin` (onchainos 3.0.0+) so backend attribution dashboards can group calls by source plugin.
+- **fix (EVM-012)**: 13-place sweep of silent `unwrap_or(0)` RPC error swallowers. Before the sweep, public RPC blips were rendered as user-facing "0" values and triggered misleading status decisions. Affected paths:
+  - `quickstart` / `positions`: `LendingPool.getUserAccountData` failure used to fall back to `(0,0,0,0,0,0)` → "totalDebt=0, HF=infinite" — misleading users into thinking accounts were healthy when they could have been liquidatable. Now returns structured `RPC_ERROR` JSON via stdout.
+  - `quickstart` / `positions`: per-reserve balance reads (`aToken`, `stableDebtToken`, `variableDebtToken`) no longer collapse to 0 on RPC failure (which previously hid a reserve via the all-zero filter, or routed users to `protocol_winddown` despite an active V2 position). `quickstart` propagates failures as `rpc_failures` so the existing `rpc_degraded` status fires; `positions` surfaces them in a top-level `partial_reserves` array.
+  - `quickstart` / `positions` / `claim-rewards`: `rewards_accrued` and reward-token-balance reads now expose `*_query_error` fields so callers can distinguish "no rewards accrued" from "incentive controller RPC failed".
+  - `quickstart`: native gas balance read now bails with `RPC_ERROR` instead of falling back to 0 (which used to misroute to `insufficient_gas`).
+  - `swap-borrow-rate-mode` / `withdraw` / `repay`: balance reads (debt token, aToken, wallet underlying) now distinguish `RPC_ERROR` from "no debt / no supply / insufficient balance" — previously a public RPC outage produced misleading `NO_DEBT_IN_MODE` / `NO_SUPPLY` / `INSUFFICIENT_BALANCE` errors.
+  - `supply` / `repay`: pre-flight allowance reads no longer silently force a redundant approve on every RPC blip.
+  - `markets`: per-reserve pool data reads (`available_liquidity`, `total_supply`, `total_debt`) now expose a `partial_data_errors` array so a single failed read doesn't render as an empty market or break the utilization calculation.
 
 ### v0.1.0 (2026-04-29)
 

@@ -106,7 +106,18 @@ pub async fn run(args: RepayArgs) -> anyhow::Result<()> {
             "Public RPC may be limited; retry shortly."),
     };
     let debt_token = if mode == RateMode::Stable { &rd.stable_debt_token } else { &rd.variable_debt_token };
-    let debt_raw = erc20_balance(debt_token, &from_addr, chain.rpc).await.unwrap_or(0);
+    // EVM-012: distinguish RPC failure from "user has no debt". Silent unwrap_or(0)
+    // here used to tell users "nothing to repay" when the public RPC actually just
+    // failed — leading them to think they had no obligation when they did.
+    let debt_raw = match erc20_balance(debt_token, &from_addr, chain.rpc).await {
+        Ok(v) => v,
+        Err(e) => return print_err(
+            &format!("Failed to read {}-debt balance for {} on {}: {:#}",
+                if args.rate_mode == 1 { "stable" } else { "variable" }, symbol, chain.key, e),
+            "RPC_ERROR",
+            "Public RPC may be limited; retry shortly.",
+        ),
+    };
     if debt_raw == 0 {
         return print_err(
             &format!("No {} {}-rate debt on Aave V2 {} (current: 0).",
@@ -131,8 +142,16 @@ pub async fn run(args: RepayArgs) -> anyhow::Result<()> {
         (capped, pad_u256(capped))
     };
 
-    // Pre-flight: wallet balance
-    let bal = erc20_balance(&asset_addr, &from_addr, chain.rpc).await.unwrap_or(0);
+    // Pre-flight: wallet balance. EVM-012: surface RPC failures rather than
+    // reporting bal=0 (which would always trigger INSUFFICIENT_BALANCE).
+    let bal = match erc20_balance(&asset_addr, &from_addr, chain.rpc).await {
+        Ok(v) => v,
+        Err(e) => return print_err(
+            &format!("Failed to read {} wallet balance on {}: {:#}", symbol, chain.key, e),
+            "RPC_ERROR",
+            "Public RPC may be limited; retry shortly.",
+        ),
+    };
     if bal < amount_raw_for_check {
         return print_err(
             &format!("Insufficient {} in wallet: need ~{} (raw {}), have {} (raw {}).",
@@ -193,9 +212,17 @@ pub async fn run(args: RepayArgs) -> anyhow::Result<()> {
     if args.dry_run { eprintln!("[DRY RUN]"); return Ok(()); }
     if !args.confirm { eprintln!("[PREVIEW] Add --confirm to submit."); return Ok(()); }
 
-    // Approve LendingPool (max approve)
-    let allowance = erc20_allowance(&asset_addr, &from_addr, chain.lending_pool, chain.rpc)
-        .await.unwrap_or(0);
+    // Approve LendingPool (max approve). EVM-012: prefer surfacing the RPC
+    // failure over silently treating allowance as 0 (which would force a
+    // redundant approve every time the RPC blips, wasting gas).
+    let allowance = match erc20_allowance(&asset_addr, &from_addr, chain.lending_pool, chain.rpc).await {
+        Ok(v) => v,
+        Err(e) => return print_err(
+            &format!("Failed to read {} allowance for LendingPool on {}: {:#}", symbol, chain.key, e),
+            "RPC_ERROR",
+            "Public RPC may be limited; retry shortly.",
+        ),
+    };
     if allowance < amount_raw_for_check {
         let approve_data = build_approve_max(chain.lending_pool);
         eprintln!("[repay] Approving {} for LendingPool...", symbol);

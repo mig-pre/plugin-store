@@ -70,14 +70,34 @@ pub async fn run(args: ClaimRewardsArgs) -> anyhow::Result<()> {
         );
     }
 
-    let unclaimed = incentives_get_unclaimed_rewards(chain.incentives_controller, &from_addr, chain.rpc)
-        .await.unwrap_or(0);
+    // EVM-012: claim_rewards relies on `unclaimed` to decide whether the
+    // claim is worth submitting. Silent unwrap_or(0) used to send users a
+    // "nothing to claim" path even when the incentives controller RPC call
+    // had failed.
+    let unclaimed = match incentives_get_unclaimed_rewards(chain.incentives_controller, &from_addr, chain.rpc).await {
+        Ok(v) => v,
+        Err(e) => return print_err(
+            &format!("Failed to read unclaimed rewards from incentives controller on {}: {:#}", chain.key, e),
+            "RPC_ERROR",
+            "Public RPC may be limited; retry shortly.",
+        ),
+    };
 
-    let reward_token = incentives_reward_token(chain.incentives_controller, chain.rpc).await
-        .unwrap_or_else(|_| "0x0000000000000000000000000000000000000000".to_string());
-    let reward_token_balance_before = if reward_token != "0x0000000000000000000000000000000000000000" {
-        erc20_balance(&reward_token, &from_addr, chain.rpc).await.unwrap_or(0)
-    } else { 0 };
+    // reward_token / its balance are only used for an after-vs-before delta
+    // display. Keep the soft fallback but expose query failures so callers can
+    // tell "0 token claimed" from "RPC failed during snapshot".
+    let (reward_token, reward_token_resolve_error) =
+        match incentives_reward_token(chain.incentives_controller, chain.rpc).await {
+            Ok(addr) => (addr, None),
+            Err(e) => ("0x0000000000000000000000000000000000000000".to_string(), Some(format!("{:#}", e))),
+        };
+    let (reward_token_balance_before, reward_balance_before_query_error) =
+        if reward_token != "0x0000000000000000000000000000000000000000" {
+            match erc20_balance(&reward_token, &from_addr, chain.rpc).await {
+                Ok(v) => (v, None),
+                Err(e) => (0u128, Some(format!("{:#}", e))),
+            }
+        } else { (0, None) };
 
     // Build assets[] = aToken + sDebt + vDebt for ALL reserves (controller ignores zero)
     eprintln!("[claim-rewards] Enumerating reserves to build assets[] for claimRewards...");
@@ -170,9 +190,17 @@ pub async fn run(args: ClaimRewardsArgs) -> anyhow::Result<()> {
             "TX_HASH_MISSING", "Check `onchainos wallet history`."),
     }
 
-    let reward_token_balance_after = if reward_token != "0x0000000000000000000000000000000000000000" {
-        erc20_balance(&reward_token, &from_addr, chain.rpc).await.unwrap_or(0)
-    } else { 0 };
+    // EVM-012: post-claim balance read — keep the soft fallback (the tx already
+    // confirmed; we just want to surface the delta) but expose a query error so
+    // the displayed `claimed` amount can be marked as best-effort when the
+    // post-claim RPC call fails.
+    let (reward_token_balance_after, reward_balance_after_query_error) =
+        if reward_token != "0x0000000000000000000000000000000000000000" {
+            match erc20_balance(&reward_token, &from_addr, chain.rpc).await {
+                Ok(v) => (v, None),
+                Err(e) => (reward_token_balance_before, Some(format!("{:#}", e))),
+            }
+        } else { (0, None) };
     let claimed = reward_token_balance_after.saturating_sub(reward_token_balance_before);
 
     println!("{}", serde_json::to_string_pretty(&json!({
@@ -185,6 +213,9 @@ pub async fn run(args: ClaimRewardsArgs) -> anyhow::Result<()> {
         "reward_token_balance_after":  fmt_token_amount(reward_token_balance_after, 18),
         "claimed":     fmt_token_amount(claimed, 18),
         "claimed_raw": claimed.to_string(),
+        "reward_token_resolve_error":         reward_token_resolve_error,
+        "reward_balance_before_query_error":  reward_balance_before_query_error,
+        "reward_balance_after_query_error":   reward_balance_after_query_error,
         "tx_hash": tx_hash,
         "on_chain_status": "0x1",
         "tip": "Reward token now in your wallet. On Ethereum: stkAAVE has a 10-day unstake cooldown to convert to AAVE. On Polygon/Avalanche: rewards are wrapped native (WMATIC/WAVAX) - unwrap to native externally.",

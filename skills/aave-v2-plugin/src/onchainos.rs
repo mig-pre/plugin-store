@@ -1,16 +1,18 @@
 /// Wrappers around the `onchainos` CLI for wallet resolution + EVM contract calls.
 /// The plugin holds NO private keys.
 ///
-/// Knowledge-base compliance:
-///   - ONC-001: --force is defensively included (skips backend risk-control prompts).
-///     Low-risk daily calls work without it; rare risk-control paths (unlimited approve,
-///     untrusted contracts) need it to avoid silent revert. Always-pass is a no-op
-///     in the common case.
-///   - EVM-015: explicit gas_limit override. Aave V2 deposit/borrow/repay actions are
-///     trigger interest accrual + index update + transfer — onchainos auto-estimate can under-shoot.
+/// `--force` (ONC-001): defensively passed; required when backend risk-control
+///   triggers (unlimited approve / untrusted contract), no-op otherwise.
+/// `--gas-limit` (EVM-015): aave V2 write actions trigger interest accrual + index
+///   update + transfer — onchainos auto-estimate can under-shoot.
+/// `--biz-type` / `--strategy`: attribution to the onchainos backend (since
+///   onchainos 3.0.0) so analytics can group calls by source plugin.
 
 use std::process::Command;
 use serde_json::Value;
+
+const BIZ_TYPE: &str = "dapp";
+const STRATEGY: &str = "aave-v2-plugin";
 
 pub fn resolve_wallet(chain_id: u64) -> anyhow::Result<String> {
     let output = Command::new("onchainos")
@@ -68,6 +70,10 @@ pub fn wallet_contract_call(
         "wallet".to_string(),
         "contract-call".to_string(),
         "--force".to_string(),  // ← ONC-001 defensive
+        "--biz-type".to_string(),
+        BIZ_TYPE.to_string(),
+        "--strategy".to_string(),
+        STRATEGY.to_string(),
         "--chain".to_string(),
         chain_id.to_string(),
         "--to".to_string(),

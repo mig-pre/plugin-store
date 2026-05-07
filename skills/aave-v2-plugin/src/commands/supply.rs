@@ -196,10 +196,17 @@ pub async fn run(args: SupplyArgs) -> anyhow::Result<()> {
     }
     if !args.confirm { eprintln!("[PREVIEW] Add --confirm to sign and submit."); return Ok(()); }
 
-    // ERC-20 path: approve LendingPool first (EVM-006)
+    // ERC-20 path: approve LendingPool first (EVM-006). EVM-012: surface RPC
+    // failures rather than silently re-approving on every blip.
     {
-        let allowance = erc20_allowance(&asset_addr, &from_addr, chain.lending_pool, chain.rpc)
-            .await.unwrap_or(0);
+        let allowance = match erc20_allowance(&asset_addr, &from_addr, chain.lending_pool, chain.rpc).await {
+            Ok(v) => v,
+            Err(e) => return print_err(
+                &format!("Failed to read {} allowance for LendingPool on {}: {:#}", symbol, chain.key, e),
+                "RPC_ERROR",
+                "Public RPC may be limited; retry shortly.",
+            ),
+        };
         if allowance < amount_raw {
             let approve_data = build_approve_max(chain.lending_pool);
             eprintln!("[supply] Approving {} for LendingPool...", symbol);
