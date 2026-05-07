@@ -50,7 +50,19 @@ pub async fn run(args: ExitMarketArgs) -> anyhow::Result<()> {
         return print_err("Native ETH below 0.005 floor", "INSUFFICIENT_GAS",
             "Top up at least 0.005 ETH on mainnet.");
     }
-    let debt = borrow_balance_current(info.ctoken, &from_addr, chain.rpc).await.unwrap_or(0);
+    // EVM-012: distinguish RPC failure from "no debt". A silent unwrap_or(0)
+    // would let exit_market proceed despite a real outstanding borrow (since
+    // the L54 `if debt > 0` guard would be skipped) — risking liquidation if
+    // the user removed collateral they actually still need.
+    let debt = match borrow_balance_current(info.ctoken, &from_addr, chain.rpc).await {
+        Ok(v) => v,
+        Err(e) => return print_err(
+            &format!("Failed to read borrow balance for {} on {}: {:#}", info.symbol, chain.key, e),
+            "RPC_ERROR",
+            "Public RPC may be limited; retry shortly. exit_market needs an authoritative \
+             debt read to know it's safe to exit.",
+        ),
+    };
     if debt > 0 {
         return print_err(
             &format!(

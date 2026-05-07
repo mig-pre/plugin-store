@@ -82,8 +82,27 @@ pub async fn run(args: QuickstartArgs) -> anyhow::Result<()> {
         native_fut, comp_fut, futures::future::join_all(market_futs)
     );
 
-    let native_bal = native_res.unwrap_or(0);
-    let comp_accrued_raw = comp_res.unwrap_or(0);
+    // EVM-012: critical reads (native gas) must surface as RPC errors. Silent
+    // unwrap_or(0) here used to misroute users to `insufficient_gas` whenever
+    // public RPC blipped, even when their wallet was actually well-funded.
+    let native_bal = match native_res {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(
+                &format!("Failed to read native balance on {}: {:#}", chain.key, e),
+                "RPC_ERROR",
+                "Public RPC may be limited; retry shortly.",
+            ));
+            return Ok(());
+        }
+    };
+    // COMP accrued is non-critical (only used for `has_rewards_accrued` status).
+    // Keep the 0 fallback but expose the error so callers can distinguish
+    // "no rewards accrued" from "Comptroller RPC failed".
+    let (comp_accrued_raw, comp_query_error) = match comp_res {
+        Ok(v) => (v, None),
+        Err(e) => (0u128, Some(format!("{:#}", e))),
+    };
 
     let mut rpc_failures = 0;
     let snapshots: Vec<MarketSnapshot> = market_results.into_iter().filter_map(|r| match r {
@@ -166,6 +185,7 @@ pub async fn run(args: QuickstartArgs) -> anyhow::Result<()> {
         "native_eth_balance_raw": native_bal.to_string(),
         "comp_accrued":     fmt_token_amount(comp_accrued_raw, 18),
         "comp_accrued_raw": comp_accrued_raw.to_string(),
+        "comp_query_error": comp_query_error,
         "status": status,
         "next_command": next_command,
         "tip": tip,
@@ -195,11 +215,17 @@ async fn scan_market(info: &'static CTokenInfo, chain: &ChainInfo, wallet: &str)
         bal_fut, supply_fut, borrow_fut, supply_rate_fut, borrow_rate_fut, mint_paused_fut, borrow_paused_fut
     );
 
+    // EVM-012: balance reads MUST propagate via `?` so the caller's filter_map
+    // (which counts these as `rpc_failures` and may route to `rpc_degraded`)
+    // sees them. Silent unwrap_or(0) used to make the status decision tree
+    // fire on bad data — e.g. a single RPC blip on the user's debt token would
+    // route them to `protocol_winddown` (no V2 positions) instead of
+    // `has_active_borrow`.
     Ok(MarketSnapshot {
         info,
-        wallet_balance_raw: bal.unwrap_or(0),
-        supply_underlying_raw: supply.unwrap_or(0),
-        borrow_underlying_raw: borrow.unwrap_or(0),
+        wallet_balance_raw: bal?,
+        supply_underlying_raw: supply?,
+        borrow_underlying_raw: borrow?,
         supply_apr: sr.ok().map(|r| rate_per_block_to_apr(r, chain.blocks_per_year)),
         borrow_apr: br.ok().map(|r| rate_per_block_to_apr(r, chain.blocks_per_year)),
         mint_paused: mp.unwrap_or(false),

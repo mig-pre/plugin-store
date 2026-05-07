@@ -1,7 +1,7 @@
 ---
 name: compound-v2-plugin
 description: Compound V2 (cToken) money market on Ethereum mainnet - exit tool for legacy positions (redeem, repay, claim COMP). Both supply AND borrow are governance-paused on all 6 markets. Use compound-v3-plugin for active flows.
-version: "0.1.0"
+version: "0.1.1"
 author: GeoGu360
 tags:
   - compound
@@ -27,7 +27,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/compound-v2-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.1.0"
+LOCAL_VER="0.1.1"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -139,12 +139,12 @@ mkdir -p ~/.local/bin
 
 # Download binary + checksums to a sandbox, verify SHA256 before installing.
 BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/compound-v2-plugin@0.1.0"
+RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/compound-v2-plugin@0.1.1"
 curl -fsSL "${RELEASE_BASE}/compound-v2-plugin-${TARGET}${EXT}" -o "$BIN_TMP/compound-v2-plugin${EXT}" || {
   echo "ERROR: failed to download compound-v2-plugin-${TARGET}${EXT}" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for compound-v2-plugin@0.1.0" >&2
+  echo "ERROR: failed to download checksums.txt for compound-v2-plugin@0.1.1" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 
 EXPECTED=$(awk -v b="compound-v2-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
@@ -168,7 +168,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/compound-v2-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.1.0" > "$HOME/.plugin-store/managed/compound-v2-plugin"
+echo "0.1.1" > "$HOME/.plugin-store/managed/compound-v2-plugin"
 ```
 
 ---
@@ -445,6 +445,19 @@ collateral" and per-account `(liquidity, shortfall)`.
 ---
 
 ## Changelog
+
+### v0.1.1 (2026-05-07)
+
+- **feat**: `wallet contract-call` now passes `--biz-type dapp` and `--strategy compound-v2-plugin` (onchainos 3.0.0+) so backend attribution dashboards can group calls by source plugin.
+- **fix (EVM-012)**: 16-place sweep of silent `unwrap_or(0)` RPC error swallowers across cToken read paths. Before the sweep, public RPC blips were rendered as user-facing "0" values and triggered misleading status decisions. Highlights:
+  - `quickstart` / `positions`: account liquidity from Comptroller no longer falls back to `(0, 0, 0)` on RPC failure (which rendered as "shortfall=0, liquidity=0" — letting users believe they were safe when they could have been liquidatable). Now returns structured `RPC_ERROR` JSON via stdout.
+  - `quickstart`: per-market balance reads in `scan_market` propagate via `?` so the existing `rpc_failures` counter routes the user to `rpc_degraded`. `native_balance` failure now bails with `RPC_ERROR` instead of misrouting to `insufficient_gas`.
+  - `positions`: per-market RPC failures surface in a new top-level `partial_markets` array instead of silently disappearing via the all-zero filter.
+  - `exit_market`: `borrow_balance_current` failure used to allow exit despite an actual outstanding borrow (silent `debt=0` skipped the safety guard). Now bails with `RPC_ERROR`.
+  - `repay`: wallet balance + allowance reads distinguish `RPC_ERROR` from "0 balance" / "no allowance".
+  - `supply`: pre-flight allowance read no longer triggers a redundant approve on RPC blips.
+  - `claim_comp`: `compAccrued` read bails with `RPC_ERROR`; before/after balance snapshots keep the soft fallback but expose `comp_balance_*_query_error` fields.
+  - `markets`: per-market pool reads (`total_borrow`, `cash`) collect into `partial_data_errors` array instead of silently rendering 0 (which broke `utilization_pct` math).
 
 ### v0.1.0 (2026-04-28)
 
