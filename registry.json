@@ -1209,6 +1209,38 @@
       }
     },
     {
+      "name": "relay-plugin",
+      "version": "0.1.1",
+      "description": "Fast cross-chain transfers using Relay Protocol's intent-based bridge",
+      "author": {
+        "name": "OKX"
+      },
+      "category": "utility",
+      "tags": [
+        "ethereum",
+        "signal"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/relay-plugin"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/relay-plugin",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/relay-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/relay-plugin/SUMMARY.md",
+      "modify_date": "1778121630",
+      "extra": {
+        "chains": [
+          "ethereum",
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "high"
+      }
+    },
+    {
       "name": "smart-money-signal-copy-trade",
       "version": "1.0",
       "description": "Smart Money Signal Copy Trade v1.0 — Smart money signal tracker with cost-aware TP, 15-check safety, 7-layer exit system",
@@ -1333,7 +1365,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/sushiswap-v3-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/sushiswap-v3-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/sushiswap-v3-plugin/SUMMARY.md",
-      "modify_date": "1778134885",
+      "modify_date": "1778149414",
       "extra": {
         "chains": [
           "ethereum",
