@@ -1,5 +1,5 @@
 {
-  "name": "puffer",
+  "name": "puffer-plugin",
   "description": "Liquid restaking on Puffer Finance - deposit ETH to mint pufETH, instant or queued withdraw, check positions",
   "version": "0.1.1",
   "author": {
