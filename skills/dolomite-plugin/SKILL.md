@@ -1,7 +1,7 @@
 ---
 name: dolomite-plugin
 description: Dolomite Finance lending and borrowing on Arbitrum - supply assets to earn interest, open isolated borrow positions, and manage repay/withdraw via DolomiteMargin
-version: "0.1.0"
+version: "0.1.1"
 author: GeoGu360
 tags:
   - lending
@@ -26,7 +26,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/dolomite-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.1.0"
+LOCAL_VER="0.1.1"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -138,12 +138,12 @@ mkdir -p ~/.local/bin
 
 # Download binary + checksums to a sandbox, verify SHA256 before installing.
 BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/dolomite-plugin@0.1.0"
+RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/dolomite-plugin@0.1.1"
 curl -fsSL "${RELEASE_BASE}/dolomite-plugin-${TARGET}${EXT}" -o "$BIN_TMP/dolomite-plugin${EXT}" || {
   echo "ERROR: failed to download dolomite-plugin-${TARGET}${EXT}" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for dolomite-plugin@0.1.0" >&2
+  echo "ERROR: failed to download checksums.txt for dolomite-plugin@0.1.1" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 
 EXPECTED=$(awk -v b="dolomite-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
@@ -167,7 +167,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/dolomite-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.1.0" > "$HOME/.plugin-store/managed/dolomite-plugin"
+echo "0.1.1" > "$HOME/.plugin-store/managed/dolomite-plugin"
 ```
 
 ---
@@ -426,6 +426,19 @@ dolomite-plugin repay --token USDT --all --position-account-number 100 --from-ac
 ---
 
 ## Changelog
+
+### v0.1.1 (2026-05-07)
+
+- **feat**: `wallet contract-call` now passes `--biz-type dapp` and `--strategy dolomite-plugin` (onchainos 3.0.0+) so backend attribution dashboards can group calls by source plugin.
+- **fix (EVM-012)**: 13-place sweep of silent `unwrap_or(0)` / `unwrap_or((true, 0))` RPC error swallowers across the DolomiteMargin read paths. Before the sweep, public RPC blips were rendered as user-facing "0" / "supply=0" values and triggered misleading status decisions. Highlights:
+  - `quickstart` / `positions`: aggregate account values from DolomiteMargin no longer fall back to `(0, 0)` on RPC failure (which rendered as "no positions" — misleading users with active borrows). Now returns structured `RPC_ERROR` JSON via stdout.
+  - `quickstart`: `scan_market` balance + position reads propagate via `?` so the existing `rpc_failures` counter routes the user to `rpc_degraded`. `native_balance` failure now bails with `RPC_ERROR` instead of misrouting to `insufficient_gas`.
+  - `positions`: per-market RPC failures surface in a new top-level `partial_markets` array instead of silently disappearing via the all-zero filter.
+  - `repay` / `withdraw` / `borrow`: position reads (`get_account_wei`) used to fall back to `(true, 0)` — making `repay` think there was no debt, `withdraw` think there was no supply, and `borrow` think there was no collateral. Now bails with `RPC_ERROR` distinguishing each domain error.
+  - `repay`: wallet balance + 2 allowance reads distinguish `RPC_ERROR` from "0 balance" / "no allowance".
+  - `supply`: pre-flight allowance read no longer triggers a redundant approve on every blip.
+  - `markets` / `positions`: `get_earnings_rate` keeps the soft 85% default (display-only APY) but exposes a new `earnings_rate_query_error` field so callers can mark rendered APYs as best-effort.
+  - `markets`: per-market reads (`total_par`, `borrow_rate`) collect into a `partial_data_errors` array per market.
 
 ### v0.1.0 (2026-04-28)
 

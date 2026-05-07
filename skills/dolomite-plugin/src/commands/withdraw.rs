@@ -57,10 +57,19 @@ pub async fn run(args: WithdrawArgs) -> anyhow::Result<()> {
             "Run `onchainos wallet addresses`."),
     };
 
-    // Pre-flight: check user has sufficient supply position
-    let (sign, supply_value) = get_account_wei(
+    // Pre-flight: check user has sufficient supply position. EVM-012:
+    // RPC failure must not be silently rendered as "supply=0" — that
+    // would tell users they have nothing to withdraw when they actually do.
+    let (sign, supply_value) = match get_account_wei(
         chain.dolomite_margin, &from_addr, args.from_account_number, market_id as u128, chain.rpc,
-    ).await.unwrap_or((true, 0));
+    ).await {
+        Ok(t) => t,
+        Err(e) => return print_err(
+            &format!("Failed to read {} supply position from DolomiteMargin on {}: {:#}", symbol, chain.key, e),
+            "RPC_ERROR",
+            "Public RPC may be limited; retry shortly.",
+        ),
+    };
     if !sign || supply_value < amount_raw {
         return print_err(
             &format!(
