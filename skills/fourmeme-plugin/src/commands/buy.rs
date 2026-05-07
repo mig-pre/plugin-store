@@ -145,8 +145,13 @@ async fn run_inner(args: BuyArgs) -> Result<()> {
     eprintln!("[fourmeme] buy tx: {} (waiting for confirmation...)", tx_hash);
     crate::onchainos::wait_for_tx_receipt(&tx_hash, args.chain, 120).await?;
 
-    // Read post-trade balance to report what was actually filled
-    let post_bal = super::erc20_balance(args.chain, &token, &wallet).await.unwrap_or(0);
+    // Read post-trade balance to report what was actually filled.
+    // EVM-012: post-tx read is display-only (the buy already confirmed).
+    // Keep the soft fallback but expose the query error.
+    let (post_bal, post_bal_query_error) = match super::erc20_balance(args.chain, &token, &wallet).await {
+        Ok(v) => (v, None::<String>),
+        Err(e) => (0u128, Some(format!("{:#}", e))),
+    };
 
     let out = serde_json::json!({
         "ok": true,
@@ -164,6 +169,7 @@ async fn run_inner(args: BuyArgs) -> Result<()> {
             "min_amount_floor":    super::fmt_decimal(min_amount, TOKEN_DECIMALS),
             "post_trade_balance":     super::fmt_decimal(post_bal, TOKEN_DECIMALS),
             "post_trade_balance_raw": post_bal.to_string(),
+            "post_trade_balance_query_error": post_bal_query_error,
             "buy_tx": tx_hash,
             "on_chain_status": "0x1",
             "tip": format!("Run `fourmeme-plugin sell --token {} --all` when you want to exit.", token),

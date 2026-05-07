@@ -164,8 +164,17 @@ async fn run_inner(args: SellArgs) -> Result<()> {
     eprintln!("[fourmeme] sell tx: {} (waiting...)", sell_hash);
     crate::onchainos::wait_for_tx_receipt(&sell_hash, args.chain, 120).await?;
 
-    let post_bal = super::erc20_balance(args.chain, &token, &wallet).await.unwrap_or(0);
-    let post_bnb = eth_get_balance_wei(args.chain, &wallet).await.unwrap_or(0);
+    // EVM-012: post-tx balance reads are display-only (the sell already
+    // confirmed). Keep the soft fallback but expose query errors so the
+    // displayed deltas can be marked as best-effort when RPC blips.
+    let (post_bal, post_bal_query_error) = match super::erc20_balance(args.chain, &token, &wallet).await {
+        Ok(v) => (v, None::<String>),
+        Err(e) => (0u128, Some(format!("{:#}", e))),
+    };
+    let (post_bnb, post_bnb_query_error) = match eth_get_balance_wei(args.chain, &wallet).await {
+        Ok(v) => (v, None::<String>),
+        Err(e) => (0u128, Some(format!("{:#}", e))),
+    };
 
     let out = serde_json::json!({
         "ok": true,
@@ -182,7 +191,9 @@ async fn run_inner(args: SellArgs) -> Result<()> {
             "preview_funds_bnb": format!("{:.8}", q.funds as f64 / 1e18),
             "post_trade_token_balance":     super::fmt_decimal(post_bal, TOKEN_DECIMALS),
             "post_trade_token_balance_raw": post_bal.to_string(),
+            "post_trade_token_balance_query_error": post_bal_query_error,
             "post_trade_bnb_balance": format!("{:.6}", wei_to_bnb(post_bnb)),
+            "post_trade_bnb_balance_query_error":   post_bnb_query_error,
             "sell_tx": sell_hash,
             "on_chain_status": "0x1",
         }

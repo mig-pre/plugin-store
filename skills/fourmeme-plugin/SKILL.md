@@ -1,7 +1,7 @@
 ---
 name: fourmeme-plugin
 description: "Trade and create memecoins on Four.meme (BNB Chain). Buy/sell pre-graduate bonding-curve tokens, launch new tokens, query holdings, register as Agent. Trigger phrases: buy four meme, sell four meme token, four.meme price, fourmeme quote, my fourmeme positions, list four meme tokens, trending four meme, search four meme, create four meme token, launch memecoin on BSC, four meme login, fourmeme holdings, four meme events, agent register on four meme."
-version: "0.1.0"
+version: "0.1.1"
 author: "GeoGu360"
 tags:
   - meme
@@ -27,7 +27,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/fourmeme-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.1.0"
+LOCAL_VER="0.1.1"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -139,12 +139,12 @@ mkdir -p ~/.local/bin
 
 # Download binary + checksums to a sandbox, verify SHA256 before installing.
 BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/fourmeme-plugin@0.1.0"
+RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/fourmeme-plugin@0.1.1"
 curl -fsSL "${RELEASE_BASE}/fourmeme-plugin-${TARGET}${EXT}" -o "$BIN_TMP/fourmeme-plugin${EXT}" || {
   echo "ERROR: failed to download fourmeme-plugin-${TARGET}${EXT}" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for fourmeme-plugin@0.1.0" >&2
+  echo "ERROR: failed to download checksums.txt for fourmeme-plugin@0.1.1" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 
 EXPECTED=$(awk -v b="fourmeme-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
@@ -168,7 +168,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/fourmeme-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.1.0" > "$HOME/.plugin-store/managed/fourmeme-plugin"
+echo "0.1.1" > "$HOME/.plugin-store/managed/fourmeme-plugin"
 ```
 
 ---
@@ -597,3 +597,16 @@ Every write command (`buy`, `sell`, `send`, `create-token`, `agent-register`) fo
 **`IMAGE_UPLOAD_FAILED`**: four.meme's CDN may reject huge files, animated GIFs above a size threshold, or invalid PNG/JPG. Try a smaller still image (< 1MB recommended) or a known-good URL via `--image-url`.
 
 **Slippage revert (`TX_FAILED` on buy)**: bonding curves are sensitive when funds are thin. Try `--slippage-bps 200` or `--slippage-bps 500` for thin-liquidity tokens.
+
+---
+
+## Changelog
+
+### v0.1.1 (2026-05-07)
+
+- **feat**: `wallet contract-call` (executed only on `--confirm` for state-changing commands like `buy` / `sell` / `send` / `create-token` / `agent-register`) now passes `--biz-type dapp` and `--strategy fourmeme-plugin` (onchainos 3.0.0+) so backend attribution dashboards can group calls by source plugin. User confirmation flow is unchanged: write commands still preview their effects and require an explicit `--confirm` flag before any contract call is signed.
+- **fix (EVM-012)**: silent `unwrap_or(0)` on RPC reads sweep:
+  - `send`: pre-flight `erc20_balance` check used to silently render "0 balance" on RPC failure, mis-routing users to `INSUFFICIENT_BALANCE` even when the wallet actually held enough. Now bubbles RPC errors through `with_context` so callers see the real cause.
+  - `positions`: per-token `erc20_balance` failures used to silently hide tokens via the all-zero filter (looks like "no longer holding" but is a transient blip). Now surfaced in a new `partial_tokens` array in the output.
+  - `quickstart`: when `--tokens` is passed, per-token balance failures used to silently render as "not held", routing users to `ready_to_trade` instead of `active`. Now surfaced in a `partial_tokens` array.
+  - `buy` / `sell` / `create-token`: post-tx delta-display reads keep the soft `0` fallback (the tx already confirmed; this is purely cosmetic) but now expose `*_query_error` fields so the displayed balance can be marked best-effort when RPC blips during the snapshot.

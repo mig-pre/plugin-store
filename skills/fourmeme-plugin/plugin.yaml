@@ -1,6 +1,6 @@
 schema_version: 1
 name: fourmeme-plugin
-version: "0.1.0"
+version: "0.1.1"
 description: "Trade Four.meme bonding-curve memecoins on BNB Chain - buy/sell pre-graduate tokens via TokenManager V2 with Helper3 quoting"
 author:
   name: GeoGu360
