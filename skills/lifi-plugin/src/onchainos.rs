@@ -5,9 +5,17 @@
 ///   resolve_wallet(chain_id) → user's wallet address on that chain
 ///   wallet_contract_call(chain, to, data, value, dry_run) → executes a contract call
 ///   extract_tx_hash(result) → pulls the tx hash from the `wallet contract-call` JSON
+///
+/// `--biz-type` / `--strategy`: attribution to the onchainos backend (since
+///   onchainos 3.0.0) so analytics can group calls by source plugin.
 
 use std::process::Command;
 use serde_json::Value;
+
+/// Single source of truth: `env!` resolves Cargo.toml's `name` field at compile time.
+/// CI invariant — Cargo.toml.name === plugin.yaml.name.
+const BIZ_TYPE: &str = "dapp";
+const STRATEGY: &str = env!("CARGO_PKG_NAME");
 
 /// Resolve the user's wallet address on a specific chain.
 ///
@@ -99,6 +107,10 @@ pub fn wallet_contract_call(
         "wallet".to_string(),
         "contract-call".to_string(),
         "--force".to_string(),  // ← ONC-001 defensive
+        "--biz-type".to_string(),
+        BIZ_TYPE.to_string(),
+        "--strategy".to_string(),
+        STRATEGY.to_string(),
         "--chain".to_string(),
         chain_id.to_string(),
         "--to".to_string(),
