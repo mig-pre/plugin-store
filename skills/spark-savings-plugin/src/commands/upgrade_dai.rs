@@ -165,8 +165,16 @@ pub async fn run(args: UpgradeDaiArgs) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    // Approve DAI to migrator (the migrator needs to pull DAI from us)
-    let allowance = erc20_allowance(dai, &from_addr, migrator, chain.rpc).await.unwrap_or(0);
+    // Approve DAI to migrator (the migrator needs to pull DAI from us).
+    // EVM-012: surface RPC failures rather than silently re-approving.
+    let allowance = match erc20_allowance(dai, &from_addr, migrator, chain.rpc).await {
+        Ok(v) => v,
+        Err(e) => return print_err(
+            &format!("Failed to read DAI allowance for migrator {} on {}: {:#}", migrator, chain.key, e),
+            "RPC_ERROR",
+            "Public RPC may be limited; retry shortly.",
+        ),
+    };
     if allowance < amount_atomic {
         let approve_data = build_approve_max(migrator);
         eprintln!("[upgrade-dai] Approving DAI for migrator ({})…", migrator);

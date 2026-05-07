@@ -200,8 +200,16 @@ pub async fn run(args: DepositArgs) -> anyhow::Result<()> {
     }
 
     // ── Approve flow (ONC-001 --force, EVM-006 wait_for_tx) ───────────────────
-    let allowance = erc20_allowance(chain.usds, &from_addr, &spender, chain.rpc).await
-        .unwrap_or(0);
+    // EVM-012: surface RPC failures rather than silently re-approving on every
+    // blip (wastes gas).
+    let allowance = match erc20_allowance(chain.usds, &from_addr, &spender, chain.rpc).await {
+        Ok(v) => v,
+        Err(e) => return print_err(
+            &format!("Failed to read USDS allowance for {} on {}: {:#}", spender, chain.key, e),
+            "RPC_ERROR",
+            "Public RPC may be limited; retry shortly.",
+        ),
+    };
     if allowance < amount_atomic {
         let approve_data = build_approve_max(&spender);
         eprintln!("[deposit] Approving USDS for {} (current allowance {} < {} required)…", spender, allowance, amount_atomic);
