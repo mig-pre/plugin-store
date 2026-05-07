@@ -24,7 +24,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/aave-v2-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aave-v2-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aave-v2-plugin/SUMMARY.md",
-      "modify_date": "1778124468",
+      "modify_date": "1778127064",
       "extra": {
         "chains": [
           "ethereum",
@@ -98,7 +98,7 @@
     },
     {
       "name": "compound-v2-plugin",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": "Compound V2 exit tool on Ethereum mainnet - redeem, repay, claim COMP for legacy V2 positions. Use compound-v3-plugin for active supply/borrow.",
       "author": {
         "name": "OKX"
@@ -118,7 +118,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/compound-v2-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/compound-v2-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/compound-v2-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778126931",
       "extra": {
         "chains": [
           "ethereum",
