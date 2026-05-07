@@ -1,12 +1,12 @@
 schema_version: 1
 name: kamino-liquidity-plugin
-version: "0.1.2"
+version: "0.1.4"
 description: Kamino Liquidity KVault earn vaults on Solana. Deposit tokens to earn
   yield, withdraw shares, and track positions.
 author:
   name: GeoGu360
   github: GeoGu360
-category: defi
+category: defi-protocol
 tags:
 - solana
 - yield
