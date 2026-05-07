@@ -62,8 +62,13 @@ pub async fn run(_args: MarketsArgs) -> anyhow::Result<()> {
             }
             _ => 0,
         };
-        let total_borrow = tb.unwrap_or(0);
-        let cash_v = cash.unwrap_or(0);
+        // EVM-012: track per-market RPC errors so callers can tell "0 borrow"
+        // from "RPC failed". Silently zeroing used to render markets as empty
+        // when RPC blipped, and broke utilization_pct = total_borrow / total_supply
+        // (latter could also be 0, triggering the L67 None branch artificially).
+        let mut errs: Vec<String> = Vec::new();
+        let total_borrow = tb.unwrap_or_else(|| { errs.push("total_borrow".into()); 0 });
+        let cash_v = cash.unwrap_or_else(|| { errs.push("cash".into()); 0 });
         let utilization_pct = if total_supply_underlying > 0 {
             Some(format!("{:.2}", (total_borrow as f64 / total_supply_underlying as f64) * 100.0))
         } else { None };
@@ -88,6 +93,7 @@ pub async fn run(_args: MarketsArgs) -> anyhow::Result<()> {
             "comp_distributed": is_comped,
             "mint_paused": mp.unwrap_or(false),
             "borrow_paused": bp.unwrap_or(false),
+            "partial_data_errors": if errs.is_empty() { None } else { Some(errs) },
         })
     }).collect();
 

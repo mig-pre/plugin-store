@@ -71,8 +71,22 @@ pub async fn run(args: ClaimCompArgs) -> anyhow::Result<()> {
         return print_err("Native ETH below 0.005 floor", "INSUFFICIENT_GAS",
             "Top up at least 0.005 ETH on mainnet.");
     }
-    let accrued = get_comp_accrued(chain.comptroller, &from_addr, chain.rpc).await.unwrap_or(0);
-    let comp_bal_before = erc20_balance(chain.comp_token, &from_addr, chain.rpc).await.unwrap_or(0);
+    // EVM-012: surface RPC failures distinctly so claim doesn't fire on a
+    // misleading "0 accrued" snapshot.
+    let accrued = match get_comp_accrued(chain.comptroller, &from_addr, chain.rpc).await {
+        Ok(v) => v,
+        Err(e) => return print_err(
+            &format!("Failed to read compAccrued from Comptroller on {}: {:#}", chain.key, e),
+            "RPC_ERROR", "Public RPC may be limited; retry shortly.",
+        ),
+    };
+    // The before-balance snapshot is non-critical (only used for the after-vs-before
+    // delta display). Keep the soft fallback but expose the error.
+    let (comp_bal_before, comp_balance_before_query_error) =
+        match erc20_balance(chain.comp_token, &from_addr, chain.rpc).await {
+            Ok(v) => (v, None),
+            Err(e) => (0u128, Some(format!("{:#}", e))),
+        };
 
     // Build calldata: claimComp(address holder, address[] cTokens)
     // ABI:
@@ -132,7 +146,13 @@ pub async fn run(args: ClaimCompArgs) -> anyhow::Result<()> {
             "TX_HASH_MISSING", "Check `onchainos wallet history`."),
     }
 
-    let comp_bal_after = erc20_balance(chain.comp_token, &from_addr, chain.rpc).await.unwrap_or(0);
+    // Post-claim snapshot — keep soft fallback (tx already confirmed) but
+    // expose query error so the rendered claimed-amount can be marked best-effort.
+    let (comp_bal_after, comp_balance_after_query_error) =
+        match erc20_balance(chain.comp_token, &from_addr, chain.rpc).await {
+            Ok(v) => (v, None),
+            Err(e) => (comp_bal_before, Some(format!("{:#}", e))),
+        };
     let claimed = comp_bal_after.saturating_sub(comp_bal_before);
 
     println!("{}", serde_json::to_string_pretty(&json!({
@@ -145,6 +165,8 @@ pub async fn run(args: ClaimCompArgs) -> anyhow::Result<()> {
         "comp_balance_after":       fmt_token_amount(comp_bal_after, 18),
         "comp_claimed":             fmt_token_amount(claimed, 18),
         "comp_claimed_raw":         claimed.to_string(),
+        "comp_balance_before_query_error": comp_balance_before_query_error,
+        "comp_balance_after_query_error":  comp_balance_after_query_error,
         "tx_hash": tx_hash,
         "on_chain_status": "0x1",
         "tip": "Claimed COMP is now in your wallet as ERC-20. Hold or transfer freely.",

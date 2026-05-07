@@ -147,9 +147,17 @@ pub async fn run(args: SupplyArgs) -> anyhow::Result<()> {
     }
     if !args.confirm { eprintln!("[PREVIEW] Add --confirm to sign and submit."); return Ok(()); }
 
-    // Approve (only for ERC-20)
+    // Approve (only for ERC-20). EVM-012: surface RPC failures rather than
+    // silently re-approving on every blip (wastes gas).
     if !info.is_native {
-        let allowance = erc20_allowance(info.underlying, &from_addr, info.ctoken, chain.rpc).await.unwrap_or(0);
+        let allowance = match erc20_allowance(info.underlying, &from_addr, info.ctoken, chain.rpc).await {
+            Ok(v) => v,
+            Err(e) => return print_err(
+                &format!("Failed to read {} allowance for cToken on {}: {:#}", info.underlying_symbol, chain.key, e),
+                "RPC_ERROR",
+                "Public RPC may be limited; retry shortly.",
+            ),
+        };
         if allowance < amount_raw {
             let approve_data = build_approve_max(info.ctoken);
             eprintln!("[supply] Approving {} for cToken contract…", info.underlying_symbol);

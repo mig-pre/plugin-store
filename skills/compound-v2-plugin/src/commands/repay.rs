@@ -93,11 +93,25 @@ pub async fn run(args: RepayArgs) -> anyhow::Result<()> {
         (capped, pad_u256(capped))
     };
 
-    // Pre-flight: wallet balance (and ETH gas)
+    // Pre-flight: wallet balance (and ETH gas). EVM-012: surface RPC failures
+    // distinctly from "user has 0 balance" — silent unwrap_or(0) here used to
+    // misreport INSUFFICIENT_BALANCE on every public-RPC blip.
     let wallet_bal = if info.is_native {
-        native_balance(&from_addr, chain.rpc).await.unwrap_or(0)
+        match native_balance(&from_addr, chain.rpc).await {
+            Ok(v) => v,
+            Err(e) => return print_err(
+                &format!("Failed to read native balance on {}: {:#}", chain.key, e),
+                "RPC_ERROR", "Public RPC may be limited; retry shortly.",
+            ),
+        }
     } else {
-        erc20_balance(info.underlying, &from_addr, chain.rpc).await.unwrap_or(0)
+        match erc20_balance(info.underlying, &from_addr, chain.rpc).await {
+            Ok(v) => v,
+            Err(e) => return print_err(
+                &format!("Failed to read {} wallet balance on {}: {:#}", info.underlying_symbol, chain.key, e),
+                "RPC_ERROR", "Public RPC may be limited; retry shortly.",
+            ),
+        }
     };
     if wallet_bal < amount_raw_for_check {
         return print_err(
@@ -125,7 +139,13 @@ pub async fn run(args: RepayArgs) -> anyhow::Result<()> {
 
     // For ERC-20 underlyings: approve cToken to pull underlying
     if !info.is_native {
-        let allowance = erc20_allowance(info.underlying, &from_addr, info.ctoken, chain.rpc).await.unwrap_or(0);
+        let allowance = match erc20_allowance(info.underlying, &from_addr, info.ctoken, chain.rpc).await {
+            Ok(v) => v,
+            Err(e) => return print_err(
+                &format!("Failed to read {} allowance for cToken on {}: {:#}", info.underlying_symbol, chain.key, e),
+                "RPC_ERROR", "Public RPC may be limited; retry shortly.",
+            ),
+        };
         if allowance < amount_raw_for_check && !args.dry_run && args.confirm {
             // (Skip approve when dry_run / preview — we still emit JSON below)
         }
@@ -161,7 +181,13 @@ pub async fn run(args: RepayArgs) -> anyhow::Result<()> {
 
     // Approve (ERC-20 only, max approve so user doesn't have to re-approve next time)
     if !info.is_native {
-        let allowance = erc20_allowance(info.underlying, &from_addr, info.ctoken, chain.rpc).await.unwrap_or(0);
+        let allowance = match erc20_allowance(info.underlying, &from_addr, info.ctoken, chain.rpc).await {
+            Ok(v) => v,
+            Err(e) => return print_err(
+                &format!("Failed to read {} allowance for cToken on {}: {:#}", info.underlying_symbol, chain.key, e),
+                "RPC_ERROR", "Public RPC may be limited; retry shortly.",
+            ),
+        };
         if allowance < amount_raw_for_check {
             let approve_data = build_approve_max(info.ctoken);
             eprintln!("[repay] Approving {} for cToken contract…", info.underlying_symbol);

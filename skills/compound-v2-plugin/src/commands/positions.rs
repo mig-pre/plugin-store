@@ -53,14 +53,47 @@ pub async fn run(args: PositionsArgs) -> anyhow::Result<()> {
         liquidity_fut, assets_fut, comp_fut, futures::future::join_all(market_futs)
     );
 
-    let (err, liq, shortfall) = liquidity_res.unwrap_or((0, 0, 0));
+    // EVM-012: account liquidity is the canonical health snapshot — RPC failure
+    // must surface as an error, not a silent (0, 0, 0) fallback (which would
+    // render as "shortfall=0, liquidity=0" and let users believe their account
+    // was safe when it could have been liquidatable).
+    let (err, liq, shortfall) = match liquidity_res {
+        Ok(t) => t,
+        Err(e) => {
+            println!("{}", super::error_response(
+                &format!("Failed to read account liquidity from Comptroller on {}: {:#}", chain.key, e),
+                "RPC_ERROR",
+                "Public RPC may be limited; retry shortly. Account health cannot be reported \
+                 without this read.",
+            ));
+            return Ok(());
+        }
+    };
     let assets_in: Vec<String> = assets_res.unwrap_or_default();
-    let comp_accrued = comp_res.unwrap_or(0);
+    // COMP accrued is non-critical (display-only). Keep the 0 fallback but
+    // expose a structured error indicator. (EVM-012)
+    let (comp_accrued, comp_query_error) = match comp_res {
+        Ok(v) => (v, None),
+        Err(e) => (0u128, Some(format!("{:#}", e))),
+    };
 
     let mut entries: Vec<Value> = Vec::new();
+    let mut partial_markets: Vec<Value> = Vec::new();
     for (info, supply, borrow, sr, br) in market_results {
-        let supply_v = supply.unwrap_or(0);
-        let borrow_v = borrow.unwrap_or(0);
+        // EVM-012: track per-market RPC errors separately from "no balance".
+        // Silently zeroing made the L64 all-zero filter hide reserves where
+        // RPC failed; users with active positions never saw them.
+        let mut errs: Vec<String> = Vec::new();
+        let supply_v = supply.unwrap_or_else(|| { errs.push("supply".into()); 0 });
+        let borrow_v = borrow.unwrap_or_else(|| { errs.push("borrow".into()); 0 });
+        if !errs.is_empty() {
+            partial_markets.push(json!({
+                "ctoken": info.ctoken,
+                "underlying": info.underlying_symbol,
+                "errors": errs,
+            }));
+            continue;
+        }
         if supply_v == 0 && borrow_v == 0 { continue; }
         let supply_apr = sr.map(|r| rate_per_block_to_apr(r, chain.blocks_per_year));
         let borrow_apr = br.map(|r| rate_per_block_to_apr(r, chain.blocks_per_year));
@@ -96,9 +129,11 @@ pub async fn run(args: PositionsArgs) -> anyhow::Result<()> {
         "assets_in": assets_in,
         "comp_accrued":     fmt_token_amount(comp_accrued, 18),
         "comp_accrued_raw": comp_accrued.to_string(),
+        "comp_query_error": comp_query_error,
         "comp_accrued_note": "Stored value (not auto-accrued — actual claimable may be slightly higher after Comptroller.distributeSupplierComp triggered by claimComp).",
         "position_count": entries.len(),
         "positions": entries,
+        "partial_markets": partial_markets,
     }))?);
     Ok(())
 }
