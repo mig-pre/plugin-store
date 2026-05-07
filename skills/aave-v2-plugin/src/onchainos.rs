@@ -11,8 +11,12 @@
 use std::process::Command;
 use serde_json::Value;
 
+/// Single source of truth: `env!` resolves Cargo.toml's `name` field at compile time.
+/// CI invariant — Cargo.toml.name === plugin.yaml.name (Phase 2 build pipeline matches
+/// the binary against `plugins/<plugin.yaml.name>@<version>`), so this stays in sync
+/// with the canonical plugin name without any manual drift between files.
 const BIZ_TYPE: &str = "dapp";
-const STRATEGY: &str = "aave-v2-plugin";
+const STRATEGY: &str = env!("CARGO_PKG_NAME");
 
 pub fn resolve_wallet(chain_id: u64) -> anyhow::Result<String> {
     let output = Command::new("onchainos")
