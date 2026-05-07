@@ -1,11 +1,13 @@
 /// onchainos CLI wrappers for fourmeme-plugin.
 ///
-/// `--force` notes:
+/// `--force` (ONC-001):
 /// - For prerequisite ERC-20 approves (when quote token is non-BNB) we pass `--force`
 ///   because the user-facing approve is internal to the buy flow — Agent already
 ///   authorized the trade.
 /// - For the user-facing buy/sell tx we pass `force=false` and let onchainos surface
 ///   any backend confirmation prompts naturally.
+/// `--biz-type` / `--strategy`: attribution to the onchainos backend (since
+///   onchainos 3.0.0) so analytics can group calls by source plugin.
 ///
 /// Tx confirmation uses direct RPC `eth_getTransactionReceipt` (NOT `onchainos wallet
 /// history --tx-hash` — that command requires `--address` which isn't always wired
@@ -13,6 +15,11 @@
 
 use anyhow::{Context, Result};
 use serde_json::Value;
+
+/// Single source of truth: `env!` resolves Cargo.toml's `name` field at compile time.
+/// CI invariant — Cargo.toml.name === plugin.yaml.name.
+const BIZ_TYPE: &str = "dapp";
+const STRATEGY: &str = env!("CARGO_PKG_NAME");
 
 /// Call `onchainos wallet contract-call`.
 ///
@@ -30,6 +37,8 @@ pub async fn wallet_contract_call(
     let mut args: Vec<String> = vec![
         "wallet".into(),
         "contract-call".into(),
+        "--biz-type".into(), BIZ_TYPE.into(),
+        "--strategy".into(), STRATEGY.into(),
         "--chain".into(), chain_str,
         "--to".into(), to.into(),
         "--input-data".into(), input_data.into(),

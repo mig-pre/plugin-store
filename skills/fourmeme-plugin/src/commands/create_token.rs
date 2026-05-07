@@ -323,7 +323,13 @@ async fn run_inner(args: CreateTokenArgs) -> Result<()> {
     };
 
     // Read creator's initial token balance (only non-zero if --presale was set).
-    let initial_balance = super::erc20_balance(args.chain, &api_resp.token_address, &wallet).await.unwrap_or(0);
+    // EVM-012: post-tx read is display-only (the create_token already
+    // confirmed). Keep soft fallback but expose query error.
+    let (initial_balance, initial_balance_query_error) =
+        match super::erc20_balance(args.chain, &api_resp.token_address, &wallet).await {
+            Ok(v) => (v, None::<String>),
+            Err(e) => (0u128, Some(format!("{:#}", e))),
+        };
 
     let out = serde_json::json!({
         "ok": true,
@@ -349,6 +355,7 @@ async fn run_inner(args: CreateTokenArgs) -> Result<()> {
             "creation_fee_bnb":   format!("{:.6}", launch_fee_wei as f64 / 1e18),
             "creator_initial_balance":     super::fmt_decimal(initial_balance, crate::config::TOKEN_DECIMALS),
             "creator_initial_balance_raw": initial_balance.to_string(),
+            "creator_initial_balance_query_error": initial_balance_query_error,
             "live_state": live,
             "tip": format!(
                 "Token live at {}. View on four.meme: https://four.meme/token/{}. \

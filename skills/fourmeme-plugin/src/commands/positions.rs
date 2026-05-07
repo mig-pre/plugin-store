@@ -68,9 +68,24 @@ async fn run_inner(args: PositionsArgs) -> Result<()> {
 
     let mut rows: Vec<serde_json::Value> = Vec::new();
     let mut total_bnb_value: f64 = 0.0;
+    let mut partial_tokens: Vec<serde_json::Value> = Vec::new();
 
     for token in &candidate_tokens {
-        let bal = super::erc20_balance(args.chain, token, &wallet).await.unwrap_or(0);
+        // EVM-012: track per-token RPC failures separately from "user has 0
+        // balance". Silent unwrap_or(0) used to hide tokens whose balance
+        // read failed — looks identical to "no longer holding" but is a
+        // transient RPC issue. Surface them in `partial_tokens` so callers
+        // can retry.
+        let bal = match super::erc20_balance(args.chain, token, &wallet).await {
+            Ok(v) => v,
+            Err(e) => {
+                partial_tokens.push(serde_json::json!({
+                    "token": token,
+                    "error": format!("{:#}", e),
+                }));
+                continue;
+            }
+        };
         if bal == 0 {
             // In auto mode, four.meme may show "ever held" — skip empty positions
             // to keep the output clean.
@@ -113,6 +128,7 @@ async fn run_inner(args: PositionsArgs) -> Result<()> {
             "scanned_tokens": candidate_tokens.len(),
             "active_positions": rows.len(),
             "positions": rows,
+            "partial_tokens": partial_tokens,
             "total_estimated_value_bnb": format!("{:.8}", total_bnb_value),
             "tip": match mode {
                 "auto" => "Auto mode used four.meme owner/list (login token). Empty positions filtered. \

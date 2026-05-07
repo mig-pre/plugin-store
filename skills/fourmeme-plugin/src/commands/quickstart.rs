@@ -115,11 +115,23 @@ async fn run_inner(args: QuickstartArgs) -> Result<()> {
         return Ok(());
     }
 
-    // Check holdings if user passed --tokens
+    // Check holdings if user passed --tokens. EVM-012: track per-token RPC
+    // failures so a transient blip doesn't silently render as "0 holdings"
+    // and route the user to `ready_to_trade` instead of `active`.
     let mut held: Vec<serde_json::Value> = Vec::new();
+    let mut partial_tokens: Vec<serde_json::Value> = Vec::new();
     if let Some(toks) = args.tokens.as_ref() {
         for t in toks.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()) {
-            let bal = super::erc20_balance(args.chain, t, &wallet).await.unwrap_or(0);
+            let bal = match super::erc20_balance(args.chain, t, &wallet).await {
+                Ok(v) => v,
+                Err(e) => {
+                    partial_tokens.push(serde_json::json!({
+                        "token": t,
+                        "error": format!("{:#}", e),
+                    }));
+                    continue;
+                }
+            };
             if bal > 0 {
                 let sym = super::erc20_symbol(args.chain, t).await;
                 held.push(serde_json::json!({
@@ -152,6 +164,7 @@ async fn run_inner(args: QuickstartArgs) -> Result<()> {
             "bnb_balance": format!("{:.6}", bnb),
             "bnb_balance_wei": bnb_wei.to_string(),
             "held_tokens": held,
+            "partial_tokens": partial_tokens,
             "next_step": next_step,
         }
     });

@@ -3,7 +3,7 @@
 /// `--token` omitted (or `BNB` / zero address) → native BNB transfer via msg.value.
 /// `--token <addr>` → ERC-20 `transfer(to, amount)` to the contract.
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Args;
 
 use crate::config::{chain_name, is_supported_chain, TOKEN_DECIMALS};
@@ -113,8 +113,17 @@ async fn run_inner(args: SendArgs) -> Result<()> {
         );
     }
     if !is_native {
-        // Verify ERC-20 balance covers transfer
-        let bal = super::erc20_balance(args.chain, &target, &wallet).await.unwrap_or(0);
+        // Verify ERC-20 balance covers transfer. EVM-012: surface RPC failures
+        // distinctly from "0 balance" — silent unwrap_or(0) used to misreport
+        // INSUFFICIENT_BALANCE on every public-RPC blip even when the wallet
+        // actually held enough.
+        let bal = super::erc20_balance(args.chain, &target, &wallet).await
+            .with_context(|| format!(
+                "Failed to read {} balance on chain {}: public RPC may be limited; \
+                 retry shortly. Cannot verify whether wallet covers transfer without \
+                 an authoritative balance read.",
+                label, args.chain
+            ))?;
         if bal < raw {
             anyhow::bail!(
                 "Insufficient {} balance: have {}, need {}.",
