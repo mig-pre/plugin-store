@@ -1,5 +1,5 @@
 {
-  "name": "lifi",
+  "name": "lifi-plugin",
   "description": "LI.FI cross-chain bridge & swap aggregator - list chains/tokens, get quotes, execute bridges/swaps, track tx status across Ethereum, Arbitrum, Base, BSC, Polygon, and Optimism.",
   "version": "0.1.0",
   "author": {
