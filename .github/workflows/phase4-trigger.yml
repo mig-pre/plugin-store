@@ -30,8 +30,11 @@ jobs:
           SENDER="$EVENT_SENDER"
           PERM=$(gh api "repos/${{ github.repository }}/collaborators/${SENDER}/permission" --jq '.permission' 2>/dev/null || echo "none")
           echo "Sender: ${SENDER}, Permission: ${PERM}"
-          if [[ "$PERM" != "admin" && "$PERM" != "maintain" ]]; then
-            echo "::error::${SENDER} (${PERM}) is not a maintainer. Only admin/maintain can trigger publish."
+          # User-owned repos only return 'write' for collaborators (no admin/maintain role exists).
+          # Org-owned repos return admin/maintain. Accept all three so the gate works in both models;
+          # reject only read-only / non-collaborator senders.
+          if [[ "$PERM" != "admin" && "$PERM" != "maintain" && "$PERM" != "write" ]]; then
+            echo "::error::${SENDER} (${PERM}) is not authorized to trigger publish."
             exit 1
           fi
 
