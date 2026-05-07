@@ -63,19 +63,11 @@ pub async fn run(chain_id: u64, pool_address: String) -> Result<()> {
             })
         );
     } else {
-        // Pool not found in API — still show on-chain data
-        println!(
-            "{}",
-            serde_json::json!({
-                "ok": true,
-                "pool": {
-                    "address": pool_address,
-                    "virtual_price_raw": virtual_price.to_string(),
-                    "fee_pct": format!("{:.4}%", fee_pct),
-                    "fee_raw": fee_raw.to_string(),
-                    "note": "Pool not found in Curve API registry"
-                }
-            })
+        // Pool not found in API registry
+        anyhow::bail!(
+            "Pool {} not found in the Curve API registry for this chain. \
+            Use `get-pools` to list available pools.",
+            pool_address
         );
     }
     Ok(())

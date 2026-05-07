@@ -17,6 +17,7 @@ pub async fn run(
     slippage: f64,
     wallet: Option<String>,
     dry_run: bool,
+    confirm: bool,
 ) -> Result<()> {
     let chain_name = config::chain_name(chain_id);
     let rpc_url = config::rpc_url(chain_id);
@@ -92,6 +93,16 @@ pub async fn run(
 
     let min_expected = (amount_out as f64 * (1.0 - slippage)) as u128;
 
+    // Compute price impact: normalise both amounts to 18-decimal space for comparison
+    const NORM: u32 = 18;
+    let in_norm = amount_minimal as f64 * 10f64.powi(NORM as i32 - in_decimals as i32);
+    let out_norm = amount_out as f64 * 10f64.powi(NORM as i32 - out_decimals as i32);
+    let price_impact_pct = if in_norm > 0.0 {
+        ((in_norm - out_norm) / in_norm * 100.0).max(0.0)
+    } else {
+        0.0
+    };
+
     // Build exchange calldata
     // Selector: 0x3df02124 = exchange(int128,int128,uint256,uint256) for StableSwap pools
     // Selector: 0x5b41b908 = exchange(uint256,uint256,uint256,uint256) for CryptoSwap/factory-v2 pools
@@ -100,6 +111,34 @@ pub async fn run(
     } else {
         curve_abi::encode_exchange(in_idx as i64, out_idx as i64, amount_minimal, min_expected)
     };
+
+    // Confirm gate: show preview and exit if --confirm not given (and not dry-run)
+    if !dry_run && !confirm {
+        println!(
+            "{}",
+            serde_json::json!({
+                "ok": true,
+                "preview": true,
+                "operation": "swap",
+                "chain": chain_name,
+                "pool": { "id": pool.id, "name": pool.name, "address": pool.address },
+                "token_in": { "symbol": in_symbol, "address": token_in_addr, "index": in_idx },
+                "token_out": { "symbol": out_symbol, "address": token_out_addr, "index": out_idx },
+                "amount_in": format!("{:.6}", amount_minimal as f64 / 10f64.powi(in_decimals as i32)),
+                "amount_in_raw": amount_minimal.to_string(),
+                "expected_out": format!("{:.6}", amount_out as f64 / 10f64.powi(out_decimals as i32)),
+                "expected_out_raw": amount_out.to_string(),
+                "min_expected": format!("{:.6}", min_expected as f64 / 10f64.powi(out_decimals as i32)),
+                "min_expected_raw": min_expected.to_string(),
+                "slippage_pct": slippage * 100.0,
+                "price_impact_pct": format!("{:.4}", price_impact_pct),
+                "calldata": calldata,
+                "target_contract": pool.address,
+                "note": "Re-run with --confirm to execute this swap on-chain."
+            })
+        );
+        return Ok(());
+    }
 
     if dry_run {
         println!(
@@ -118,6 +157,7 @@ pub async fn run(
                 "min_expected": format!("{:.6}", min_expected as f64 / 10f64.powi(out_decimals as i32)),
                 "min_expected_raw": min_expected.to_string(),
                 "slippage_pct": slippage * 100.0,
+                "price_impact_pct": format!("{:.4}", price_impact_pct),
                 "calldata": calldata,
                 "target_contract": pool.address
             })
@@ -191,6 +231,7 @@ pub async fn run(
             "expected_out_raw": amount_out.to_string(),
             "min_expected": format!("{:.6}", min_expected as f64 / 10f64.powi(out_decimals as i32)),
             "min_expected_raw": min_expected.to_string(),
+            "price_impact_pct": format!("{:.4}", price_impact_pct),
             "tx_hash": tx_hash,
             "explorer": explorer
         })
