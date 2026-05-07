@@ -1,7 +1,7 @@
 ---
 name: spark-savings-plugin
 description: Spark Savings - earn Sky Savings Rate (SSR) on USDS via the sUSDS yield-bearing vault. Deposit USDS or upgrade DAI 1:1, redeem any time, no collateral, no liquidation. Supports Ethereum (ERC-4626 vault), Base & Arbitrum (Spark PSM).
-version: "0.1.0"
+version: "0.1.1"
 author: GeoGu360
 tags:
   - savings
@@ -28,7 +28,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/spark-savings-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.1.0"
+LOCAL_VER="0.1.1"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -140,12 +140,12 @@ mkdir -p ~/.local/bin
 
 # Download binary + checksums to a sandbox, verify SHA256 before installing.
 BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/spark-savings-plugin@0.1.0"
+RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/spark-savings-plugin@0.1.1"
 curl -fsSL "${RELEASE_BASE}/spark-savings-plugin-${TARGET}${EXT}" -o "$BIN_TMP/spark-savings-plugin${EXT}" || {
   echo "ERROR: failed to download spark-savings-plugin-${TARGET}${EXT}" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for spark-savings-plugin@0.1.0" >&2
+  echo "ERROR: failed to download checksums.txt for spark-savings-plugin@0.1.1" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 
 EXPECTED=$(awk -v b="spark-savings-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
@@ -169,7 +169,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/spark-savings-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.1.0" > "$HOME/.plugin-store/managed/spark-savings-plugin"
+echo "0.1.1" > "$HOME/.plugin-store/managed/spark-savings-plugin"
 ```
 
 ---
@@ -400,6 +400,17 @@ spark-savings-plugin upgrade-dai --all --confirm    # upgrade entire DAI balance
 ---
 
 ## Changelog
+
+### v0.1.1 (2026-05-07)
+
+- **feat**: `wallet contract-call` (executed only on `--confirm` for state-changing commands like `deposit` / `withdraw` / `upgrade-dai`) now passes `--biz-type dapp` and `--strategy spark-savings-plugin` (onchainos 3.0.0+) so backend attribution dashboards can group calls by source plugin. User confirmation flow is unchanged: write commands still preview their effects and require an explicit `--confirm` flag before any contract call is signed.
+- **fix (CI E036)**: `.claude-plugin/plugin.json` `name` field was `"spark-savings"`, but `plugin.yaml` declares `name: spark-savings-plugin`. Phase 1 lint enforces these two must match. Now `"spark-savings-plugin"`.
+- **fix (EVM-012)**: silent `unwrap_or(0)` on RPC reads sweep:
+  - `balance`: per-token `usds_balance` / `susds_balance` / `dai_balance` failures used to render as "user has 0 balance" on transient RPC blips. Now surface `query_error` field per token so callers can tell "real 0" from "RPC failed".
+  - `deposit`: pre-flight USDS allowance read now distinguishes `RPC_ERROR` from "no allowance" (used to silently re-approve on every blip, wasting gas).
+  - `withdraw`: pre-flight sUSDS allowance read on the PSM path — same fix.
+  - `upgrade-dai`: pre-flight DAI allowance read for the migrator — same fix.
+  - `apy`: `chi` + `tvl_assets` reads keep the soft 0 fallback (display-only) but expose `chi_query_error` / `tvl_query_error` fields for transparency.
 
 ### v0.1.0 (2026-04-28)
 

@@ -69,8 +69,17 @@ pub async fn run(args: BalanceArgs) -> anyhow::Result<()> {
                 continue;
             }
         };
-        let usds_raw = u.unwrap_or(0);
-        let susds_raw = s.unwrap_or(0);
+        // EVM-012: track per-token RPC failures separately. Silent unwrap_or(0)
+        // used to render real balances as "0" on transient RPC blips. Expose
+        // query errors so callers can tell "user has 0" from "RPC failed".
+        let (usds_raw, usds_query_error) = match u {
+            Ok(v) => (v, None::<String>),
+            Err(e) => (0u128, Some(format!("{:#}", e))),
+        };
+        let (susds_raw, susds_query_error) = match s {
+            Ok(v) => (v, None::<String>),
+            Err(e) => (0u128, Some(format!("{:#}", e))),
+        };
 
         // Convert sUSDS shares to underlying USDS value (only Ethereum has the
         // ERC-4626 convertToAssets; on L2 sUSDS, the rate-provider oracle is
@@ -102,6 +111,7 @@ pub async fn run(args: BalanceArgs) -> anyhow::Result<()> {
             "usds": {
                 "amount": fmt_token_amount(usds_raw, STABLE_DECIMALS),
                 "amount_raw": usds_raw.to_string(),
+                "query_error": usds_query_error,
             },
             "susds": {
                 "amount": fmt_token_amount(susds_raw, STABLE_DECIMALS),
@@ -109,14 +119,20 @@ pub async fn run(args: BalanceArgs) -> anyhow::Result<()> {
                 "underlying_usds": fmt_token_amount(susds_in_usds, STABLE_DECIMALS),
                 "underlying_usds_raw": susds_in_usds.to_string(),
                 "valuation_method": susds_value_method,
+                "query_error": susds_query_error,
             },
         });
 
         if let Some(dai_addr) = chain.dai {
-            let dai_raw = erc20_balance(dai_addr, &address, chain.rpc).await.unwrap_or(0);
+            // EVM-012: same pattern — expose query error.
+            let (dai_raw, dai_query_error) = match erc20_balance(dai_addr, &address, chain.rpc).await {
+                Ok(v) => (v, None::<String>),
+                Err(e) => (0u128, Some(format!("{:#}", e))),
+            };
             entry["dai"] = json!({
                 "amount": fmt_token_amount(dai_raw, STABLE_DECIMALS),
                 "amount_raw": dai_raw.to_string(),
+                "query_error": dai_query_error,
                 "tip": if dai_raw > 0 {
                     "Use `spark-savings-plugin upgrade-dai --amount <X> --confirm` to convert legacy DAI 1:1 to USDS, then deposit."
                 } else { "" },

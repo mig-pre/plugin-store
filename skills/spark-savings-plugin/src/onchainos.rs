@@ -1,13 +1,19 @@
 /// Wrappers around the `onchainos` CLI for wallet resolution + EVM contract calls.
 /// The plugin holds NO private keys.
 ///
-/// Knowledge-base compliance:
-///   - ONC-001: --force is ALWAYS passed for contract-call (Spark uses regular EVM
-///     calls, not pre-signed EIP-712, so onchainos backend's policy gate would
-///     otherwise return cryptic "execution reverted" without --force).
+/// `--force` (ONC-001): ALWAYS passed for contract-call (Spark uses regular EVM
+///   calls, not pre-signed EIP-712, so onchainos backend's policy gate would
+///   otherwise return cryptic "execution reverted" without --force).
+/// `--biz-type` / `--strategy`: attribution to the onchainos backend (since
+///   onchainos 3.0.0) so analytics can group calls by source plugin.
 
 use std::process::Command;
 use serde_json::Value;
+
+/// Single source of truth: `env!` resolves Cargo.toml's `name` field at compile time.
+/// CI invariant — Cargo.toml.name === plugin.yaml.name.
+const BIZ_TYPE: &str = "dapp";
+const STRATEGY: &str = env!("CARGO_PKG_NAME");
 
 /// Resolve user wallet address on a specific chain.
 pub fn resolve_wallet(chain_id: u64) -> anyhow::Result<String> {
@@ -87,6 +93,10 @@ pub fn wallet_contract_call(
         "wallet".to_string(),
         "contract-call".to_string(),
         "--force".to_string(),  // ← ONC-001
+        "--biz-type".to_string(),
+        BIZ_TYPE.to_string(),
+        "--strategy".to_string(),
+        STRATEGY.to_string(),
         "--chain".to_string(),
         chain_id.to_string(),
         "--to".to_string(),

@@ -203,8 +203,16 @@ pub async fn run(args: WithdrawArgs) -> anyhow::Result<()> {
     }
 
     // PSM path needs sUSDS approval to PSM contract; ERC-4626 redeem does not.
+    // EVM-012: surface RPC failures rather than silently re-approving.
     if needs_susds_approve {
-        let allowance = erc20_allowance(chain.susds, &from_addr, &spender, chain.rpc).await.unwrap_or(0);
+        let allowance = match erc20_allowance(chain.susds, &from_addr, &spender, chain.rpc).await {
+            Ok(v) => v,
+            Err(e) => return print_err(
+                &format!("Failed to read sUSDS allowance for PSM {} on {}: {:#}", spender, chain.key, e),
+                "RPC_ERROR",
+                "Public RPC may be limited; retry shortly.",
+            ),
+        };
         if allowance < shares_to_redeem {
             let approve_data = build_approve_max(&spender);
             eprintln!("[withdraw] Approving sUSDS for PSM ({})…", spender);
