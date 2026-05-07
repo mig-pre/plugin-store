@@ -1,6 +1,13 @@
 use std::process::Command;
 use serde_json::Value;
 
+/// `--biz-type` / `--strategy`: attribution to the onchainos backend (since
+///   onchainos 3.0.0) so analytics can group calls by source plugin.
+/// Single source of truth: `env!` resolves Cargo.toml's `name` field at compile time.
+/// CI invariant — Cargo.toml.name === plugin.yaml.name.
+const BIZ_TYPE: &str = "dapp";
+const STRATEGY: &str = env!("CARGO_PKG_NAME");
+
 /// Helper: invoke `onchainos` with the given args, return parsed stdout JSON.
 /// Fails if the process exits non-zero or stdout is not valid JSON.
 fn onchainos_json(args: &[&str]) -> anyhow::Result<Value> {
@@ -230,6 +237,10 @@ pub async fn wallet_contract_call(
         .args([
             "wallet",
             "contract-call",
+            "--biz-type",
+            BIZ_TYPE,
+            "--strategy",
+            STRATEGY,
             "--chain",
             &chain_str,
             "--to",
