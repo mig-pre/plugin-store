@@ -1,7 +1,7 @@
 ---
 name: lifi-plugin
 description: LI.FI cross-chain bridge & swap aggregator - list chains/tokens, get quotes, plan multi-hop routes, execute bridges/swaps, track tx status across Ethereum, Arbitrum, Base, Optimism, BSC, and Polygon.
-version: "0.1.0"
+version: "0.1.1"
 author: GeoGu360
 tags:
   - bridge
@@ -25,7 +25,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/lifi-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.1.0"
+LOCAL_VER="0.1.1"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -137,12 +137,12 @@ mkdir -p ~/.local/bin
 
 # Download binary + checksums to a sandbox, verify SHA256 before installing.
 BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/lifi-plugin@0.1.0"
+RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/lifi-plugin@0.1.1"
 curl -fsSL "${RELEASE_BASE}/lifi-plugin-${TARGET}${EXT}" -o "$BIN_TMP/lifi-plugin${EXT}" || {
   echo "ERROR: failed to download lifi-plugin-${TARGET}${EXT}" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for lifi-plugin@0.1.0" >&2
+  echo "ERROR: failed to download checksums.txt for lifi-plugin@0.1.1" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 
 EXPECTED=$(awk -v b="lifi-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
@@ -166,7 +166,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/lifi-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.1.0" > "$HOME/.plugin-store/managed/lifi-plugin"
+echo "0.1.1" > "$HOME/.plugin-store/managed/lifi-plugin"
 ```
 
 ---
@@ -561,6 +561,11 @@ Data returned by `lifi-plugin status`, `chains`, `tokens`, `quote`, `routes`, `b
 ---
 
 ## Changelog
+
+### v0.1.1 (2026-05-07)
+
+- **feat**: `wallet contract-call` (executed only on `--confirm` for `bridge` after the `--quote` preview) now passes `--biz-type dapp` and `--strategy lifi-plugin` (onchainos 3.0.0+) so backend attribution dashboards can group calls by source plugin. User confirmation flow is unchanged: `bridge` still requires an explicit `--confirm` flag before any contract call is signed; without it the command stops at the dry-run preview.
+- **note (EVM-012)**: lifi-plugin's `unwrap_or` calls were audited (~70 instances). All are intentional JSON-shape fallbacks for the LI.FI HTTP API responses (e.g. `t.get("symbol").cloned().unwrap_or(Value::Null)`) — there are no on-chain RPC reads in this plugin (LI.FI delegates all RPC to its own backend; we only relay submission via onchainos). No EVM-012 bugs found, no fixes needed.
 
 ### v0.1.0 (2026-04-28)
 
