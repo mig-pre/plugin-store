@@ -1,7 +1,7 @@
 ---
 name: morpho-plugin
 description: "Supply, borrow and earn yield on Morpho — a permissionless lending protocol with $5B+ TVL. Trigger phrases: supply to morpho, deposit to morpho vault, borrow from morpho, repay morpho loan, morpho health factor, my morpho positions, morpho interest rates, claim morpho rewards, morpho markets, metamorpho vaults."
-version: "0.2.5"
+version: "0.2.8"
 author: "GeoGu360"
 tags:
   - lending
@@ -25,7 +25,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/morpho-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.2.5"
+LOCAL_VER="0.2.7"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -36,7 +36,7 @@ if [ -f "$UPDATE_CACHE" ]; then
 fi
 
 if [ "$DO_CHECK" = true ]; then
-  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/mig-pre/plugin-store/main/skills/morpho-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
+  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/okx/plugin-store/main/skills/morpho-plugin/plugin.yaml" | grep '^version' | head -1 | tr -d '"' | awk '{print $2}')
   if [ -n "$REMOTE_VER" ]; then
     mkdir -p "$HOME/.plugin-store/update-cache"
     echo "$REMOTE_VER" > "$UPDATE_CACHE"
@@ -46,7 +46,7 @@ fi
 REMOTE_VER=$(cat "$UPDATE_CACHE" 2>/dev/null || echo "$LOCAL_VER")
 if [ "$REMOTE_VER" != "$LOCAL_VER" ]; then
   echo "Update available: morpho-plugin v$LOCAL_VER -> v$REMOTE_VER. Updating..."
-  npx skills add mig-pre/plugin-store --skill morpho-plugin --yes --global 2>/dev/null || true
+  npx skills add okx/plugin-store --skill morpho-plugin --yes --global 2>/dev/null || true
   echo "Updated morpho-plugin to v$REMOTE_VER. Please re-read this SKILL.md."
 fi
 ```
@@ -54,50 +54,14 @@ fi
 ### Install onchainos CLI + Skills (auto-injected)
 
 ```bash
-# 1. Install onchainos CLI — pin to latest release tag, verify SHA256
-#    of the installer before executing (no curl|sh from main).
-if ! command -v onchainos >/dev/null 2>&1; then
-  set -e
-  LATEST_TAG=$(curl -sSL --max-time 5 \
-    "https://api.github.com/repos/okx/onchainos-skills/releases/latest" \
-    | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-  if [ -z "$LATEST_TAG" ]; then
-    echo "ERROR: failed to resolve latest onchainos release tag (network or rate limit)." >&2
-    echo "       Manual install: https://github.com/okx/onchainos-skills" >&2
-    exit 1
-  fi
-
-  ONCHAINOS_TMP=$(mktemp -d)
-  curl -sSL --max-time 30 \
-    "https://raw.githubusercontent.com/okx/onchainos-skills/${LATEST_TAG}/install.sh" \
-    -o "$ONCHAINOS_TMP/install.sh"
-  curl -sSL --max-time 30 \
-    "https://github.com/okx/onchainos-skills/releases/download/${LATEST_TAG}/installer-checksums.txt" \
-    -o "$ONCHAINOS_TMP/installer-checksums.txt"
-
-  EXPECTED=$(awk '$2 ~ /install\.sh$/ {print $1; exit}' "$ONCHAINOS_TMP/installer-checksums.txt")
-  if command -v sha256sum >/dev/null 2>&1; then
-    ACTUAL=$(sha256sum "$ONCHAINOS_TMP/install.sh" | awk '{print $1}')
-  else
-    ACTUAL=$(shasum -a 256 "$ONCHAINOS_TMP/install.sh" | awk '{print $1}')
-  fi
-  if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
-    echo "ERROR: onchainos installer SHA256 mismatch — refusing to execute." >&2
-    echo "       expected=$EXPECTED  actual=$ACTUAL  tag=$LATEST_TAG" >&2
-    rm -rf "$ONCHAINOS_TMP"
-    exit 1
-  fi
-
-  sh "$ONCHAINOS_TMP/install.sh"
-  rm -rf "$ONCHAINOS_TMP"
-  set +e
-fi
+# 1. Install onchainos CLI
+onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/okx/onchainos-skills/main/install.sh | sh
 
 # 2. Install onchainos skills (enables AI agent to use onchainos commands)
 npx skills add okx/onchainos-skills --yes --global
 
 # 3. Install plugin-store skills (enables plugin discovery and management)
-npx skills add mig-pre/plugin-store --skill plugin-store --yes --global
+npx skills add okx/plugin-store --skill plugin-store --yes --global
 ```
 
 ### Install morpho-plugin binary + launcher (auto-injected)
@@ -108,11 +72,11 @@ LAUNCHER="$HOME/.plugin-store/launcher.sh"
 CHECKER="$HOME/.plugin-store/update-checker.py"
 if [ ! -f "$LAUNCHER" ]; then
   mkdir -p "$HOME/.plugin-store"
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
   chmod +x "$LAUNCHER"
 fi
 if [ ! -f "$CHECKER" ]; then
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
 fi
 
 # Clean up old installation
@@ -134,40 +98,17 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-
-# Download binary + checksums to a sandbox, verify SHA256 before installing.
-BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/morpho-plugin@0.2.5"
-curl -fsSL "${RELEASE_BASE}/morpho-plugin-${TARGET}${EXT}" -o "$BIN_TMP/morpho-plugin${EXT}" || {
-  echo "ERROR: failed to download morpho-plugin-${TARGET}${EXT}" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for morpho-plugin@0.2.5" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-
-EXPECTED=$(awk -v b="morpho-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
-if command -v sha256sum >/dev/null 2>&1; then
-  ACTUAL=$(sha256sum "$BIN_TMP/morpho-plugin${EXT}" | awk '{print $1}')
-else
-  ACTUAL=$(shasum -a 256 "$BIN_TMP/morpho-plugin${EXT}" | awk '{print $1}')
-fi
-if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
-  echo "ERROR: morpho-plugin SHA256 mismatch — refusing to install." >&2
-  echo "       expected=$EXPECTED  actual=$ACTUAL  target=${TARGET}" >&2
-  rm -rf "$BIN_TMP"; exit 1
-fi
-
-mv "$BIN_TMP/morpho-plugin${EXT}" ~/.local/bin/.morpho-plugin-core${EXT}
+curl -fsSL "https://github.com/okx/plugin-store/releases/download/plugins/morpho-plugin@0.2.7/morpho-plugin-${TARGET}${EXT}" -o ~/.local/bin/.morpho-plugin-core${EXT}
 chmod +x ~/.local/bin/.morpho-plugin-core${EXT}
-rm -rf "$BIN_TMP"
 
 # Symlink CLI name to universal launcher
 ln -sf "$LAUNCHER" ~/.local/bin/morpho-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.2.5" > "$HOME/.plugin-store/managed/morpho-plugin"
+echo "0.2.7" > "$HOME/.plugin-store/managed/morpho-plugin"
 ```
+
 
 ---
 
@@ -208,6 +149,32 @@ Morpho is a permissionless lending protocol with over $5B TVL operating on two l
 - Write operations (supply deposit, borrow, repay, withdraw, supply-collateral, withdraw-collateral, claim-rewards) → `onchainos wallet contract-call --chain <id>` without `--force`; onchainos presents tx for user confirmation before broadcasting
 - ERC-20 approvals (supply, repay, supply-collateral) → `onchainos wallet contract-call --chain <id> --force`; broadcast immediately as a prerequisite step
 - Read operations (positions, markets, vaults) → direct GraphQL query to `https://blue-api.morpho.org/graphql`; no wallet required
+
+---
+
+## Quickstart
+
+Run the built-in onboarding command to check your wallet state and receive step-by-step guidance:
+
+```bash
+morpho-plugin quickstart
+```
+
+This checks your ETH, USDC, and WETH balances plus any open Blue and vault positions in parallel,
+then returns a `status` and a suggested `next_command` tailored to your situation:
+
+| Status | Meaning | Suggested next step |
+|--------|---------|-------------------|
+| `active` | Open positions exist — review them | `morpho-plugin positions` |
+| `ready` | Funded, no positions yet | `morpho-plugin supply --asset USDC --amount 100` |
+| `needs_gas` | Has tokens but no ETH for gas | Top up ETH on Ethereum mainnet |
+| `needs_funds` | Has gas but no USDC/WETH to supply | Bridge or buy USDC/WETH |
+| `no_funds` | Nothing found — new wallet | Fund the wallet address shown in output |
+
+**Base chain:**
+```bash
+morpho-plugin --chain 8453 quickstart
+```
 
 ---
 
@@ -706,6 +673,40 @@ morpho --chain 8453 vaults --asset WETH
 
 ---
 
+### quickstart — Check assets and get onboarding guidance
+
+**Trigger phrases:** "morpho quickstart", "get started with morpho", "what should I do on morpho", "morpho onboarding"
+
+**Purpose:** Checks wallet ETH, USDC, and WETH balances plus open positions in parallel, then returns a status and step-by-step guidance. Ideal as the first command for a new user.
+
+**Parameters:** none (uses global `--chain` and `--from`)
+
+**Output fields:** `about`, `wallet`, `chain`, `chainId`, `assets` (eth_balance, usdc_balance, weth_balance, blue_positions, vault_positions), `status`, `suggestion`, `next_command`, `onboarding_steps` (omitted when status is `active`)
+
+**Status values:**
+
+| Status | Meaning |
+|--------|---------|
+| `active` | Has open Blue/vault positions — review them |
+| `ready` | Has gas + tokens, no positions — ready to supply or borrow |
+| `needs_gas` | Has tokens but no ETH for gas |
+| `needs_funds` | Has ETH gas but no USDC/WETH to supply |
+| `no_funds` | Nothing found — new user, start here |
+
+**Example (new user, no funds):**
+```bash
+morpho-plugin quickstart
+# Returns: about, wallet address, status: no_funds,
+# onboarding_steps with wallet address to fund
+```
+
+**Example (Base chain):**
+```bash
+morpho-plugin --chain 8453 quickstart
+```
+
+---
+
 ## Well-Known Vault Addresses
 
 ### Ethereum Mainnet (chain 1)
@@ -780,6 +781,9 @@ morpho --chain 8453 vaults --asset WETH
 ---
 
 ## Changelog
+
+### v0.2.6
+- **New: `quickstart` command** — Checks ETH, USDC, and WETH balances plus open positions in parallel. Detects 5 states (active/ready/needs_gas/needs_funds/no_funds) and returns `about`, `onboarding_steps` with wallet address, and `next_command` for guided onboarding.
 
 ### v0.2.5
 - **Fix: resolved wallet address now always forwarded as `--from`** — All 7 write commands (`supply`, `withdraw`, `borrow`, `repay`, `supply-collateral`, `withdraw-collateral`, `claim-rewards`) now pass the resolved wallet address explicitly to onchainos. Previously, when `--from` was omitted, `resolve_wallet()` determined the address but the original `None` was forwarded, causing broadcast failures on Base (chain 8453) where onchainos cannot infer the signer without an explicit address.
