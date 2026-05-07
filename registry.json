@@ -67,6 +67,38 @@
       }
     },
     {
+      "name": "aerodrome-slipstream-plugin",
+      "version": "0.2.1",
+      "description": "Swap tokens and manage concentrated liquidity positions on Aerodrome Slipstream (CLMM) on Base",
+      "author": {
+        "name": "skylavis-sky"
+      },
+      "category": "utility",
+      "tags": [
+        "trading",
+        "signal",
+        "defi"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/aerodrome-slipstream-plugin"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/aerodrome-slipstream-plugin",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aerodrome-slipstream-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aerodrome-slipstream-plugin/SUMMARY.md",
+      "modify_date": "1778126534",
+      "extra": {
+        "chains": [
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "high"
+      }
+    },
+    {
       "name": "clanker-plugin",
       "version": "0.2.4",
       "description": "Deploy and manage Clanker ERC-20 tokens on Base and Arbitrum — launch tokens, search by creator, and claim LP fee rewards",

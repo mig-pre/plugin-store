@@ -25,6 +25,15 @@
       }
     },
     {
+      "name": "aerodrome-slipstream-plugin",
+      "description": "Swap tokens and manage concentrated liquidity positions on Aerodrome Slipstream (CLMM) on Base",
+      "source": "./skills/aerodrome-slipstream-plugin",
+      "category": "utility",
+      "author": {
+        "name": "skylavis-sky"
+      }
+    },
+    {
       "name": "clanker-plugin",
       "description": "Deploy and manage Clanker ERC-20 tokens on Base and Arbitrum — launch tokens, search by creator, and claim LP fee rewards",
       "source": "./skills/clanker-plugin",
