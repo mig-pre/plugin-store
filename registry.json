@@ -89,7 +89,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/aerodrome-slipstream-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aerodrome-slipstream-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aerodrome-slipstream-plugin/SUMMARY.md",
-      "modify_date": "1778126534",
+      "modify_date": "1778148853",
       "extra": {
         "chains": [
           "base"
@@ -1219,6 +1219,38 @@
         ],
         "protocols": [],
         "risk_level": "medium"
+      }
+    },
+    {
+      "name": "sparklend-plugin",
+      "version": "0.1.1",
+      "description": "SparkLend lending and borrowing on Ethereum Mainnet — supply, withdraw, borrow, repay, positions, health factor, reserves.",
+      "author": {
+        "name": "OKX"
+      },
+      "category": "utility",
+      "tags": [
+        "ethereum",
+        "signal",
+        "defi"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/sparklend-plugin"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/sparklend-plugin",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/sparklend-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/sparklend-plugin/SUMMARY.md",
+      "modify_date": "1778134876",
+      "extra": {
+        "chains": [
+          "ethereum"
+        ],
+        "protocols": [],
+        "risk_level": "high"
       }
     },
     {
