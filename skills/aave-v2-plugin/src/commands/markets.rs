@@ -55,8 +55,15 @@ pub async fn run(args: MarketsArgs) -> anyhow::Result<()> {
             let (sym, avail, total_a, total_s, total_v) = tokio::join!(
                 symbol_fut, avail_fut, total_a_fut, total_s_fut, total_v_fut
             );
-            (asset, sym, Some((rd, cfg, dec, avail.unwrap_or(0),
-                total_a.unwrap_or(0), total_s.unwrap_or(0), total_v.unwrap_or(0))))
+            // EVM-012: track per-balance errors so the output JSON can flag
+            // partial data instead of silently rendering 0 (which would
+            // misreport an empty market or break utilization math via /0).
+            let mut errs: Vec<String> = Vec::new();
+            let avail = avail.unwrap_or_else(|e| { errs.push(format!("available_liquidity: {:#}", e)); 0 });
+            let total_a = total_a.unwrap_or_else(|e| { errs.push(format!("total_a_supply: {:#}", e)); 0 });
+            let total_s = total_s.unwrap_or_else(|e| { errs.push(format!("total_s_debt: {:#}", e)); 0 });
+            let total_v = total_v.unwrap_or_else(|e| { errs.push(format!("total_v_debt: {:#}", e)); 0 });
+            (asset, sym, Some((rd, cfg, dec, avail, total_a, total_s, total_v, errs)))
         }
     }).collect();
 
@@ -64,8 +71,8 @@ pub async fn run(args: MarketsArgs) -> anyhow::Result<()> {
 
     let entries: Vec<Value> = results.into_iter().map(|(asset, sym, payload)| {
         match payload {
-            None => json!({"asset": asset, "symbol": sym, "error": "RPC failed"}),
-            Some((rd, cfg, dec, avail, total_a, total_s, total_v)) => {
+            None => json!({"asset": asset, "symbol": sym, "error": "RPC failed (getReserveData)"}),
+            Some((rd, cfg, dec, avail, total_a, total_s, total_v, errs)) => {
                 let total_debt = total_s + total_v;
                 let utilization_pct = if total_a > 0 {
                     Some(format!("{:.2}", (total_debt as f64 / total_a as f64) * 100.0))
@@ -96,7 +103,8 @@ pub async fn run(args: MarketsArgs) -> anyhow::Result<()> {
                         "stable_borrow_rate_enabled": cfg.stable_rate_enabled,
                         "is_active": cfg.is_active,
                         "is_frozen": cfg.is_frozen,
-                    }
+                    },
+                    "partial_data_errors": if errs.is_empty() { None } else { Some(errs) },
                 })
             }
         }

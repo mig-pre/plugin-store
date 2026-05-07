@@ -47,9 +47,27 @@ pub async fn run(args: PositionsArgs) -> anyhow::Result<()> {
 
     let (acct_res, reserves_res, rewards_res) = tokio::join!(acct_fut, reserves_fut, rewards_fut);
 
+    // EVM-012: account data is the canonical health snapshot — RPC failure must
+    // surface as an error, not a silent (0,0,0,0,0,0) fallback (which would render
+    // as "totalDebt=0, HF=infinite" and mislead users into thinking they're safe
+    // when their account may actually be liquidatable).
     let (total_collateral_eth, total_debt_eth, available_borrows_eth, liq_threshold, ltv, hf) =
-        acct_res.unwrap_or((0, 0, 0, 0, 0, 0));
-    let rewards_accrued = rewards_res.unwrap_or(0);
+        match acct_res {
+            Ok(t) => t,
+            Err(e) => return print_err(
+                &format!("Failed to read account data from LendingPool on {}: {:#}", chain.key, e),
+                "RPC_ERROR",
+                "Public RPC may be limited; retry shortly. Account health cannot be reported \
+                 without this read.",
+            ),
+        };
+    // Rewards are non-critical (nice-to-have). Keep the 0 fallback but surface a
+    // structured error indicator so callers can distinguish "no rewards accrued"
+    // from "RPC failed". (EVM-012)
+    let (rewards_accrued, rewards_query_error) = match rewards_res {
+        Ok(v) => (v, None),
+        Err(e) => (0u128, Some(format!("{:#}", e))),
+    };
 
     let reserves: Vec<String> = match reserves_res {
         Ok(r) => r,
@@ -60,7 +78,12 @@ pub async fn run(args: PositionsArgs) -> anyhow::Result<()> {
         ),
     };
 
-    // For each reserve: lp_get_reserve_data → get aToken/sDebt/vDebt → balanceOf user on each
+    // For each reserve: lp_get_reserve_data → get aToken/sDebt/vDebt → balanceOf user on each.
+    // EVM-012: any per-balance RPC failure is now reported instead of silently
+    // collapsing the reserve to (0,0,0) — which would either hide a real position
+    // (when L91 filtered all-zero rows) or report "0 supply" to a user who actually
+    // has a position. Reserves with at least one failed balance read are surfaced
+    // in the `partial_reserves` array of the output JSON.
     let futs: Vec<_> = reserves.iter().map(|asset| {
         let chain = chain.clone();
         let wallet = wallet.clone();
@@ -68,7 +91,7 @@ pub async fn run(args: PositionsArgs) -> anyhow::Result<()> {
         async move {
             let rd = match lp_get_reserve_data(chain.lending_pool, &asset, chain.rpc).await {
                 Ok(r) => r,
-                Err(_) => return None,
+                Err(e) => return Err((asset, format!("getReserveData: {:#}", e))),
             };
             let cfg = rd.decode_config();
             let dec = if cfg.decimals > 0 { cfg.decimals } else { 18 };
@@ -79,15 +102,37 @@ pub async fn run(args: PositionsArgs) -> anyhow::Result<()> {
             let (sym, supply, v_debt, s_debt) = tokio::join!(
                 symbol_fut, supply_fut, v_debt_fut, s_debt_fut
             );
-            Some((asset, sym, dec, rd, supply.unwrap_or(0), v_debt.unwrap_or(0), s_debt.unwrap_or(0)))
+            Ok((asset, sym, dec, rd, supply, v_debt, s_debt))
         }
     }).collect();
 
     let results = futures::future::join_all(futs).await;
 
     let mut positions: Vec<Value> = Vec::new();
-    for r in results.into_iter().flatten() {
-        let (asset, sym, dec, rd, supply_raw, v_debt_raw, s_debt_raw) = r;
+    let mut partial_reserves: Vec<Value> = Vec::new();
+    for r in results.into_iter() {
+        let (asset, sym, dec, rd, supply, v_debt, s_debt) = match r {
+            Ok(t) => t,
+            Err((asset, err)) => {
+                partial_reserves.push(json!({ "asset": asset, "error": err }));
+                continue;
+            }
+        };
+        // Track per-balance RPC errors so we don't silently zero them out.
+        let mut errs: Vec<String> = Vec::new();
+        let supply_raw = supply.unwrap_or_else(|e| { errs.push(format!("supply: {:#}", e)); 0 });
+        let v_debt_raw = v_debt.unwrap_or_else(|e| { errs.push(format!("variable_debt: {:#}", e)); 0 });
+        let s_debt_raw = s_debt.unwrap_or_else(|e| { errs.push(format!("stable_debt: {:#}", e)); 0 });
+        if !errs.is_empty() {
+            partial_reserves.push(json!({
+                "asset": asset,
+                "symbol": sym.clone(),
+                "errors": errs,
+            }));
+            // Don't show a reserve we couldn't fully read — partial data is worse
+            // than absent data when the user is making position-management decisions.
+            continue;
+        }
         if supply_raw == 0 && v_debt_raw == 0 && s_debt_raw == 0 { continue; }
         positions.push(json!({
             "asset": asset,
@@ -130,9 +175,11 @@ pub async fn run(args: PositionsArgs) -> anyhow::Result<()> {
         },
         "rewards_accrued":     fmt_token_amount(rewards_accrued, 18),
         "rewards_accrued_raw": rewards_accrued.to_string(),
+        "rewards_query_error": rewards_query_error,
         "rewards_token_note": "stkAAVE on Ethereum / WMATIC on Polygon / WAVAX on Avalanche. Run claim-rewards to harvest.",
         "position_count": positions.len(),
         "positions": positions,
+        "partial_reserves": partial_reserves,
     }))?);
     Ok(())
 }

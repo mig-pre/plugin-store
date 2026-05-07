@@ -1,6 +1,6 @@
 schema_version: 1
 name: aave-v2-plugin
-version: "0.1.0"
+version: "0.1.1"
 description: "Aave V2 exit tool on Ethereum, Polygon, and Avalanche - all reserves are frozen by governance. Redeem aTokens, repay debt cleanly via uint256.max sentinel, claim stkAAVE/WMATIC/WAVAX rewards. New supply/borrow rejected; use aave-v3-plugin for active flows"
 author:
   name: GeoGu360

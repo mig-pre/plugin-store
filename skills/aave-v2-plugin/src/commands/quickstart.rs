@@ -92,10 +92,41 @@ pub async fn run(args: QuickstartArgs) -> anyhow::Result<()> {
         native_fut, acct_fut, reserves_fut, rewards_fut
     );
 
-    let native_bal = native_res.unwrap_or(0);
+    // EVM-012: critical reads (native gas + AccountData) must surface as RPC errors,
+    // not silent zero fallbacks. Otherwise quickstart reports `insufficient_gas`
+    // (when native RPC failed) or "totalDebt=0, HF=infinite" (when AccountData
+    // failed) — both misleading user-facing decisions.
+    let native_bal = match native_res {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", super::error_response(
+                &format!("Failed to read native balance on {}: {:#}", chain.key, e),
+                "RPC_ERROR",
+                "Public RPC may be limited; retry shortly.",
+            ));
+            return Ok(());
+        }
+    };
     let (total_collateral_eth, total_debt_eth, available_borrows_eth, _liq_threshold, _ltv, hf) =
-        acct_res.unwrap_or((0, 0, 0, 0, 0, 0));
-    let rewards_accrued = rewards_res.unwrap_or(0);
+        match acct_res {
+            Ok(t) => t,
+            Err(e) => {
+                println!("{}", super::error_response(
+                    &format!("Failed to read account data from LendingPool on {}: {:#}", chain.key, e),
+                    "RPC_ERROR",
+                    "Public RPC may be limited; retry shortly. Account health cannot be \
+                     reported without this read.",
+                ));
+                return Ok(());
+            }
+        };
+    // Rewards are non-critical; keep the 0 fallback so the rest of the quickstart
+    // can render, but expose a structured error so callers can tell "no rewards
+    // accrued" from "incentive controller RPC failed".
+    let (rewards_accrued, rewards_query_error) = match rewards_res {
+        Ok(v) => (v, None),
+        Err(e) => (0u128, Some(format!("{:#}", e))),
+    };
 
     let reserves: Vec<String> = match reserves_res {
         Ok(r) => r,
@@ -247,6 +278,7 @@ pub async fn run(args: QuickstartArgs) -> anyhow::Result<()> {
         },
         "rewards_accrued":     fmt_token_amount(rewards_accrued, 18),
         "rewards_accrued_raw": rewards_accrued.to_string(),
+        "rewards_query_error": rewards_query_error,
         "rewards_token_note": "stkAAVE on Ethereum / WMATIC on Polygon / WAVAX on Avalanche. Run claim-rewards to harvest.",
         "status": status,
         "next_command": next_command,
@@ -274,6 +306,12 @@ async fn scan_reserve(asset: &str, chain: &ChainInfo, wallet: &str) -> anyhow::R
         symbol_fut, decimals_fut, wallet_bal_fut, supply_fut, v_debt_fut, s_debt_fut
     );
 
+    // EVM-012: balance reads MUST propagate RPC errors so the caller's
+    // filter_map can count them as `rpc_failures` and route the user to the
+    // `rpc_degraded` status. Silently zeroing them used to make the entire
+    // status decision tree fire on bad data — e.g. a single RPC blip on the
+    // user's debt token would route them to `protocol_winddown` (no V2
+    // positions) instead of `has_active_borrow`.
     Ok(ReserveScan {
         asset: asset.to_string(),
         symbol: sym,
@@ -281,10 +319,10 @@ async fn scan_reserve(asset: &str, chain: &ChainInfo, wallet: &str) -> anyhow::R
         a_token: rd.a_token,
         s_debt_token: rd.stable_debt_token,
         v_debt_token: rd.variable_debt_token,
-        wallet_balance_raw: bal.unwrap_or(0),
-        supply_raw: supply_bal.unwrap_or(0),
-        variable_debt_raw: v_debt_bal.unwrap_or(0),
-        stable_debt_raw: s_debt_bal.unwrap_or(0),
+        wallet_balance_raw: bal?,
+        supply_raw: supply_bal?,
+        variable_debt_raw: v_debt_bal?,
+        stable_debt_raw: s_debt_bal?,
         // V2 doesn't expose per-asset usageAsCollateralEnabled cheaply without PDP -
         // Aave's UI derives it from getUserConfiguration bitmap. v0.1.0 reports None;
         // borrow command uses overall account liquidity / HF for safety gating.

@@ -82,7 +82,17 @@ pub async fn run(args: WithdrawArgs) -> anyhow::Result<()> {
         Err(e) => return print_err(&format!("LendingPool.getReserveData: {}", e), "RPC_ERROR",
             "Public RPC may be limited; retry shortly."),
     };
-    let supply_raw = erc20_balance(&rd.a_token, &from_addr, chain.rpc).await.unwrap_or(0);
+    // EVM-012: surface RPC failures distinctly from "user has no supply" — a
+    // silent unwrap_or(0) here would tell users they have nothing to withdraw
+    // when in fact the public RPC just couldn't fetch the aToken balance.
+    let supply_raw = match erc20_balance(&rd.a_token, &from_addr, chain.rpc).await {
+        Ok(v) => v,
+        Err(e) => return print_err(
+            &format!("Failed to read aToken balance for {} on {}: {:#}", symbol, chain.key, e),
+            "RPC_ERROR",
+            "Public RPC may be limited; retry shortly.",
+        ),
+    };
     if supply_raw == 0 {
         return print_err(
             &format!("No {} supplied on Aave V2 {}.", symbol, chain.key),

@@ -86,7 +86,18 @@ pub async fn run(args: SwapBorrowRateModeArgs) -> anyhow::Result<()> {
             "Public RPC may be limited; retry shortly."),
     };
     let debt_token = if mode == RateMode::Stable { &rd.stable_debt_token } else { &rd.variable_debt_token };
-    let current_debt_in_mode = erc20_balance(debt_token, &from_addr, chain.rpc).await.unwrap_or(0);
+    // EVM-012: surface RPC failures distinctly from "user has no debt" — a
+    // silent unwrap_or(0) here would tell users to "swap to a mode with actual
+    // debt" when the real issue is the public RPC being unavailable.
+    let current_debt_in_mode = match erc20_balance(debt_token, &from_addr, chain.rpc).await {
+        Ok(v) => v,
+        Err(e) => return print_err(
+            &format!("Failed to read {}-debt balance for {} on {}: {:#}",
+                if args.rate_mode == 1 { "stable" } else { "variable" }, symbol, chain.key, e),
+            "RPC_ERROR",
+            "Public RPC may be limited; retry shortly.",
+        ),
+    };
     if current_debt_in_mode == 0 {
         return print_err(
             &format!("No {} {}-rate debt on Aave V2 {} - nothing to swap.",
