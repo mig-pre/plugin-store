@@ -193,7 +193,7 @@
       }
     },
     {
-      "name": "dolomite",
+      "name": "dolomite-plugin",
       "version": "0.1.0",
       "description": "Dolomite Finance lending/borrowing on Arbitrum - supply assets to earn interest, open isolated borrow positions, repay, withdraw via DolomiteMargin.",
       "author": {
@@ -214,7 +214,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/dolomite-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/dolomite-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/dolomite-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778133007",
       "extra": {
         "chains": [
           "solana",
@@ -288,7 +288,7 @@
       }
     },
     {
-      "name": "euler-v2",
+      "name": "euler-v2-plugin",
       "version": "0.1.0",
       "description": "Supply, borrow and earn yield on Euler v2 - a modular lending protocol with isolated-risk vaults (EVK = Euler Vault Kit). Trigger phrases: supply to euler, deposit to euler vault, borrow from euler, repay euler loan, euler health factor, my euler positions, euler vault apy, claim euler rewards, euler markets, evk vaults.",
       "author": {
@@ -310,7 +310,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/euler-v2-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/euler-v2-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/euler-v2-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778133007",
       "extra": {
         "chains": [
           "ethereum",
@@ -321,7 +321,7 @@
       }
     },
     {
-      "name": "fourmeme",
+      "name": "fourmeme-plugin",
       "version": "0.1.0",
       "description": "Trade Four.meme bonding-curve memecoins on BNB Chain - buy and sell pre-graduate tokens, get live quotes, view holdings. Trigger phrases: buy four meme token, sell four meme, four.meme price, fourmeme quote, fourmeme positions, my fourmeme holdings, list four meme tokens, trending four.meme.",
       "author": {
@@ -344,7 +344,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/fourmeme-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/fourmeme-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/fourmeme-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778133007",
       "extra": {
         "chains": [
           "ethereum",
@@ -546,7 +546,7 @@
       }
     },
     {
-      "name": "lifi",
+      "name": "lifi-plugin",
       "version": "0.1.0",
       "description": "LI.FI cross-chain bridge & swap aggregator - list chains/tokens, get quotes, execute bridges/swaps, track tx status across Ethereum, Arbitrum, Base, BSC, Polygon, and Optimism.",
       "author": {
@@ -569,7 +569,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/lifi-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/lifi-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/lifi-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778133007",
       "extra": {
         "chains": [
           "solana",
@@ -1027,7 +1027,7 @@
       }
     },
     {
-      "name": "puffer",
+      "name": "puffer-plugin",
       "version": "0.1.0",
       "description": "Liquid restaking on Puffer Finance - deposit ETH to mint pufETH, instant or queued withdraw, check positions",
       "author": {
@@ -1048,7 +1048,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/puffer-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/puffer-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/puffer-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778133007",
       "extra": {
         "chains": [
           "ethereum",
@@ -1156,7 +1156,7 @@
       }
     },
     {
-      "name": "spark-savings",
+      "name": "spark-savings-plugin",
       "version": "0.1.0",
       "description": "Spark Savings - earn Sky Savings Rate (SSR) on USDS via sUSDS yield-bearing vault. Deposit, withdraw, check APY/balance across Ethereum, Base, and Arbitrum.",
       "author": {
@@ -1178,7 +1178,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/spark-savings-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/spark-savings-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/spark-savings-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778133007",
       "extra": {
         "chains": [
           "solana",
