@@ -133,6 +133,18 @@ jobs:
                               skill_desc = line.split(':', 1)[1].strip().strip('"')
 
               name = pjson.get("name", skill_name)
+
+              # Normalize author: Anthropic plugin.json schema requires
+              # object {"name": ..., ...}, but some legacy entries use a
+              # plain string. Accept both so the workflow doesn't crash
+              # on schema-violating community submissions.
+              _raw_author = pjson.get("author")
+              if isinstance(_raw_author, str):
+                  _author_name = _raw_author
+              elif isinstance(_raw_author, dict):
+                  _author_name = _raw_author.get("name", "OKX")
+              else:
+                  _author_name = "OKX"
               desc = description or skill_desc or f"Official OKX plugin: {name}"
 
               # Detect tags from SKILL.md content
@@ -181,7 +193,7 @@ jobs:
                   "name": name,
                   "version": version,
                   "description": desc,
-                  "author": {"name": pjson.get("author", {}).get("name", "OKX")},
+                  "author": {"name": _author_name},
                   "category": existing.get("category") or category,
                   "tags": tags[:10],
                   "type": plugin_type,
@@ -222,7 +234,7 @@ jobs:
                   "description": desc,
                   "source": f"./skills/{skill_name}",
                   "category": category,
-                  "author": {"name": pjson.get("author", {}).get("name", "OKX")}
+                  "author": {"name": _author_name}
               }
               marketplace_plugins.append(mp_entry)
 
