@@ -150,7 +150,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/clanker-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/clanker-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/clanker-plugin/SUMMARY.md",
-      "modify_date": "1778151131",
+      "modify_date": "1778222547",
       "extra": {
         "chains": [
           "base"
@@ -245,7 +245,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/curve-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/curve-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/curve-plugin/SUMMARY.md",
-      "modify_date": "1778151128",
+      "modify_date": "1778222547",
       "extra": {
         "chains": [
           "ethereum",
@@ -309,7 +309,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/eigencloud-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/eigencloud-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/eigencloud-plugin/SUMMARY.md",
-      "modify_date": "1778222523",
+      "modify_date": "1778222547",
       "extra": {
         "chains": [
           "ethereum",
@@ -372,7 +372,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/etherfi-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/etherfi-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/etherfi-plugin/SUMMARY.md",
-      "modify_date": "1778151129",
+      "modify_date": "1778222547",
       "extra": {
         "chains": [
           "ethereum",
@@ -437,10 +437,11 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/fluid-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/fluid-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/fluid-plugin/SUMMARY.md",
-      "modify_date": "1778222523",
+      "modify_date": "1778222547",
       "extra": {
         "chains": [
-          "ethereum"
+          "ethereum",
+          "base"
         ],
         "protocols": [],
         "risk_level": "high"
@@ -501,7 +502,14 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/gmx-v2-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/gmx-v2-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/gmx-v2-plugin/SUMMARY.md",
-      "modify_date": "1778151516"
+      "modify_date": "1778222547",
+      "extra": {
+        "chains": [
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "high"
+      }
     },
     {
       "name": "go-sol-price",
@@ -559,7 +567,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/hyperliquid-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid-plugin/SUMMARY.md",
-      "modify_date": "1778148500",
+      "modify_date": "1778222547",
       "extra": {
         "chains": [
           "solana",
@@ -592,7 +600,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/kamino-lend-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-lend-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-lend-plugin/SUMMARY.md",
-      "modify_date": "1778151878",
+      "modify_date": "1778222547",
       "extra": {
         "chains": [
           "solana",
@@ -623,7 +631,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/kamino-liquidity-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-liquidity-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-liquidity-plugin/SUMMARY.md",
-      "modify_date": "1778151888",
+      "modify_date": "1778222547",
       "extra": {
         "chains": [
           "solana",
@@ -655,10 +663,11 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/lido-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/lido-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/lido-plugin/SUMMARY.md",
-      "modify_date": "1778151125",
+      "modify_date": "1778222547",
       "extra": {
         "chains": [
-          "ethereum"
+          "ethereum",
+          "base"
         ],
         "protocols": [],
         "risk_level": "medium"
@@ -848,7 +857,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/morpho-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/morpho-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/morpho-plugin/SUMMARY.md",
-      "modify_date": "1778150692",
+      "modify_date": "1778222547",
       "extra": {
         "chains": [
           "ethereum",
@@ -1037,7 +1046,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/pancakeswap-v3-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v3-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v3-plugin/SUMMARY.md",
-      "modify_date": "1778151525",
+      "modify_date": "1778222547",
       "extra": {
         "chains": [
           "ethereum",
@@ -1318,7 +1327,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/rootdata-crypto-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/rootdata-crypto-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/rootdata-crypto-plugin/SUMMARY.md",
-      "modify_date": "1778220893"
+      "modify_date": "1778222547"
     },
     {
       "name": "smart-money-signal-copy-trade",
@@ -1723,7 +1732,14 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/velodrome-v2-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/velodrome-v2-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/velodrome-v2-plugin/SUMMARY.md",
-      "modify_date": "1778151623"
+      "modify_date": "1778222547",
+      "extra": {
+        "chains": [
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "medium"
+      }
     },
     {
       "name": "wallet-tracker-mcap",
