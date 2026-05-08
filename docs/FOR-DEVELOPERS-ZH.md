@@ -13,15 +13,15 @@
 3. [快速入门（7 步）](#3-快速入门7-步)
 4. [Plugin 结构](#4-plugin-结构)
 5. [编写 SKILL.md](#5-编写-skillmd)
-6. [编写 SUMMARY.md](#编写-summarymd)
-7. [提交包含源代码的 Plugin（Binary）](#6-提交包含源代码的-pluginbinary)
-8. [三种提交模式](#7-三种提交模式)
-9. [Onchain OS 集成](#8-onchainos-集成)
-10. [审核流程](#9-审核流程)
-11. [风险等级](#10-风险等级)
-12. [规则与限制](#11-规则与限制)
-13. [常见问题](#12-常见问题)
-14. [获取帮助](#13-获取帮助)
+6. [编写 SUMMARY.md](#6-编写-summarymd)
+7. [提交包含源代码的 Plugin（Binary）](#7-提交包含源代码的-pluginbinary)
+8. [三种提交模式](#8-三种提交模式)
+9. [Onchain OS 集成](#9-onchainos-集成)
+10. [审核流程](#10-审核流程)
+11. [风险等级](#11-风险等级)
+12. [规则与限制](#12-规则与限制)
+13. [常见问题](#13-常见问题)
+14. [获取帮助](#14-获取帮助)
 
 ---
 
@@ -717,7 +717,7 @@ onchainos market price --address <TOKEN_ADDRESS> --chain solana
 
 ---
 
-## 编写 SUMMARY.md
+## 6. 编写 SUMMARY.md
 
 每个 Plugin **必须**包含一个 `SUMMARY.md` 文件，放在与 `SKILL.md` 同级的目录中。该文件是**英文**的面向用户摘要，必须包含固定的三段式结构。CI lint 会在提交时检查：缺少文件报 `E150` 错误，缺少必需章节报 `E151` 错误。
 
@@ -877,7 +877,7 @@ subprocess.run(["raydium-plugin", "swap", "--from", "USDC", "--to", "SOL",
 
 ---
 
-## 6. 提交包含源代码的 Plugin（Binary）
+## 7. 提交包含源代码的 Plugin（Binary）
 
 > **重要：** SKILL.md 始终是入口。即使你的 Plugin 包含 binary，
 > SKILL.md 也是告诉 AI 代理如何编排一切的核心 ——
@@ -1173,7 +1173,7 @@ cd your-tool && pip install .
 
 ---
 
-## 7. 三种提交模式
+## 8. 三种提交模式
 
 ### 模式 A -- 直接提交（推荐）
 
@@ -1270,7 +1270,7 @@ plugin-store import your-username/my-plugin
 
 ---
 
-## 8. Onchain OS 集成
+## 9. Onchain OS 集成
 
 ### 什么是 Onchain OS？
 
@@ -1324,7 +1324,7 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ---
 
-## 9. 审核流程
+## 10. 审核流程
 
 每个 Pull Request 都会经过 4 阶段的 CI 流水线。
 
@@ -1416,7 +1416,7 @@ AI 审查员阅读你的 Plugin 并生成涵盖安全性、合规性和质量的
 
 ---
 
-## 10. 风险等级
+## 11. 风险等级
 
 每个 Plugin 根据其功能被分配三个风险等级之一。
 
@@ -1453,7 +1453,7 @@ AI 审查员阅读你的 Plugin 并生成涵盖安全性、合规性和质量的
 
 ---
 
-## 11. 规则与限制
+## 12. 规则与限制
 
 ### 你可以做的
 
@@ -1473,7 +1473,7 @@ AI 审查员阅读你的 Plugin 并生成涵盖安全性、合规性和质量的
 
 ---
 
-## 12. 常见问题
+## 13. 常见问题
 
 1. **审核需要多长时间？**
    自动化检查在 5 分钟内完成。人工审查通常需要 1-3 个工作日。
@@ -1519,7 +1519,7 @@ AI 审查员阅读你的 Plugin 并生成涵盖安全性、合规性和质量的
 
 ---
 
-## 13. 获取帮助
+## 14. 获取帮助
 
 - 在 GitHub 上提交 [issue](https://github.com/okx/plugin-store/issues)
 - 查看 `skills/` 中的现有 Plugin 作为示例
