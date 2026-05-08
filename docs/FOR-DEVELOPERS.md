@@ -739,8 +739,6 @@ Every plugin **must** include a `SUMMARY.md` file in the same directory as `SKIL
 ### Required Structure
 
 ```markdown
-# <plugin-name>
-
 ## Overview
 
 <One sentence describing what this platform/protocol is.>
@@ -774,8 +772,6 @@ modes, or options. Use numbered lists or bold headings for each step.>
 ### Example: Polymarket Plugin
 
 ```markdown
-# polymarket-plugin
-
 ## 1. Overview
 
 Polymarket is a decentralized prediction market platform on Polygon where users trade

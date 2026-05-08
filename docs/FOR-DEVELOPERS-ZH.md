@@ -724,8 +724,6 @@ onchainos market price --address <TOKEN_ADDRESS> --chain solana
 ### 必需结构
 
 ```markdown
-# <plugin-name>
-
 ## Overview
 
 <一句话概括该平台/协议是什么。>
@@ -758,8 +756,6 @@ Tags: `defi` `ethereum` `swap` `lending`
 ### 示例：Polymarket Plugin
 
 ```markdown
-# polymarket-plugin
-
 ## Overview
 
 Polymarket is a decentralized prediction market platform on Polygon where users trade
