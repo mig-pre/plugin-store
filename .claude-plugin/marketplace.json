@@ -394,6 +394,15 @@
       }
     },
     {
+      "name": "sorin-skill",
+      "description": "Answer DeFi questions about tokens, pools, chains, protocols, and projects using Sahara's Sorin DeFi AI Services Gateway",
+      "source": "./skills/sorin-skill",
+      "category": "utility",
+      "author": {
+        "name": "Sahara AI"
+      }
+    },
+    {
       "name": "spark-savings-plugin",
       "description": "Spark Savings - earn Sky Savings Rate (SSR) on USDS via sUSDS yield-bearing vault. Deposit, withdraw, check APY/balance across Ethereum, Base, and Arbitrum.",
       "source": "./skills/spark-savings-plugin",
