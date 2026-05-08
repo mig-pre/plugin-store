@@ -131,7 +131,7 @@
     },
     {
       "name": "clanker-plugin",
-      "version": "0.2.4",
+      "version": "0.2.6",
       "description": "Deploy and manage Clanker ERC-20 tokens on Base and Arbitrum — launch tokens, search by creator, and claim LP fee rewards",
       "author": {
         "name": "GeoGu360"
@@ -150,7 +150,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/clanker-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/clanker-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/clanker-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778151131",
       "extra": {
         "chains": [
           "base"
@@ -226,7 +226,7 @@
     },
     {
       "name": "curve-plugin",
-      "version": "0.2.7",
+      "version": "0.2.9",
       "description": "Curve DEX plugin — swap stablecoins, add/remove liquidity, query pools and APY across Ethereum, Arbitrum, Base, Polygon, and BSC.",
       "author": {
         "name": "GeoGu360"
@@ -245,7 +245,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/curve-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/curve-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/curve-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778151128",
       "extra": {
         "chains": [
           "ethereum",
@@ -288,6 +288,38 @@
       }
     },
     {
+      "name": "eigencloud-plugin",
+      "version": "0.1.1",
+      "description": "Restake LSTs on EigenLayer to earn AVS operator yield — stake, delegate, and manage your restaking positions",
+      "author": {
+        "name": "skylavis-sky"
+      },
+      "category": "defi-protocol",
+      "tags": [
+        "ethereum",
+        "signal"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/eigencloud-plugin"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/eigencloud-plugin",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/eigencloud-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/eigencloud-plugin/SUMMARY.md",
+      "modify_date": "1778222523",
+      "extra": {
+        "chains": [
+          "ethereum",
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "high"
+      }
+    },
+    {
       "name": "eth-price-demo",
       "version": "0.1.0",
       "description": "Query ETH price via OnchainOS — a simple demo plugin for CI testing",
@@ -320,7 +352,7 @@
     },
     {
       "name": "etherfi-plugin",
-      "version": "0.2.9",
+      "version": "0.2.11",
       "description": "Liquid restaking on Ethereum — deposit ETH to receive eETH, wrap eETH to weETH (ERC-4626), and check positions with APY",
       "author": {
         "name": "GeoGu360"
@@ -340,7 +372,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/etherfi-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/etherfi-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/etherfi-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778151129",
       "extra": {
         "chains": [
           "ethereum",
@@ -384,6 +416,37 @@
       }
     },
     {
+      "name": "fluid-plugin",
+      "version": "0.1.1",
+      "description": "Supply collateral and borrow on Fluid Protocol's smart lending vaults on Ethereum and Arbitrum",
+      "author": {
+        "name": "skylavis-sky"
+      },
+      "category": "defi-protocol",
+      "tags": [
+        "ethereum",
+        "signal"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/fluid-plugin"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/fluid-plugin",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/fluid-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/fluid-plugin/SUMMARY.md",
+      "modify_date": "1778222523",
+      "extra": {
+        "chains": [
+          "ethereum"
+        ],
+        "protocols": [],
+        "risk_level": "high"
+      }
+    },
+    {
       "name": "fourmeme-plugin",
       "version": "0.1.1",
       "description": "Trade Four.meme bonding-curve memecoins on BNB Chain - buy and sell pre-graduate tokens, get live quotes, view holdings. Trigger phrases: buy four meme token, sell four meme, four.meme price, fourmeme quote, fourmeme positions, my fourmeme holdings, list four meme tokens, trending four.meme.",
@@ -419,7 +482,7 @@
     },
     {
       "name": "gmx-v2-plugin",
-      "version": "0.2.6",
+      "version": "0.2.7",
       "description": "Trade perpetuals and spot on GMX V2 — open/close leveraged positions, place limit/stop orders, add/remove GM pool liquidity, query markets and positions",
       "author": {
         "name": "GeoGu360"
@@ -438,14 +501,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/gmx-v2-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/gmx-v2-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/gmx-v2-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
-      "extra": {
-        "chains": [
-          "base"
-        ],
-        "protocols": [],
-        "risk_level": "high"
-      }
+      "modify_date": "1778151516"
     },
     {
       "name": "go-sol-price",
@@ -481,7 +537,7 @@
     },
     {
       "name": "hyperliquid-plugin",
-      "version": "0.4.3",
+      "version": "0.4.4",
       "description": "Hyperliquid on-chain perpetuals DEX — check positions, get market prices, place and cancel perpetual orders on Hyperliquid L1 (chain_id 999).",
       "author": {
         "name": "GeoGu360"
@@ -503,7 +559,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/hyperliquid-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid-plugin/SUMMARY.md",
-      "modify_date": "1777956699",
+      "modify_date": "1778148500",
       "extra": {
         "chains": [
           "solana",
@@ -516,14 +572,15 @@
     },
     {
       "name": "kamino-lend-plugin",
-      "version": "0.1.3",
+      "version": "0.1.5",
       "description": "Supply, borrow, and manage positions on Kamino Lend — the leading Solana lending protocol",
       "author": {
         "name": "GeoGu360"
       },
       "category": "defi",
       "tags": [
-        "solana"
+        "solana",
+        "defi"
       ],
       "type": "community-developer",
       "components": {
@@ -535,7 +592,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/kamino-lend-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-lend-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-lend-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778151878",
       "extra": {
         "chains": [
           "solana",
@@ -547,7 +604,7 @@
     },
     {
       "name": "kamino-liquidity-plugin",
-      "version": "0.1.2",
+      "version": "0.1.4",
       "description": "Kamino Liquidity KVault earn vaults on Solana. Deposit tokens to earn yield, withdraw shares, and track positions.",
       "author": {
         "name": "GeoGu360"
@@ -566,7 +623,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/kamino-liquidity-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-liquidity-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/kamino-liquidity-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778151888",
       "extra": {
         "chains": [
           "solana",
@@ -578,7 +635,7 @@
     },
     {
       "name": "lido-plugin",
-      "version": "0.2.7",
+      "version": "0.2.9",
       "description": "Stake ETH with Lido liquid staking protocol to receive stETH",
       "author": {
         "name": "GeoGu360"
@@ -598,11 +655,10 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/lido-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/lido-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/lido-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778151125",
       "extra": {
         "chains": [
-          "ethereum",
-          "base"
+          "ethereum"
         ],
         "protocols": [],
         "risk_level": "medium"
@@ -771,7 +827,7 @@
     },
     {
       "name": "morpho-plugin",
-      "version": "0.2.5",
+      "version": "0.2.8",
       "description": "Supply, borrow and earn yield on Morpho — a permissionless lending protocol with $5B+ TVL. Trigger phrases: supply to morpho, deposit to morpho vault, borrow from morpho, repay morpho loan, morpho health factor, my morpho positions, morpho interest rates, claim morpho rewards, morpho markets, metamorpho vaults.",
       "author": {
         "name": "GeoGu360"
@@ -792,7 +848,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/morpho-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/morpho-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/morpho-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778150692",
       "extra": {
         "chains": [
           "ethereum",
@@ -961,7 +1017,7 @@
     },
     {
       "name": "pancakeswap-v3-plugin",
-      "version": "1.0.4",
+      "version": "1.0.6",
       "description": "Swap tokens and manage liquidity on PancakeSwap V3 on BNB Chain, Base, and Arbitrum",
       "author": {
         "name": "GeoGu360"
@@ -981,7 +1037,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/pancakeswap-v3-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v3-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v3-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778151525",
       "extra": {
         "chains": [
           "ethereum",
@@ -1230,7 +1286,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/relay-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/relay-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/relay-plugin/SUMMARY.md",
-      "modify_date": "1778121630",
+      "modify_date": "1778149519",
       "extra": {
         "chains": [
           "ethereum",
@@ -1239,6 +1295,30 @@
         "protocols": [],
         "risk_level": "high"
       }
+    },
+    {
+      "name": "rootdata-crypto-plugin",
+      "version": "1.0.0",
+      "description": "RootData is a leading Web3 data platform covering crypto projects, investors, funding data, and personnel movements. This skill is the OKX-dedicated integration, isolated from the standard RootData skill with its own API key namespace and endpoints.",
+      "author": {
+        "name": "rootdata"
+      },
+      "category": "utility",
+      "tags": [
+        "defi",
+        "ranking"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/rootdata-crypto-plugin"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/rootdata-crypto-plugin",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/rootdata-crypto-plugin/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/rootdata-crypto-plugin/SUMMARY.md",
+      "modify_date": "1778220893"
     },
     {
       "name": "smart-money-signal-copy-trade",
@@ -1624,7 +1704,7 @@
     },
     {
       "name": "velodrome-v2-plugin",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "description": "Swap tokens and manage classic AMM (volatile/stable) LP positions on Velodrome V2 on Optimism",
       "author": {
         "name": "GeoGu360"
@@ -1643,14 +1723,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/velodrome-v2-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/velodrome-v2-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/velodrome-v2-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
-      "extra": {
-        "chains": [
-          "base"
-        ],
-        "protocols": [],
-        "risk_level": "medium"
-      }
+      "modify_date": "1778151623"
     },
     {
       "name": "wallet-tracker-mcap",

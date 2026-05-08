@@ -26,7 +26,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/hyperliquid-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.4.3"
+LOCAL_VER="0.4.4"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -138,12 +138,12 @@ mkdir -p ~/.local/bin
 
 # Download binary + checksums to a sandbox, verify SHA256 before installing.
 BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/hyperliquid-plugin@0.4.3"
+RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/hyperliquid-plugin@0.4.4"
 curl -fsSL "${RELEASE_BASE}/hyperliquid-plugin-${TARGET}${EXT}" -o "$BIN_TMP/hyperliquid-plugin${EXT}" || {
   echo "ERROR: failed to download hyperliquid-plugin-${TARGET}${EXT}" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for hyperliquid-plugin@0.4.3" >&2
+  echo "ERROR: failed to download checksums.txt for hyperliquid-plugin@0.4.4" >&2
   rm -rf "$BIN_TMP"; exit 1; }
 
 EXPECTED=$(awk -v b="hyperliquid-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
@@ -167,7 +167,7 @@ ln -sf "$LAUNCHER" ~/.local/bin/hyperliquid-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.4.3" > "$HOME/.plugin-store/managed/hyperliquid-plugin"
+echo "0.4.4" > "$HOME/.plugin-store/managed/hyperliquid-plugin"
 ```
 
 ---

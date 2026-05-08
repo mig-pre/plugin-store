@@ -88,6 +88,15 @@
       }
     },
     {
+      "name": "eigencloud-plugin",
+      "description": "Restake LSTs on EigenLayer to earn AVS operator yield — stake, delegate, and manage your restaking positions",
+      "source": "./skills/eigencloud-plugin",
+      "category": "defi-protocol",
+      "author": {
+        "name": "skylavis-sky"
+      }
+    },
+    {
       "name": "eth-price-demo",
       "description": "Query ETH price via OnchainOS — a simple demo plugin for CI testing",
       "source": "./skills/eth-price-demo",
@@ -112,6 +121,15 @@
       "category": "utility",
       "author": {
         "name": "GeoGu360"
+      }
+    },
+    {
+      "name": "fluid-plugin",
+      "description": "Supply collateral and borrow on Fluid Protocol's smart lending vaults on Ethereum and Arbitrum",
+      "source": "./skills/fluid-plugin",
+      "category": "defi-protocol",
+      "author": {
+        "name": "skylavis-sky"
       }
     },
     {
@@ -355,6 +373,15 @@
       "category": "utility",
       "author": {
         "name": "OKX"
+      }
+    },
+    {
+      "name": "rootdata-crypto-plugin",
+      "description": "RootData is a leading Web3 data platform covering crypto projects, investors, funding data, and personnel movements. This skill is the OKX-dedicated integration, isolated from the standard RootData skill with its own API key namespace and endpoints.",
+      "source": "./skills/rootdata-crypto-plugin",
+      "category": "utility",
+      "author": {
+        "name": "rootdata"
       }
     },
     {
