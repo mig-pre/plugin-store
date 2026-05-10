@@ -8,6 +8,7 @@ author:
 license: MIT
 category: trading
 type: "dapp-official"
+forwards_to: "Uniswap/uniswap-ai"
 github_link: "https://github.com/Uniswap/uniswap-ai"
 tags:
   - uniswap

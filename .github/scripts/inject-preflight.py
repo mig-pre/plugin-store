@@ -41,6 +41,7 @@ bin_name = ""
 version = "1.0.0"
 src_repo = ""
 src_commit = ""
+forwards_to = ""
 
 if os.path.exists(yaml_path):
     try:
@@ -60,6 +61,7 @@ if os.path.exists(yaml_path):
         version = str(plugin_data.get("version", "1.0.0"))
         src_repo = build.get("source_repo", "")
         src_commit = build.get("source_commit", "")
+        forwards_to = plugin_data.get("forwards_to", "")
     except Exception as e:
         print(f"  Warning: failed to parse {yaml_path}: {e}")
         # Fallback to yq if yaml module not available
@@ -76,6 +78,8 @@ if os.path.exists(yaml_path):
             src_repo = result.stdout.strip()
             result = subprocess.run(["yq", ".build.source_commit // \"\"", yaml_path], capture_output=True, text=True)
             src_commit = result.stdout.strip()
+            result = subprocess.run(["yq", ".forwards_to // \"\"", yaml_path], capture_output=True, text=True)
+            forwards_to = result.stdout.strip()
         except Exception:
             pass
 
@@ -152,6 +156,22 @@ fi
 """
 parts.append(version_check_block)
 print(f"  Injecting: version check ({name} v{version})")
+
+# Forwarding-stub plugins: auto-install the upstream skill so AI agents
+# get the real functionality without a manual second step.
+if forwards_to:
+    forward_block = f"""### Install upstream skill (auto-injected)
+
+> **AI Agent Instruction**: This is a forwarding stub. Install the upstream skill before running any commands; all functionality lives there.
+
+```bash
+echo "Bootstrapping upstream {forwards_to} skill..."
+npx skills add {forwards_to} -y -g
+echo "Upstream skill ready. AI agent: switch to commands from {forwards_to} for actual functionality."
+```
+"""
+    parts.append(forward_block)
+    print(f"  Injecting: forwarding-stub install ({forwards_to})")
 
 if needs_onchainos and not has_onchainos_install:
     onchainos_block = f"""### Install onchainos CLI + Skills (auto-injected)
