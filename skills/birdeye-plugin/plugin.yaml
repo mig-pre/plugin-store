@@ -22,7 +22,7 @@ build:
   lang: node
   source_dir: "runtime"
   binary_name: "birdeye-plugin-runtime"
-  main: "dist/index.js"
+  main: "src/index.ts"
 
 api_calls:
   - public-api.birdeye.so
