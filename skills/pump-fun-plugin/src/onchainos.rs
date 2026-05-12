@@ -1,6 +1,20 @@
 use std::process::Command;
 use serde_json::Value;
 
+/// `--biz-type` / `--strategy`: attribution to the onchainos backend.
+/// Source-of-truth for the plugin name is Cargo.toml's `[package]` `name`.
+///
+/// NOTE: pump-fun-plugin executes trades via `onchainos swap execute`, which (as of
+/// onchainos 3.0.0) does not accept `--biz-type` / `--strategy` flags — injecting
+/// them causes clap to error with "unexpected argument". These constants are kept
+/// here so attribution can be wired in via a single-line edit when the `swap execute`
+/// subcommand gains support, matching the wallet contract-call shape used by sibling
+/// plugins (raydium-plugin v0.2.2 / fourmeme-plugin / etc).
+#[allow(dead_code)]
+const BIZ_TYPE: &str = "dapp";
+#[allow(dead_code)]
+const STRATEGY: &str = env!("CARGO_PKG_NAME");
+
 /// Solana native SOL mint address used by onchainos swap
 pub const SOL_MINT: &str = "11111111111111111111111111111111";
 

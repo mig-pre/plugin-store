@@ -4,7 +4,7 @@ description: "Interact with pump.fun bonding curves on Solana: buy tokens, sell 
 license: MIT
 metadata:
   author: skylavis-sky
-  version: "0.1.4"
+  version: "0.1.10"
 ---
 
 
@@ -20,7 +20,7 @@ metadata:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/pump-fun-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.1.4"
+LOCAL_VER="0.1.10"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -41,7 +41,7 @@ fi
 REMOTE_VER=$(cat "$UPDATE_CACHE" 2>/dev/null || echo "$LOCAL_VER")
 if [ "$REMOTE_VER" != "$LOCAL_VER" ]; then
   echo "Update available: pump-fun-plugin v$LOCAL_VER -> v$REMOTE_VER. Updating..."
-  npx skills add mig-pre/plugin-store --skill pump-fun-plugin --yes --global 2>/dev/null || true
+  npx skills add okx/plugin-store --skill pump-fun-plugin --yes --global 2>/dev/null || true
   echo "Updated pump-fun-plugin to v$REMOTE_VER. Please re-read this SKILL.md."
 fi
 ```
@@ -92,7 +92,7 @@ fi
 npx skills add okx/onchainos-skills --yes --global
 
 # 3. Install plugin-store skills (enables plugin discovery and management)
-npx skills add mig-pre/plugin-store --skill plugin-store --yes --global
+npx skills add okx/plugin-store --skill plugin-store --yes --global
 ```
 
 ### Install pump-fun-plugin binary + launcher (auto-injected)
@@ -103,11 +103,11 @@ LAUNCHER="$HOME/.plugin-store/launcher.sh"
 CHECKER="$HOME/.plugin-store/update-checker.py"
 if [ ! -f "$LAUNCHER" ]; then
   mkdir -p "$HOME/.plugin-store"
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/launcher.sh" -o "$LAUNCHER" 2>/dev/null || true
   chmod +x "$LAUNCHER"
 fi
 if [ ! -f "$CHECKER" ]; then
-  curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
+  curl -fsSL "https://raw.githubusercontent.com/okx/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
 fi
 
 # Clean up old installation
@@ -129,40 +129,17 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-
-# Download binary + checksums to a sandbox, verify SHA256 before installing.
-BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/pump-fun-plugin@0.1.4"
-curl -fsSL "${RELEASE_BASE}/pump-fun-plugin-${TARGET}${EXT}" -o "$BIN_TMP/pump-fun-plugin${EXT}" || {
-  echo "ERROR: failed to download pump-fun-plugin-${TARGET}${EXT}" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for pump-fun-plugin@0.1.4" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-
-EXPECTED=$(awk -v b="pump-fun-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
-if command -v sha256sum >/dev/null 2>&1; then
-  ACTUAL=$(sha256sum "$BIN_TMP/pump-fun-plugin${EXT}" | awk '{print $1}')
-else
-  ACTUAL=$(shasum -a 256 "$BIN_TMP/pump-fun-plugin${EXT}" | awk '{print $1}')
-fi
-if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
-  echo "ERROR: pump-fun-plugin SHA256 mismatch — refusing to install." >&2
-  echo "       expected=$EXPECTED  actual=$ACTUAL  target=${TARGET}" >&2
-  rm -rf "$BIN_TMP"; exit 1
-fi
-
-mv "$BIN_TMP/pump-fun-plugin${EXT}" ~/.local/bin/.pump-fun-plugin-core${EXT}
+curl -fsSL "https://github.com/mig-pre/plugin-store/releases/download/plugins/pump-fun-plugin@0.1.10/pump-fun-plugin-${TARGET}${EXT}" -o ~/.local/bin/.pump-fun-plugin-core${EXT}
 chmod +x ~/.local/bin/.pump-fun-plugin-core${EXT}
-rm -rf "$BIN_TMP"
 
 # Symlink CLI name to universal launcher
 ln -sf "$LAUNCHER" ~/.local/bin/pump-fun-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.1.4" > "$HOME/.plugin-store/managed/pump-fun-plugin"
+echo "0.1.8" > "$HOME/.plugin-store/managed/pump-fun-plugin"
 ```
+
 
 ---
 
@@ -207,7 +184,7 @@ Solana mainnet (chain 501). Program: `6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6
 Reads on-chain `BondingCurveAccount` for a token and returns reserves, price, market cap, and graduation progress.
 
 ```bash
-pump-fun get-token-info --mint <MINT_ADDRESS>
+pump-fun-plugin get-token-info --mint <MINT_ADDRESS>
 ```
 
 **Parameters:**
@@ -227,8 +204,8 @@ pump-fun get-token-info --mint <MINT_ADDRESS>
 Calculates the expected output for a given buy (SOL→tokens) or sell (tokens→SOL) amount.
 
 ```bash
-pump-fun get-price --mint <MINT_ADDRESS> --direction buy --amount 100000000
-pump-fun get-price --mint <MINT_ADDRESS> --direction sell --amount 5000000
+pump-fun-plugin get-price --mint <MINT_ADDRESS> --direction buy --amount 100000000
+pump-fun-plugin get-price --mint <MINT_ADDRESS> --direction sell --amount 5000000
 ```
 
 **Parameters:**
@@ -257,13 +234,13 @@ Purchases tokens on a pump.fun bonding curve via `onchainos swap execute`. Works
 
 ```bash
 # Preview (no --confirm — safe, returns "preview":true)
-pump-fun buy --mint <MINT> --sol-amount 0.01
+pump-fun-plugin buy --mint <MINT> --sol-amount 0.01
 
 # Execute after user confirms
-pump-fun buy --mint <MINT> --sol-amount 0.01 --confirm
+pump-fun-plugin buy --mint <MINT> --sol-amount 0.01 --confirm
 
 # Dry-run (stub only, fastest preview)
-pump-fun --dry-run buy --mint <MINT> --sol-amount 0.01
+pump-fun-plugin --dry-run buy --mint <MINT> --sol-amount 0.01
 ```
 
 **Parameters:**
@@ -274,19 +251,40 @@ pump-fun --dry-run buy --mint <MINT> --sol-amount 0.01
 
 ---
 
+### quickstart — Check wallet and get onboarding steps
+
+Resolves the Solana wallet, checks SOL balance, and emits JSON with status and guided next steps for trading on pump.fun.
+
+```bash
+pump-fun-plugin quickstart
+```
+
+**Output fields:**
+- `ok` — always `true`
+- `about` — brief plugin description
+- `wallet` — resolved Solana wallet address (base58)
+- `chain` — `"Solana"`
+- `assets.sol_balance` — current SOL balance (formatted to 6 decimal places)
+- `status` — `"ready"` (≥ 0.05 SOL) or `"no_funds"` (< 0.05 SOL)
+- `suggestion` — human-readable guidance
+- `next_command` — first command to run next
+- `onboarding_steps` — ordered list of steps to follow
+
+---
+
 ### sell — Sell tokens back to bonding curve
 
 Sells tokens back to a pump.fun bonding curve (or DEX if graduated) for SOL via `onchainos swap execute`. Run without flags to preview, then **ask user to confirm** before proceeding.
 
 ```bash
 # Preview (no --confirm — safe, returns "preview":true)
-pump-fun sell --mint <MINT> --token-amount 1000000
+pump-fun-plugin sell --mint <MINT> --token-amount 1000000
 
 # Sell a specific amount after user confirms
-pump-fun sell --mint <MINT> --token-amount 1000000 --confirm
+pump-fun-plugin sell --mint <MINT> --token-amount 1000000 --confirm
 
 # Sell ALL tokens after user confirms (fetches balance at execution time)
-pump-fun sell --mint <MINT> --confirm
+pump-fun-plugin sell --mint <MINT> --confirm
 ```
 
 **Parameters:**
@@ -294,6 +292,27 @@ pump-fun sell --mint <MINT> --confirm
 - `--token-amount` (optional): Token amount to sell in readable units, decimals accepted (e.g. `1000000` or `153450.77`); omit to sell entire balance
 - `--slippage-bps` (optional): Slippage tolerance in bps (default: 100)
 - `--confirm` (required to execute): Without this flag, returns preview with no on-chain action
+
+---
+
+## Proactive Onboarding
+
+When a user first mentions pump.fun, buying/selling meme tokens on Solana, or bonding curves — run the `quickstart` command automatically before answering:
+
+```bash
+pump-fun-plugin quickstart
+```
+
+This checks their wallet connection and SOL balance in one shot. Use the output to tailor your response:
+
+| `status` field | Meaning | What to do |
+|----------------|---------|------------|
+| `"ready"` | Wallet connected, SOL balance sufficient | Proceed to research (get-token-info) or execute trade |
+| `"low_balance"` | Wallet connected but SOL < 0.01 | Warn user to top up SOL before trading |
+| `"no_wallet"` | No Solana wallet configured | Guide user through `onchainos wallet login` first |
+| `"error"` | RPC or auth failure | Ask user to check connectivity / re-login |
+
+**Do not ask the user to run quickstart themselves** — run it proactively and act on the result.
 
 ---
 
@@ -315,10 +334,10 @@ You need a Solana wallet with at least 0.01 SOL (covers a small buy plus fees).
 
 ```bash
 # Check bonding curve state (reserves, graduation progress, price)
-pump-fun get-token-info --mint <MINT_ADDRESS>
+pump-fun-plugin get-token-info --mint <MINT_ADDRESS>
 
 # Estimate tokens you'd receive for 0.005 SOL (5000000 lamports)
-pump-fun get-price --mint <MINT_ADDRESS> --direction buy --amount 5000000
+pump-fun-plugin get-price --mint <MINT_ADDRESS> --direction buy --amount 5000000
 ```
 
 Key fields: `graduation_progress_pct` (0–100%), `amount_out_ui` (tokens you'd receive), `market_cap_sol` (in SOL).
@@ -327,10 +346,10 @@ Key fields: `graduation_progress_pct` (0–100%), `amount_out_ui` (tokens you'd 
 
 ```bash
 # Preview (no --confirm — safe, no tx):
-pump-fun buy --mint <MINT_ADDRESS> --sol-amount 0.005
+pump-fun-plugin buy --mint <MINT_ADDRESS> --sol-amount 0.005
 
 # Execute after confirming the preview:
-pump-fun buy --mint <MINT_ADDRESS> --sol-amount 0.005 --confirm
+pump-fun-plugin buy --mint <MINT_ADDRESS> --sol-amount 0.005 --confirm
 ```
 
 Success output includes `wallet` (address that executed), `tx_hash`, and `explorer_url` (Solscan link).
@@ -342,10 +361,10 @@ Success output includes `wallet` (address that executed), `tx_hash`, and `explor
 onchainos wallet balance --chain 501
 
 # Preview sell:
-pump-fun sell --mint <MINT_ADDRESS> --token-amount 153450.77
+pump-fun-plugin sell --mint <MINT_ADDRESS> --token-amount 153450.77
 
 # Execute sell:
-pump-fun sell --mint <MINT_ADDRESS> --token-amount 153450.77 --confirm
+pump-fun-plugin sell --mint <MINT_ADDRESS> --token-amount 153450.77 --confirm
 ```
 
 ---
@@ -362,4 +381,8 @@ pump-fun sell --mint <MINT_ADDRESS> --token-amount 153450.77 --confirm
 |-----------|---------|-------------|
 | `slippage_bps` | 100 | 1% slippage tolerance |
 | `fee_bps` | 100 | pump.fun trade fee (1%) |
+
+
+
+
 

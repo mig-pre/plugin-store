@@ -49,9 +49,17 @@ pub async fn execute(args: &BuyArgs, dry_run: bool) -> Result<()> {
     if dry_run || !args.confirm {
         let wallet = resolve_wallet_solana().ok();
         let (is_dry_run, is_preview, note) = if dry_run {
-            (Some(true), None, "dry_run=true — no transaction submitted. Pass --confirm to execute.".to_string())
+            (Some(true), None, format!(
+                "dry_run=true — no transaction submitted. Pass --confirm to execute. \
+                 Run `pump-fun-plugin get-price --mint {} --direction buy --amount <lamports>` to see estimated tokens out.",
+                args.mint
+            ))
         } else {
-            (None, Some(true), "Preview: re-run with --confirm to execute on-chain.".to_string())
+            (None, Some(true), format!(
+                "Preview: re-run with --confirm to execute on-chain. \
+                 Run `pump-fun-plugin get-price --mint {} --direction buy --amount <lamports>` to see estimated tokens out.",
+                args.mint
+            ))
         };
         println!(
             "{}",

@@ -3,6 +3,20 @@ use clap::Args;
 use serde::Serialize;
 use std::sync::Arc;
 
+/// Serialize an f64 as a decimal string (never scientific notation).
+/// Formats to 9 decimal places and strips trailing zeros.
+fn serialize_f64_decimal<S>(value: &f64, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_str(
+        &format!("{:.9}", value)
+            .trim_end_matches('0')
+            .trim_end_matches('.')
+            .to_string(),
+    )
+}
+
 use pumpfun::{
     common::types::{Cluster, PriorityFee},
     PumpFun,
@@ -30,15 +44,20 @@ struct TokenInfoOutput {
     virtual_sol_reserves: u64,
     real_token_reserves: u64,
     /// SOL (not lamports). Divide the raw on-chain lamport value by 1e9.
+    #[serde(serialize_with = "serialize_f64_decimal")]
     real_sol_reserves: f64,
     token_total_supply: u64,
     complete: bool,
     creator: String,
+    #[serde(serialize_with = "serialize_f64_decimal")]
     price_sol_per_token: f64,
     /// SOL (not lamports). Divide the raw on-chain lamport value by 1e9.
+    #[serde(serialize_with = "serialize_f64_decimal")]
     market_cap_sol: f64,
     /// SOL (not lamports). Divide the raw on-chain lamport value by 1e9.
+    #[serde(serialize_with = "serialize_f64_decimal")]
     final_market_cap_sol: f64,
+    #[serde(serialize_with = "serialize_f64_decimal")]
     graduation_progress_pct: f64,
     status: String,
 }

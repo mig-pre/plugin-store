@@ -3,6 +3,20 @@ use clap::Args;
 use serde::Serialize;
 use std::sync::Arc;
 
+/// Serialize an f64 as a decimal string (never scientific notation).
+/// Formats to 9 decimal places and strips trailing zeros.
+fn serialize_f64_decimal<S>(value: &f64, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_str(
+        &format!("{:.9}", value)
+            .trim_end_matches('0')
+            .trim_end_matches('.')
+            .to_string(),
+    )
+}
+
 use pumpfun::{
     common::types::{Cluster, PriorityFee},
     PumpFun,
@@ -41,9 +55,12 @@ struct GetPriceOutput {
     direction: String,
     amount_in: u64,
     amount_out: u64,
+    #[serde(serialize_with = "serialize_f64_decimal")]
     amount_out_ui: f64,
+    #[serde(serialize_with = "serialize_f64_decimal")]
     price_sol_per_token: f64,
     /// SOL (not lamports). Divide the raw on-chain lamport value by 1e9.
+    #[serde(serialize_with = "serialize_f64_decimal")]
     market_cap_sol: f64,
     bonding_complete: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
