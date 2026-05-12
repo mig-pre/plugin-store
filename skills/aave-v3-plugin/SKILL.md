@@ -1,7 +1,7 @@
 ---
 name: aave-v3-plugin
 description: "Aave V3 lending and borrowing. Trigger phrases: supply to aave, deposit to aave, borrow from aave, repay aave loan, aave health factor, my aave positions, aave interest rates, enable emode, disable collateral, claim aave rewards."
-version: "0.2.6"
+version: "0.2.8"
 author: "skylavis-sky"
 tags:
   - lending
@@ -26,7 +26,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/aave-v3-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.2.6"
+LOCAL_VER="0.2.8"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -135,40 +135,17 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-
-# Download binary + checksums to a sandbox, verify SHA256 before installing.
-BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/aave-v3-plugin@0.2.6"
-curl -fsSL "${RELEASE_BASE}/aave-v3-plugin-${TARGET}${EXT}" -o "$BIN_TMP/aave-v3-plugin${EXT}" || {
-  echo "ERROR: failed to download aave-v3-plugin-${TARGET}${EXT}" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for aave-v3-plugin@0.2.6" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-
-EXPECTED=$(awk -v b="aave-v3-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
-if command -v sha256sum >/dev/null 2>&1; then
-  ACTUAL=$(sha256sum "$BIN_TMP/aave-v3-plugin${EXT}" | awk '{print $1}')
-else
-  ACTUAL=$(shasum -a 256 "$BIN_TMP/aave-v3-plugin${EXT}" | awk '{print $1}')
-fi
-if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
-  echo "ERROR: aave-v3-plugin SHA256 mismatch — refusing to install." >&2
-  echo "       expected=$EXPECTED  actual=$ACTUAL  target=${TARGET}" >&2
-  rm -rf "$BIN_TMP"; exit 1
-fi
-
-mv "$BIN_TMP/aave-v3-plugin${EXT}" ~/.local/bin/.aave-v3-plugin-core${EXT}
+curl -fsSL "https://github.com/mig-pre/plugin-store/releases/download/plugins/aave-v3-plugin@0.2.8/aave-v3-plugin-${TARGET}${EXT}" -o ~/.local/bin/.aave-v3-plugin-core${EXT}
 chmod +x ~/.local/bin/.aave-v3-plugin-core${EXT}
-rm -rf "$BIN_TMP"
 
 # Symlink CLI name to universal launcher
 ln -sf "$LAUNCHER" ~/.local/bin/aave-v3-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.2.6" > "$HOME/.plugin-store/managed/aave-v3-plugin"
+echo "0.2.8" > "$HOME/.plugin-store/managed/aave-v3-plugin"
 ```
+
 
 ---
 
@@ -192,7 +169,7 @@ Aave V3 is the leading decentralized lending protocol with over $43B TVL. This s
 - Supply / Withdraw / Borrow / Repay / Set Collateral / Set E-Mode → `aave-v3-plugin` binary constructs ABI calldata; **ask user to confirm** before submitting via `onchainos wallet contract-call` directly to Aave Pool
 - Supply / Repay first approve the ERC-20 token (**ask user to confirm** each step) via `wallet contract-call` before the Pool call
 - Claim Rewards → `onchainos defi collect --platform-id <id>` (platform-id from `defi positions`)
-- Health Factor / Reserves / Positions → `aave-v3-plugin` binary makes read-only `eth_call` via public RPC
+- Health Factor / Reserves / Positions → `aave-v3-plugin` binary makes read-only `eth_call` via public RPC (no OKX portfolio API)
 - Pool address is always resolved at runtime via `PoolAddressesProvider.getPool()` — never hardcoded
 
 ---
@@ -230,10 +207,11 @@ Please connect your wallet first: run `onchainos wallet login`
 | Check health factor | `aave-v3-plugin health-factor` |
 | View positions | `aave-v3-plugin positions` |
 | List reserve rates / APYs | `aave-v3-plugin reserves` |
-| Enable collateral | `aave-v3-plugin set-collateral --asset <ADDRESS> --enable` |
-| Disable collateral | `aave-v3-plugin set-collateral --asset <ADDRESS>` (omit --enable) |
+| Enable collateral | `aave-v3-plugin set-collateral --asset <ADDRESS_OR_SYMBOL> --enable` |
+| Disable collateral | `aave-v3-plugin set-collateral --asset <ADDRESS_OR_SYMBOL>` (omit --enable) |
 | Set E-Mode | `aave-v3-plugin set-emode --category <ID>` |
 | Claim rewards | `aave-v3-plugin claim-rewards` |
+| Onboarding / get started | `aave-v3-plugin quickstart` |
 
 **Global flags (always available):**
 - `--chain <CHAIN_ID>` — target chain (default: 8453 Base)
@@ -251,9 +229,9 @@ The health factor (HF) is a numeric value representing the safety of a borrowing
 
 **Rules:**
 - **Always** check health factor before borrow or set-collateral operations
-- **Warn** when post-action estimated HF < 1.1
-- **Block** (require explicit user confirmation) when current HF < 1.05
-- **Never** execute borrow if HF would drop below 1.0
+- **Warn** (shown in `warnings` array) when current HF < 1.1 and debt > 0
+- **Warn** when no borrow capacity available (no collateral posted)
+- Aave on-chain enforces HF ≥ 1.0 — txs that would drop HF below 1.0 will revert
 
 To check health factor:
 ```bash
@@ -322,10 +300,10 @@ aave-v3-plugin --chain 8453 withdraw --asset USDC --all
 **Key parameters:**
 - `--asset` — token symbol or ERC-20 address
 - `--amount` — partial withdrawal amount
-- `--all` — withdraw the full balance (uses `type(uint256).max`, safe with outstanding debt)
+- `--all` — withdraw the full balance (uses `type(uint256).max`)
 
 **Notes:**
-- If outstanding debt exists, a warning is printed when using `--amount`; consider `--all` or repay first
+- If outstanding debt exists, `--all` will fail on-chain (HF would drop below 1.0). Repay debt first, then withdraw. Use a specific `--amount` that keeps HF above 1.0 if you want to partially withdraw while debt remains.
 - `--amount` automatically caps to actual aToken balance to prevent precision-mismatch revert (e.g. aToken balance 0.999998 when user requests 1.0)
 
 **Expected output:**
@@ -493,9 +471,11 @@ aave-v3-plugin --chain 8453 reserves --asset 0x833589fCD6eDb6E08f4c7C32D4f71b54b
 
 **Trigger phrases:** "my aave positions", "aave portfolio", "我的Aave仓位", "Aave持仓"
 
-**Data source:** Two sources combined:
-- On-chain `Pool.getUserAccountData`: aggregate health factor, LTV, liquidation threshold
-- `onchainos defi position-detail` (Aave V3 platform 10): per-asset SUPPLY / BORROW breakdown
+**Data source:** Hybrid:
+- `Pool.getUserAccountData` (on-chain): aggregate health factor, LTV, liquidation threshold, collateral/debt totals
+- `onchainos defi position-detail` (OKX API): per-asset SUPPLY / BORROW breakdown in `positions.supply` and `positions.borrow` arrays
+
+> Note: if the OKX API returns stale or empty data for a chain, the per-asset arrays may be empty while the aggregate totals remain correct (they come from on-chain).
 
 **Usage:**
 ```bash
@@ -578,7 +558,9 @@ aave-v3-plugin --chain 8453 --confirm set-emode --category 1
 
 **Usage:**
 ```bash
-# Execute (claim-rewards is write-only, always requires --confirm)
+# Preview (default — no --confirm; shows simulatedCommand, dryRun: true)
+aave-v3-plugin --chain 8453 claim-rewards
+# Execute after user confirms:
 aave-v3-plugin --chain 8453 --confirm claim-rewards
 ```
 
@@ -599,6 +581,7 @@ Symbols (e.g. USDC, WETH) are accepted for all commands. Common addresses for re
 | Symbol | Address |
 |--------|---------|
 | USDC | 0xaf88d065e77c8cC2239327C5EDb3A432268e5831 |
+| USDC.e | 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8 (bridged, deprecated — prefer native USDC above) |
 | WETH | 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1 |
 | WBTC | 0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f |
 
@@ -618,12 +601,91 @@ Symbols (e.g. USDC, WETH) are accepted for all commands. Common addresses for re
 
 ---
 
+## Proactive Onboarding
+
+When a user is new or asks "how do I get started", call `aave-v3-plugin quickstart` first. This checks their actual wallet state and returns a personalised `next_command` and `onboarding_steps` — no guessing required.
+
+```bash
+aave-v3-plugin quickstart
+# On a specific chain:
+aave-v3-plugin --chain 1 quickstart
+# With explicit wallet:
+aave-v3-plugin --chain 8453 quickstart --from 0xYourAddress
+```
+
+Parse the JSON output:
+- `status: "active"` → has open Aave positions; run `positions` to show them
+- `status: "ready"` → wallet funded with gas + tokens; follow `next_command` (e.g. `reserves`)
+- `status: "needs_gas"` → has tokens but no ETH; show `onboarding_steps`
+- `status: "needs_funds"` → has ETH but no USDC/WETH; show `onboarding_steps`
+- `status: "no_funds"` → wallet empty; show `onboarding_steps`
+
+**Caveats to explain regardless of path:**
+- `supply` and `repay` each fire an ERC-20 `approve` tx before the main call — budget gas for 2 transactions
+- Preview output for `borrow`/`repay`/`set-collateral`/`set-emode` includes `"txHash": "pending"` — this is normal, no tx was sent
+- `withdraw --all` fails if any outstanding debt exists; use `--amount` or repay debt first
+- HF < 1.1 = warning; HF < 1.0 = liquidatable (Aave enforces this on-chain)
+
+---
+
+## Quickstart Command
+
+```bash
+aave-v3-plugin quickstart [--chain <ID>] [--from <ADDRESS>]
+```
+
+Returns a personalised onboarding JSON based on the wallet's actual balance and Aave V3 positions. Supports all four chains (1 / 137 / 42161 / 8453).
+
+### Output Fields
+
+| Field | Description |
+|-------|-------------|
+| `about` | Protocol description |
+| `wallet` | Resolved wallet address |
+| `chain` | Chain name |
+| `chainId` | Chain ID |
+| `assets.eth_balance` | Native gas token balance |
+| `assets.usdc_balance` | USDC balance |
+| `assets.weth_balance` | WETH balance |
+| `status` | `active` / `ready` / `needs_gas` / `needs_funds` / `no_funds` |
+| `suggestion` | Human-readable state description |
+| `next_command` | The single most useful command to run next |
+| `onboarding_steps` | Ordered steps to follow (omitted when `active`) |
+| `positions` | Aave HF + collateral/debt summary (present when `active`) |
+
+### Example output (status: ready)
+
+```json
+{
+  "ok": true,
+  "wallet": "0xabc...",
+  "chain": "Base",
+  "chainId": 8453,
+  "assets": { "eth_balance": "0.012000", "usdc_balance": "50.00", "weth_balance": "0.000000" },
+  "status": "ready",
+  "suggestion": "Your wallet is funded. Supply assets to Aave V3 to start earning yield.",
+  "next_command": "aave-v3-plugin reserves",
+  "onboarding_steps": [
+    "1. Check current reserve rates:",
+    "   aave-v3-plugin reserves",
+    "2. Supply assets to earn interest:",
+    "   aave-v3-plugin --confirm supply --asset USDC --amount 45.00 --from 0xabc...",
+    "3. View your positions after supplying:",
+    "   aave-v3-plugin positions --from 0xabc..."
+  ]
+}
+```
+
+---
+
+---
+
 ## Safety Rules
 
 1. **Simulate first**: Always run without `--confirm` to preview the operation before broadcasting
 2. **Confirm before broadcast**: Show the user what will happen and only add `--confirm` after explicit user approval
 3. **Never borrow if HF < 1.5 without warning**: Explicitly warn user of liquidation risk
-4. **Block at HF < 1.05**: Require explicit override from user before proceeding
+4. **Warn at HF < 1.1**: Binary emits a warning; advise user to repay before borrowing more
 5. **Full repay safety**: Use `--all` flag for full repay — avoids underpayment due to accrued interest
 6. **Collateral warning**: Before disabling collateral, simulate health factor impact
 7. **ERC-20 approval**: repay automatically handles approval; inform user if approval tx is included
