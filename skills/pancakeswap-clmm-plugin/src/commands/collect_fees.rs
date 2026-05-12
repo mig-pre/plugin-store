@@ -44,22 +44,37 @@ pub async fn run(
         return Ok(());
     }
 
-    // Resolve recipient address
-    let fee_recipient = match recipient {
-        Some(addr) => addr,
-        None => onchainos::resolve_wallet(chain_id).await.unwrap_or_default(),
-    };
-    if fee_recipient.is_empty() {
-        anyhow::bail!("Cannot resolve wallet address. Pass --recipient or ensure onchainos is logged in.");
+    // Resolve signer wallet (always the active onchainos account — the NFT owner)
+    let wallet = onchainos::resolve_wallet(chain_id).await.unwrap_or_default();
+    if wallet.is_empty() {
+        println!("{}", serde_json::to_string_pretty(&serde_json::json!({
+            "ok": false,
+            "error": "Cannot resolve wallet address. Pass --recipient or ensure onchainos is logged in.",
+            "action_required": "onchainos wallet login"
+        }))?);
+        return Ok(());
     }
+    // Fee recipient defaults to signer wallet
+    let fee_recipient = recipient.unwrap_or_else(|| wallet.clone());
 
-    // Pre-check: verify NFT is held in wallet (not staked in MasterChefV3)
-    let owner = rpc::owner_of(cfg.nonfungible_position_manager, token_id, &rpc).await?;
+    // Pre-check: verify NFT exists and is held in wallet (not staked in MasterChefV3)
+    let owner = match rpc::owner_of(cfg.nonfungible_position_manager, token_id, &rpc).await {
+        Ok(o) => o,
+        Err(_) => {
+            println!("{}", serde_json::to_string_pretty(&serde_json::json!({
+                "ok": false,
+                "error": format!("Token ID {} does not exist on chain {}.", token_id, chain_id),
+            }))?);
+            return Ok(());
+        }
+    };
     if owner.to_lowercase() == cfg.masterchef_v3.to_lowercase() {
-        anyhow::bail!(
-            "Token ID {} is staked in MasterChefV3. Please run 'unfarm' first to withdraw it before collecting fees.",
-            token_id
-        );
+        println!("{}", serde_json::to_string_pretty(&serde_json::json!({
+            "ok": false,
+            "error": format!("Token ID {} is staked in MasterChefV3. Run 'unfarm --token-id {}' first to withdraw it.", token_id, token_id),
+            "action_required": format!("pancakeswap-clmm-plugin unfarm --token-id {}", token_id)
+        }))?);
+        return Ok(());
     }
 
     // Check accrued fees
@@ -115,7 +130,7 @@ pub async fn run(
         chain_id,
         cfg.nonfungible_position_manager,
         &calldata,
-        Some(&fee_recipient),
+        Some(&wallet),  // signer = NFT owner wallet, not fee recipient
         None,
         false,
     )
