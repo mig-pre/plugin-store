@@ -845,7 +845,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/meteora-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meteora-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meteora-plugin/SUMMARY.md",
-      "modify_date": "1778561323",
+      "modify_date": "1778563225",
       "extra": {
         "chains": [
           "solana",
@@ -1487,6 +1487,196 @@
       }
     },
     {
+      "name": "stablecoin-chain-explorer",
+      "version": "0.1.0",
+      "description": "Explore stablecoin TVL and yield opportunities by blockchain. Compare cross-chain yields on Ethereum, BSC, Arbitrum, Base, Polygon, Optimism, Solana, and more.",
+      "author": {
+        "name": "Barker"
+      },
+      "category": "utility",
+      "tags": [
+        "solana",
+        "ethereum",
+        "defi"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/stablecoin-chain-explorer"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/stablecoin-chain-explorer",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/stablecoin-chain-explorer/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/stablecoin-chain-explorer/SUMMARY.md",
+      "modify_date": "1778599587",
+      "extra": {
+        "chains": [
+          "solana",
+          "ethereum",
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "medium"
+      }
+    },
+    {
+      "name": "stablecoin-depeg-monitor",
+      "version": "0.1.0",
+      "description": "Stablecoin peg stability monitoring and historical depeg database. Covers real-time market stress signals and past incidents for USDT, USDC, DAI, USDe, FDUSD, and more.",
+      "author": {
+        "name": "Barker"
+      },
+      "category": "utility",
+      "tags": [
+        "trading",
+        "signal"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/stablecoin-depeg-monitor"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/stablecoin-depeg-monitor",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/stablecoin-depeg-monitor/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/stablecoin-depeg-monitor/SUMMARY.md",
+      "modify_date": "1778599591",
+      "extra": {
+        "chains": [
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "high"
+      }
+    },
+    {
+      "name": "stablecoin-market-brief",
+      "version": "0.1.0",
+      "description": "Real-time stablecoin market overview - total market cap, yield-bearing cap, asset and chain distribution, plus market-wide APY versus US Treasury benchmark.",
+      "author": {
+        "name": "Barker"
+      },
+      "category": "utility",
+      "tags": [
+        "ethereum",
+        "defi"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/stablecoin-market-brief"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/stablecoin-market-brief",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/stablecoin-market-brief/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/stablecoin-market-brief/SUMMARY.md",
+      "modify_date": "1778599594",
+      "extra": {
+        "chains": [
+          "ethereum",
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "medium"
+      }
+    },
+    {
+      "name": "stablecoin-risk-check",
+      "version": "0.1.0",
+      "description": "Stablecoin safety and risk assessment - depeg history, reserve composition, audit status, and regulatory exposure for USDT, USDC, DAI, USDe, and other major stablecoins.",
+      "author": {
+        "name": "Barker"
+      },
+      "category": "utility",
+      "tags": [
+        "defi",
+        "ranking"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/stablecoin-risk-check"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/stablecoin-risk-check",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/stablecoin-risk-check/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/stablecoin-risk-check/SUMMARY.md",
+      "modify_date": "1778599597",
+      "extra": {
+        "chains": [
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "medium"
+      }
+    },
+    {
+      "name": "stablecoin-yield-radar",
+      "version": "0.1.0",
+      "description": "Real-time stablecoin yield APY rankings across 500+ DeFi protocols and 20+ CEX. Returns ranked APY, TVL, protocol, chain, and asset for USDT, USDC, DAI, USDe, and more.",
+      "author": {
+        "name": "Barker"
+      },
+      "category": "utility",
+      "tags": [
+        "ethereum",
+        "defi"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/stablecoin-yield-radar"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/stablecoin-yield-radar",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/stablecoin-yield-radar/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/stablecoin-yield-radar/SUMMARY.md",
+      "modify_date": "1778599601",
+      "extra": {
+        "chains": [
+          "ethereum",
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "medium"
+      }
+    },
+    {
+      "name": "stablecoin-yield-vs-tradfi",
+      "version": "0.1.0",
+      "description": "Compare stablecoin DeFi and CEX yields against TradFi benchmarks - bank savings, money market funds, and US Treasury bills. Real-time crypto yields plus TradFi rates.",
+      "author": {
+        "name": "Barker"
+      },
+      "category": "utility",
+      "tags": [
+        "defi"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/stablecoin-yield-vs-tradfi"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/stablecoin-yield-vs-tradfi",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/stablecoin-yield-vs-tradfi/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/stablecoin-yield-vs-tradfi/SUMMARY.md",
+      "modify_date": "1778599604",
+      "extra": {
+        "chains": [
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "medium"
+      }
+    },
+    {
       "name": "sushiswap-v3-plugin",
       "version": "0.1.2",
       "description": "Swap tokens and manage concentrated liquidity positions on SushiSwap V3 across Ethereum, Arbitrum, Base, Polygon, and Optimism",
@@ -1828,6 +2018,38 @@
         ],
         "protocols": [],
         "risk_level": "high"
+      }
+    },
+    {
+      "name": "yield-strategy-advisor",
+      "version": "0.1.0",
+      "description": "Stablecoin yield strategy recommendations by risk tolerance, capital size, and chain preference. Suggests diversified allocations across 500+ DeFi protocols and 20+ CEX.",
+      "author": {
+        "name": "Barker"
+      },
+      "category": "utility",
+      "tags": [
+        "ethereum",
+        "defi"
+      ],
+      "type": "official",
+      "components": {
+        "skill": {
+          "repo": "okx/plugin-store",
+          "dir": "skills/yield-strategy-advisor"
+        }
+      },
+      "github_link": "https://github.com/okx/plugin-store/tree/main/skills/yield-strategy-advisor",
+      "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/yield-strategy-advisor/SKILL.md",
+      "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/yield-strategy-advisor/SUMMARY.md",
+      "modify_date": "1778599607",
+      "extra": {
+        "chains": [
+          "ethereum",
+          "base"
+        ],
+        "protocols": [],
+        "risk_level": "medium"
       }
     }
   ]

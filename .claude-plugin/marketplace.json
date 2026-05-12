@@ -430,6 +430,60 @@
       }
     },
     {
+      "name": "stablecoin-chain-explorer",
+      "description": "Explore stablecoin TVL and yield opportunities by blockchain. Compare cross-chain yields on Ethereum, BSC, Arbitrum, Base, Polygon, Optimism, Solana, and more.",
+      "source": "./skills/stablecoin-chain-explorer",
+      "category": "utility",
+      "author": {
+        "name": "Barker"
+      }
+    },
+    {
+      "name": "stablecoin-depeg-monitor",
+      "description": "Stablecoin peg stability monitoring and historical depeg database. Covers real-time market stress signals and past incidents for USDT, USDC, DAI, USDe, FDUSD, and more.",
+      "source": "./skills/stablecoin-depeg-monitor",
+      "category": "utility",
+      "author": {
+        "name": "Barker"
+      }
+    },
+    {
+      "name": "stablecoin-market-brief",
+      "description": "Real-time stablecoin market overview - total market cap, yield-bearing cap, asset and chain distribution, plus market-wide APY versus US Treasury benchmark.",
+      "source": "./skills/stablecoin-market-brief",
+      "category": "utility",
+      "author": {
+        "name": "Barker"
+      }
+    },
+    {
+      "name": "stablecoin-risk-check",
+      "description": "Stablecoin safety and risk assessment - depeg history, reserve composition, audit status, and regulatory exposure for USDT, USDC, DAI, USDe, and other major stablecoins.",
+      "source": "./skills/stablecoin-risk-check",
+      "category": "utility",
+      "author": {
+        "name": "Barker"
+      }
+    },
+    {
+      "name": "stablecoin-yield-radar",
+      "description": "Real-time stablecoin yield APY rankings across 500+ DeFi protocols and 20+ CEX. Returns ranked APY, TVL, protocol, chain, and asset for USDT, USDC, DAI, USDe, and more.",
+      "source": "./skills/stablecoin-yield-radar",
+      "category": "utility",
+      "author": {
+        "name": "Barker"
+      }
+    },
+    {
+      "name": "stablecoin-yield-vs-tradfi",
+      "description": "Compare stablecoin DeFi and CEX yields against TradFi benchmarks - bank savings, money market funds, and US Treasury bills. Real-time crypto yields plus TradFi rates.",
+      "source": "./skills/stablecoin-yield-vs-tradfi",
+      "category": "utility",
+      "author": {
+        "name": "Barker"
+      }
+    },
+    {
       "name": "sushiswap-v3-plugin",
       "description": "Swap tokens and manage concentrated liquidity positions on SushiSwap V3 across Ethereum, Arbitrum, Base, Polygon, and Optimism",
       "source": "./skills/sushiswap-v3-plugin",
@@ -544,6 +598,15 @@
       "category": "utility",
       "author": {
         "name": "VibeCodeDaddy"
+      }
+    },
+    {
+      "name": "yield-strategy-advisor",
+      "description": "Stablecoin yield strategy recommendations by risk tolerance, capital size, and chain preference. Suggests diversified allocations across 500+ DeFi protocols and 20+ CEX.",
+      "source": "./skills/yield-strategy-advisor",
+      "category": "utility",
+      "author": {
+        "name": "Barker"
       }
     }
   ]
