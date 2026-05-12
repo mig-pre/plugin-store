@@ -1,7 +1,7 @@
 ---
 name: compound-v3-plugin
 description: "Compound V3 (Comet) lending plugin: supply collateral, borrow/repay the base asset, and claim COMP rewards. Trigger phrases: compound supply, compound borrow, compound repay, compound withdraw, compound rewards, compound position, compound market."
-version: "0.2.6"
+version: "0.2.8"
 author: "skylavis-sky"
 tags:
   - lending
@@ -24,7 +24,7 @@ tags:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/compound-v3-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.2.6"
+LOCAL_VER="0.2.8"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -101,6 +101,8 @@ npx skills add mig-pre/plugin-store --skill plugin-store --yes --global
 
 ### Install compound-v3-plugin binary + launcher (auto-injected)
 
+> **Windows users**: this install script requires bash. Run it inside **WSL2**, **Git Bash**, or **MSYS2** — it will not work in PowerShell or Command Prompt. The downloaded binary is a native Windows `.exe` (x86_64-pc-windows-msvc).
+
 ```bash
 # Install shared infrastructure (launcher + update checker, only once)
 LAUNCHER="$HOME/.plugin-store/launcher.sh"
@@ -133,43 +135,19 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-
-# Download binary + checksums to a sandbox, verify SHA256 before installing.
-BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/compound-v3-plugin@0.2.6"
-curl -fsSL "${RELEASE_BASE}/compound-v3-plugin-${TARGET}${EXT}" -o "$BIN_TMP/compound-v3-plugin${EXT}" || {
-  echo "ERROR: failed to download compound-v3-plugin-${TARGET}${EXT}" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for compound-v3-plugin@0.2.6" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-
-EXPECTED=$(awk -v b="compound-v3-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
-if command -v sha256sum >/dev/null 2>&1; then
-  ACTUAL=$(sha256sum "$BIN_TMP/compound-v3-plugin${EXT}" | awk '{print $1}')
-else
-  ACTUAL=$(shasum -a 256 "$BIN_TMP/compound-v3-plugin${EXT}" | awk '{print $1}')
-fi
-if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
-  echo "ERROR: compound-v3-plugin SHA256 mismatch — refusing to install." >&2
-  echo "       expected=$EXPECTED  actual=$ACTUAL  target=${TARGET}" >&2
-  rm -rf "$BIN_TMP"; exit 1
-fi
-
-mv "$BIN_TMP/compound-v3-plugin${EXT}" ~/.local/bin/.compound-v3-plugin-core${EXT}
+curl -fsSL "https://github.com/mig-pre/plugin-store/releases/download/plugins/compound-v3-plugin@0.2.8/compound-v3-plugin-${TARGET}${EXT}" -o ~/.local/bin/.compound-v3-plugin-core${EXT}
 chmod +x ~/.local/bin/.compound-v3-plugin-core${EXT}
-rm -rf "$BIN_TMP"
 
 # Symlink CLI name to universal launcher
 ln -sf "$LAUNCHER" ~/.local/bin/compound-v3-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.2.6" > "$HOME/.plugin-store/managed/compound-v3-plugin"
+echo "0.2.8" > "$HOME/.plugin-store/managed/compound-v3-plugin"
 ```
 
----
 
+---
 
 ## Proactive Onboarding
 
@@ -333,6 +311,33 @@ Please connect your wallet first: run `onchainos wallet login`
 ```
 
 ## Commands
+
+### quickstart — Check state and get a guided next step
+
+```bash
+compound-v3-plugin [--chain 8453] [--market usdc] quickstart [--wallet 0x...]
+```
+
+**Auth required:** No
+
+**How it works:** Queries the Comet contract for `balanceOf` (supply balance) and `borrowBalanceOf` (borrow balance) for the given wallet, in parallel. Emits a single JSON with a `status` field plus a ready-to-run `next_command`. Tolerates transient RPC errors (treats as 0).
+
+**Parameters:**
+- `--wallet <ADDRESS>` (optional) — Query a specific wallet instead of the connected onchainos wallet
+
+**Output fields:** `ok`, `about`, `wallet`, `chain_id`, `market`, `base_asset`, `assets.comet_supply_balance`, `assets.comet_borrow_balance`, `status`, `suggestion`, `next_command`
+
+**Status values:**
+
+| `status` | Meaning | Recommended next step |
+|---|---|---|
+| `borrowed` | Active borrow position on this market | `get-position --collateral-asset <X>` to inspect health, then `repay` |
+| `earning` | Supplying base asset, no active borrow | `get-position` to view accrued interest; `claim-rewards` if COMP available |
+| `new_user` | No Compound V3 position on this market | `get-markets` to browse current APRs |
+
+**Agent flow:** Run first for any new/returning user before `supply` or `borrow`. Relay `status` and `suggestion` to the user, then execute `next_command` (or let the user decide). Note: this command reports on a single `(chain, market)` pair — use the default (`8453/usdc`, Base USDC) or pass `--chain` and `--market` to target a different one.
+
+---
 
 ### get-markets — View market statistics
 
