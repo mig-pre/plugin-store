@@ -1,13 +1,15 @@
 /// swap: Execute a token swap on Raydium via the transaction API + onchainos broadcast.
 ///
 /// Flow:
-///   1. (dry_run guard) - return early before wallet resolution
-///   2. Resolve Solana wallet address
-///   3. GET /compute/swap-base-in -> get quote
-///   4. POST /transaction/swap-base-in -> get base64 serialized tx
-///   5. onchainos wallet contract-call --chain 501 --unsigned-tx <base58_tx>
+///   1. Resolve token decimals + parse amount
+///   2. GET /compute/swap-base-in -> get quote
+///   3. (dry_run guard) - return early with full quote data, no wallet resolution
+///   4. Resolve Solana wallet address + pre-flight balance check
+///   5. (--confirm gate) - show preview and exit unless user explicitly confirms
+///   6. POST /transaction/swap-base-in -> get base64 serialized tx
+///   7. onchainos wallet contract-call --chain 501 --unsigned-tx <base58_tx>
 ///
-/// NOTE: Steps 4 and 5 must happen consecutively - Solana blockhash expires in ~60s.
+/// NOTE: Steps 6 and 7 must happen consecutively - Solana blockhash expires in ~60s.
 use anyhow::Result;
 use clap::Args;
 use serde_json::Value;
@@ -15,7 +17,7 @@ use serde_json::Value;
 use crate::config::{
     parse_human_amount, DEFAULT_COMPUTE_UNIT_PRICE, DEFAULT_SLIPPAGE_BPS, DEFAULT_TX_VERSION,
     PRICE_IMPACT_BLOCK_PCT, PRICE_IMPACT_WARN_PCT, RAYDIUM_AMM_PROGRAM, SOL_NATIVE_MINT,
-    SOLANA_RPC_URL, USDC_SOLANA, TX_API_BASE,
+    SOL_SYSTEM_PROGRAM, SOLANA_RPC_URL, USDC_SOLANA, TX_API_BASE,
 };
 use crate::onchainos;
 
@@ -56,12 +58,16 @@ pub struct SwapArgs {
     /// Wallet public key (base58); if omitted, resolved from onchainos
     #[arg(long)]
     pub from: Option<String>,
+
+    /// Execute the swap on-chain. Without this flag, a preview is shown only.
+    #[arg(long, default_value = "false")]
+    pub confirm: bool,
 }
 
 /// Resolve token decimals for well-known mints; fall back to Raydium mint API for others.
 /// SOL: 9 decimals, USDC on Solana: 6 decimals.
 async fn resolve_decimals(mint: &str, client: &reqwest::Client) -> anyhow::Result<u8> {
-    if mint == SOL_NATIVE_MINT {
+    if mint == SOL_NATIVE_MINT || mint == SOL_SYSTEM_PROGRAM {
         return Ok(9);
     }
     if mint == USDC_SOLANA {
@@ -85,86 +91,35 @@ async fn resolve_decimals(mint: &str, client: &reqwest::Client) -> anyhow::Resul
 }
 
 pub async fn execute(args: &SwapArgs, dry_run: bool) -> Result<()> {
+    // Rewrite native SOL system program address to WSOL — Raydium routes use WSOL
+    let input_mint = if args.input_mint == SOL_SYSTEM_PROGRAM {
+        SOL_NATIVE_MINT.to_string()
+    } else {
+        args.input_mint.clone()
+    };
+    let output_mint = if args.output_mint == SOL_SYSTEM_PROGRAM {
+        SOL_NATIVE_MINT.to_string()
+    } else {
+        args.output_mint.clone()
+    };
+
     // Validate mint addresses before any API calls
-    crate::config::validate_solana_address(&args.input_mint)?;
-    crate::config::validate_solana_address(&args.output_mint)?;
+    crate::config::validate_solana_address(&input_mint)?;
+    crate::config::validate_solana_address(&output_mint)?;
 
     let client = reqwest::Client::new();
 
     // Resolve input token decimals and parse human-readable amount to raw u64
-    let input_decimals = resolve_decimals(&args.input_mint, &client).await?;
+    let input_decimals = resolve_decimals(&input_mint, &client).await?;
     let raw_amount = parse_human_amount(&args.amount, input_decimals)?;
-
-    // dry_run guard - must come before resolve_wallet_solana()
-    if dry_run {
-        let amount_display = args.amount.parse::<f64>()
-            .map(|v| format!("{:.2}", v))
-            .unwrap_or_else(|_| args.amount.clone());
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&serde_json::json!({
-                "ok": true,
-                "dry_run": true,
-                "inputMint": args.input_mint,
-                "outputMint": args.output_mint,
-                "amount": args.amount,
-                "amountDisplay": amount_display,
-                "rawAmount": raw_amount,
-                "slippageBps": args.slippage_bps,
-                "note": "dry_run: tx not built or broadcast"
-            }))?
-        );
-        return Ok(());
-    }
-
-    // Resolve wallet address
-    let wallet = if let Some(ref w) = args.from {
-        w.clone()
-    } else {
-        let w = onchainos::resolve_wallet_solana()?;
-        if w.is_empty() {
-            anyhow::bail!(
-                "Could not resolve wallet address. Pass --from or ensure onchainos is logged in."
-            );
-        }
-        w
-    };
-
-    // Pre-flight balance check
-    if args.input_mint == SOL_NATIVE_MINT {
-        let lamports = onchainos::get_sol_balance(&wallet, SOLANA_RPC_URL)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to fetch SOL balance: {}", e))?;
-        if lamports < raw_amount {
-            anyhow::bail!(
-                "Insufficient SOL balance: need {:.9} SOL, have {:.9} SOL. \
-                 Add funds to your wallet before swapping.",
-                raw_amount as f64 / 1e9,
-                lamports as f64 / 1e9,
-            );
-        }
-    } else {
-        let token_balance = onchainos::get_spl_token_balance(&wallet, &args.input_mint, SOLANA_RPC_URL)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to fetch token balance for mint {}: {}", args.input_mint, e))?;
-        if token_balance < raw_amount {
-            anyhow::bail!(
-                "Insufficient token balance: need {} units, have {} units for mint {}. \
-                 Add funds to your wallet before swapping.",
-                raw_amount,
-                token_balance,
-                args.input_mint,
-            );
-        }
-    }
 
     // Step 1: Get swap quote
     let quote_url = format!("{}/compute/swap-base-in", TX_API_BASE);
     let quote_resp: Value = client
         .get(&quote_url)
         .query(&[
-            ("inputMint", args.input_mint.as_str()),
-            ("outputMint", args.output_mint.as_str()),
+            ("inputMint", input_mint.as_str()),
+            ("outputMint", output_mint.as_str()),
             ("amount", &raw_amount.to_string()),
             ("slippageBps", &args.slippage_bps.to_string()),
             ("txVersion", args.tx_version.as_str()),
@@ -199,14 +154,102 @@ pub async fn execute(args: &SwapArgs, dry_run: bool) -> Result<()> {
         );
     }
 
+    // dry_run guard - after quote fetch, before wallet resolution
+    // Returns full quote data so dry-run is useful for previewing amounts
+    if dry_run {
+        let amount_display = args.amount.parse::<f64>()
+            .map(|v| format!("{:.2}", v))
+            .unwrap_or_else(|_| args.amount.clone());
+        let output_amount = &quote_resp["data"]["outputAmount"];
+        let route_plan = &quote_resp["data"]["routePlan"];
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "ok": true,
+                "dry_run": true,
+                "inputMint": input_mint,
+                "outputMint": output_mint,
+                "amount": args.amount,
+                "amountDisplay": amount_display,
+                "rawAmount": raw_amount,
+                "outputAmount": output_amount,
+                "priceImpactPct": price_impact,
+                "route": route_plan,
+                "slippageBps": args.slippage_bps,
+                "note": "dry_run: wallet not resolved, tx not built or broadcast"
+            }))?
+        );
+        return Ok(());
+    }
+
+    // Resolve wallet address
+    let wallet = if let Some(ref w) = args.from {
+        w.clone()
+    } else {
+        let w = onchainos::resolve_wallet_solana()?;
+        if w.is_empty() {
+            anyhow::bail!(
+                "Could not resolve wallet address. Pass --from or ensure onchainos is logged in."
+            );
+        }
+        w
+    };
+
+    // Pre-flight balance check
+    if input_mint == SOL_NATIVE_MINT {
+        let lamports = onchainos::get_sol_balance(&wallet, SOLANA_RPC_URL)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to fetch SOL balance: {}", e))?;
+        if lamports < raw_amount {
+            anyhow::bail!(
+                "Insufficient SOL balance: need {:.9} SOL, have {:.9} SOL. \
+                 Add funds to your wallet before swapping.",
+                raw_amount as f64 / 1e9,
+                lamports as f64 / 1e9,
+            );
+        }
+    } else {
+        let token_balance = onchainos::get_spl_token_balance(&wallet, &input_mint, SOLANA_RPC_URL)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to fetch token balance for mint {}: {}", input_mint, e))?;
+        if token_balance < raw_amount {
+            anyhow::bail!(
+                "Insufficient token balance: need {} units, have {} units for mint {}. \
+                 Add funds to your wallet before swapping.",
+                raw_amount,
+                token_balance,
+                input_mint,
+            );
+        }
+    }
+
+    // --confirm gate: show preview and exit unless user explicitly confirms
+    if !args.confirm {
+        let output_amount = &quote_resp["data"]["outputAmount"];
+        let route_plan = &quote_resp["data"]["routePlan"];
+        println!("{}", serde_json::to_string_pretty(&serde_json::json!({
+            "ok": true,
+            "preview": true,
+            "action": "swap",
+            "from_token": input_mint,
+            "to_token": output_mint,
+            "amount": args.amount,
+            "outputAmount": output_amount,
+            "priceImpactPct": price_impact,
+            "route": route_plan,
+            "hint": "Re-run with --confirm to execute"
+        }))?);
+        return Ok(());
+    }
+
     // Step 2: Resolve input token account (required by Raydium API when input is SPL, not native SOL)
-    let input_account: Option<String> = if args.input_mint != SOL_NATIVE_MINT {
-        let acct = onchainos::get_token_account(&wallet, &args.input_mint, SOLANA_RPC_URL)
+    let input_account: Option<String> = if input_mint != SOL_NATIVE_MINT {
+        let acct = onchainos::get_token_account(&wallet, &input_mint, SOLANA_RPC_URL)
             .await
             .map_err(|e| anyhow::anyhow!(
                 "Failed to resolve input token account for mint {}: {}. \
                  Ensure the wallet holds the input token before swapping.",
-                args.input_mint, e
+                input_mint, e
             ))?;
         Some(acct)
     } else {
@@ -271,8 +314,8 @@ pub async fn execute(args: &SwapArgs, dry_run: bool) -> Result<()> {
         .unwrap_or_else(|_| args.amount.clone());
     let output = serde_json::json!({
         "ok": true,
-        "inputMint": args.input_mint,
-        "outputMint": args.output_mint,
+        "inputMint": input_mint,
+        "outputMint": output_mint,
         "amount": args.amount,
         "amountDisplay": amount_display,
         "rawAmount": raw_amount,

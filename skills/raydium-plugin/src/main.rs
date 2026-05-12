@@ -38,6 +38,9 @@ enum Commands {
 
     /// Execute a token swap on Raydium (requires onchainos login)
     Swap(commands::swap::SwapArgs),
+
+    /// Check wallet state and get guided next steps
+    Quickstart,
 }
 
 #[tokio::main]
@@ -51,6 +54,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::GetPools(args) => commands::get_pools::execute(&args).await?,
         Commands::GetPoolList(args) => commands::get_pool_list::execute(&args).await?,
         Commands::Swap(args) => commands::swap::execute(&args, cli.dry_run).await?,
+        Commands::Quickstart => commands::quickstart::run().await?,
     }
 
     Ok(())
