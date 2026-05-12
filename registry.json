@@ -588,7 +588,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/hyperliquid-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/hyperliquid-plugin/SUMMARY.md",
-      "modify_date": "1778410899",
+      "modify_date": "1778412348",
       "extra": {
         "chains": [
           "solana",
@@ -1265,14 +1265,15 @@
     },
     {
       "name": "raydium-plugin",
-      "version": "0.1.6",
+      "version": "0.2.2",
       "description": "Raydium AMM plugin for token swaps, price queries, and pool info on Solana mainnet. Trigger phrases: swap on raydium, raydium swap, raydium price, raydium pool, get swap quote raydium, raydium dex, swap solana raydium.",
       "author": {
         "name": "OKX"
       },
       "category": "trading",
       "tags": [
-        "solana"
+        "solana",
+        "signal"
       ],
       "type": "community-developer",
       "components": {
@@ -1284,14 +1285,14 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/raydium-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/raydium-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/raydium-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778559180",
       "extra": {
         "chains": [
           "solana",
           "base"
         ],
         "protocols": [],
-        "risk_level": "medium"
+        "risk_level": "high"
       }
     },
     {
