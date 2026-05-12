@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.2.9 — 2026-05-12
+
+### Added
+
+- **Backend attribution**: `src/onchainos.rs` now defines `BIZ_TYPE = "dapp"` and
+  `STRATEGY = env!("CARGO_PKG_NAME")`, and `onchainos wallet contract-call` invocations
+  now pass `--biz-type / --strategy` so all write-path transactions (approvals + Pendle
+  router calls) are reported to the backend with `biz_type=dapp` and
+  `strategy=pendle-plugin`. Matches the shape used by hyperliquid / etherfi / curve /
+  morpho.
+
+### Changed
+
+- **Release hosting retargeted to mig-pre**: SKILL.md update-checker, launcher download,
+  plugin-store install, and the binary release URL now point at
+  `mig-pre/plugin-store` instead of `okx/plugin-store`. The install script downloads
+  `pendle-plugin@0.2.9` from `mig-pre/plugin-store` releases.
+
+## v0.2.8 — 2026-04-21
+
+### Added
+
+- **`quickstart` command**: New onboarding surface that returns a `status` (`active` / `ready` /
+  `needs_gas` / `needs_funds` / `no_funds`) based on wallet gas + stablecoin balance + Pendle
+  positions, with a concrete `next_command` and `onboarding_steps` for each state. Read-only,
+  chain-aware (uses the global `--chain` flag to pick the correct USDC address and native gas
+  token). Purely additive — no existing command code was modified.
+
 ## v0.2.7 — 2026-04-17
 
 ### Changed

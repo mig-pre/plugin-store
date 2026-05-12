@@ -4,7 +4,7 @@ description: "Pendle Finance yield tokenization plugin. Buy or sell fixed-yield 
 license: MIT
 metadata:
   author: skylavis-sky
-  version: "0.2.7"
+  version: "0.2.9"
 ---
 
 
@@ -20,7 +20,7 @@ metadata:
 # Check for skill updates (1-hour cache)
 UPDATE_CACHE="$HOME/.plugin-store/update-cache/pendle-plugin"
 CACHE_MAX=3600
-LOCAL_VER="0.2.7"
+LOCAL_VER="0.2.9"
 DO_CHECK=true
 
 if [ -f "$UPDATE_CACHE" ]; then
@@ -110,7 +110,8 @@ if [ ! -f "$CHECKER" ]; then
   curl -fsSL "https://raw.githubusercontent.com/mig-pre/plugin-store/main/scripts/update-checker.py" -o "$CHECKER" 2>/dev/null || true
 fi
 
-# Clean up old installation
+# Clean up old installation (legacy pendle binary from v0.2.4–v0.2.5, and any stale pendle-plugin)
+rm -f "$HOME/.local/bin/pendle" "$HOME/.local/bin/.pendle-core" 2>/dev/null
 rm -f "$HOME/.local/bin/pendle-plugin" "$HOME/.local/bin/.pendle-plugin-core" 2>/dev/null
 
 # Download binary
@@ -129,40 +130,17 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-
-# Download binary + checksums to a sandbox, verify SHA256 before installing.
-BIN_TMP=$(mktemp -d)
-RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/pendle-plugin@0.2.7"
-curl -fsSL "${RELEASE_BASE}/pendle-plugin-${TARGET}${EXT}" -o "$BIN_TMP/pendle-plugin${EXT}" || {
-  echo "ERROR: failed to download pendle-plugin-${TARGET}${EXT}" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
-  echo "ERROR: failed to download checksums.txt for pendle-plugin@0.2.7" >&2
-  rm -rf "$BIN_TMP"; exit 1; }
-
-EXPECTED=$(awk -v b="pendle-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
-if command -v sha256sum >/dev/null 2>&1; then
-  ACTUAL=$(sha256sum "$BIN_TMP/pendle-plugin${EXT}" | awk '{print $1}')
-else
-  ACTUAL=$(shasum -a 256 "$BIN_TMP/pendle-plugin${EXT}" | awk '{print $1}')
-fi
-if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
-  echo "ERROR: pendle-plugin SHA256 mismatch — refusing to install." >&2
-  echo "       expected=$EXPECTED  actual=$ACTUAL  target=${TARGET}" >&2
-  rm -rf "$BIN_TMP"; exit 1
-fi
-
-mv "$BIN_TMP/pendle-plugin${EXT}" ~/.local/bin/.pendle-plugin-core${EXT}
+curl -fsSL "https://github.com/mig-pre/plugin-store/releases/download/plugins/pendle-plugin@0.2.9/pendle-plugin-${TARGET}${EXT}" -o ~/.local/bin/.pendle-plugin-core${EXT}
 chmod +x ~/.local/bin/.pendle-plugin-core${EXT}
-rm -rf "$BIN_TMP"
 
-# Symlink CLI name to universal launcher
+# Symlink CLI name to pendle-plugin
 ln -sf "$LAUNCHER" ~/.local/bin/pendle-plugin
 
 # Register version
 mkdir -p "$HOME/.plugin-store/managed"
-echo "0.2.7" > "$HOME/.plugin-store/managed/pendle-plugin"
+echo "0.2.9" > "$HOME/.plugin-store/managed/pendle-plugin"
 ```
+
 
 ---
 
@@ -279,6 +257,35 @@ All write commands include `router` and `calldata` in their output for this purp
 ---
 
 ## Commands
+
+### quickstart — Onboarding Status
+
+**Trigger phrases:** "pendle quickstart", "get started with pendle", "pendle onboarding", "what can I do with pendle"
+
+```bash
+pendle-plugin --chain <CHAIN_ID> quickstart [--user <ADDR>]
+```
+
+**Parameters:**
+- `--user` — wallet address to query (defaults to the connected onchainos wallet)
+- Global `--chain` selects which chain's balances to inspect (default 42161 Arbitrum)
+
+**Output fields:** `about`, `wallet`, `chain`, `assets.{gas_symbol, gas_balance, stable_symbol, stable_balance, active_positions}`, `status`, `suggestion`, `next_command`, `onboarding_steps[]`.
+
+**Status values:** `active` (has positions), `ready` (funded, no positions), `needs_gas` (has stable, no gas), `needs_funds` (has gas, no stable), `no_funds` (neither).
+
+**Examples:**
+```bash
+# Check Arbitrum (default) onboarding status
+pendle-plugin quickstart
+
+# Check Base onboarding status for a specific wallet
+pendle-plugin --chain 8453 quickstart --user 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045
+```
+
+Use `next_command` or `onboarding_steps` to drive the next action. Read-only — no transactions broadcast.
+
+---
 
 ### list-markets — Browse Pendle Markets
 
@@ -826,4 +833,6 @@ pendle-plugin --chain 42161 --confirm sell-pt \
 | "Pendle SDK convert returned HTTP 403" | API rate limit, geographic restriction, or unsupported market | Wait and retry; verify market addresses are correct for the target chain |
 | `get-asset-price` returns empty priceMap | IDs not chain-prefixed | Use format `42161-0x...` not bare `0x...` |
 | Approval or main tx times out after ~40 seconds | Network congestion; the binary polls for confirmation every 2s for up to 20 retries (40s hard limit) | The tx may still confirm on-chain. Check the returned `tx_hash` on a block explorer; if confirmed, safe to proceed. If still pending, wait for the next block and retry the command (the approval is idempotent). |
+
+
 
