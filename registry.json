@@ -826,7 +826,7 @@
     },
     {
       "name": "meteora-plugin",
-      "version": "0.3.7",
+      "version": "0.3.9",
       "description": "Meteora DLMM plugin for Solana — search liquidity pools, get swap quotes, view user positions, execute token swaps, add and remove liquidity",
       "author": {
         "name": "OKX"
@@ -845,7 +845,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/meteora-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meteora-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/meteora-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778561323",
       "extra": {
         "chains": [
           "solana",
@@ -1037,7 +1037,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/pancakeswap-v2-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v2-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-v2-plugin/SUMMARY.md",
-      "modify_date": "1778560670",
+      "modify_date": "1778562114",
       "extra": {
         "chains": [
           "base"
