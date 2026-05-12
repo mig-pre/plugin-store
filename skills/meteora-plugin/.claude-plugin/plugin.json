@@ -1,5 +1,5 @@
 {
   "name": "meteora-plugin",
-  "description": "Meteora DLMM plugin for Solana \u2014 search liquidity pools, get swap quotes, view user positions, execute token swaps, add and remove liquidity",
-  "version": "0.3.7"
+  "description": "Meteora DLMM plugin for Solana — search liquidity pools, get swap quotes, view user positions, execute token swaps, add and remove liquidity",
+  "version": "0.3.9"
 }
