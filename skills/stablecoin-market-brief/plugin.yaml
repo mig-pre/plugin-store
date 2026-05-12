@@ -7,6 +7,10 @@ author:
   github: YBSbarker
   email: partner@barker.money
 license: MIT
+
+components:
+  skill:
+    dir: "."
 category: analytics
 api_calls:
   - api.barker.money
