@@ -135,8 +135,32 @@ case "${OS}_${ARCH}" in
   mingw*_aarch64|msys*_aarch64|cygwin*_aarch64)  TARGET="aarch64-pc-windows-msvc"; EXT=".exe" ;;
 esac
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/mig-pre/plugin-store/releases/download/plugins/aave-v3-plugin@0.2.8/aave-v3-plugin-${TARGET}${EXT}" -o ~/.local/bin/.aave-v3-plugin-core${EXT}
+
+# Download binary + checksums to a sandbox, verify SHA256 before installing.
+BIN_TMP=$(mktemp -d)
+RELEASE_BASE="https://github.com/mig-pre/plugin-store/releases/download/plugins/aave-v3-plugin@0.2.8"
+curl -fsSL "${RELEASE_BASE}/aave-v3-plugin-${TARGET}${EXT}" -o "$BIN_TMP/aave-v3-plugin${EXT}" || {
+  echo "ERROR: failed to download aave-v3-plugin-${TARGET}${EXT}" >&2
+  rm -rf "$BIN_TMP"; exit 1; }
+curl -fsSL "${RELEASE_BASE}/checksums.txt" -o "$BIN_TMP/checksums.txt" || {
+  echo "ERROR: failed to download checksums.txt for aave-v3-plugin@0.2.8" >&2
+  rm -rf "$BIN_TMP"; exit 1; }
+
+EXPECTED=$(awk -v b="aave-v3-plugin-${TARGET}${EXT}" '$2 == b {print $1; exit}' "$BIN_TMP/checksums.txt")
+if command -v sha256sum >/dev/null 2>&1; then
+  ACTUAL=$(sha256sum "$BIN_TMP/aave-v3-plugin${EXT}" | awk '{print $1}')
+else
+  ACTUAL=$(shasum -a 256 "$BIN_TMP/aave-v3-plugin${EXT}" | awk '{print $1}')
+fi
+if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
+  echo "ERROR: aave-v3-plugin SHA256 mismatch — refusing to install." >&2
+  echo "       expected=$EXPECTED  actual=$ACTUAL  target=${TARGET}" >&2
+  rm -rf "$BIN_TMP"; exit 1
+fi
+
+mv "$BIN_TMP/aave-v3-plugin${EXT}" ~/.local/bin/.aave-v3-plugin-core${EXT}
 chmod +x ~/.local/bin/.aave-v3-plugin-core${EXT}
+rm -rf "$BIN_TMP"
 
 # Symlink CLI name to universal launcher
 ln -sf "$LAUNCHER" ~/.local/bin/aave-v3-plugin
@@ -145,7 +169,6 @@ ln -sf "$LAUNCHER" ~/.local/bin/aave-v3-plugin
 mkdir -p "$HOME/.plugin-store/managed"
 echo "0.2.8" > "$HOME/.plugin-store/managed/aave-v3-plugin"
 ```
-
 
 ---
 
