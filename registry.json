@@ -56,7 +56,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/aave-v3-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aave-v3-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/aave-v3-plugin/SUMMARY.md",
-      "modify_date": "1778560700",
+      "modify_date": "1778561981",
       "extra": {
         "chains": [
           "ethereum",
@@ -214,7 +214,7 @@
     },
     {
       "name": "compound-v3-plugin",
-      "version": "0.2.6",
+      "version": "0.2.8",
       "description": "Compound V3 (Comet) lending plugin: supply collateral, borrow/repay the base asset, and claim COMP rewards",
       "author": {
         "name": "skylavis-sky"
@@ -235,7 +235,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/compound-v3-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/compound-v3-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/compound-v3-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778560660",
       "extra": {
         "chains": [
           "ethereum",
