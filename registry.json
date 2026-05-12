@@ -1008,7 +1008,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/pancakeswap-clmm-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-clmm-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pancakeswap-clmm-plugin/SUMMARY.md",
-      "modify_date": "1778560211",
+      "modify_date": "1778561862",
       "extra": {
         "chains": [
           "ethereum",
@@ -1080,7 +1080,7 @@
     },
     {
       "name": "pendle-plugin",
-      "version": "0.2.7",
+      "version": "0.2.9",
       "description": "Pendle Finance yield tokenization plugin — buy/sell PT & YT, add/remove liquidity, mint/redeem PT+YT pairs across Ethereum, Arbitrum, BSC, and Base",
       "author": {
         "name": "OKX"
@@ -1100,7 +1100,7 @@
       "github_link": "https://github.com/okx/plugin-store/tree/main/skills/pendle-plugin",
       "skill_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pendle-plugin/SKILL.md",
       "summary_md_link": "https://raw.githubusercontent.com/okx/plugin-store/main/skills/pendle-plugin/SUMMARY.md",
-      "modify_date": "1777545725",
+      "modify_date": "1778559665",
       "extra": {
         "chains": [
           "ethereum",
